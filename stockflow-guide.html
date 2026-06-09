@@ -1,0 +1,2663 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow API — Guia Completo da POC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg-card: #161822;
+      --bg-code: #1a1d2e;
+      --border: #2a2d3e;
+      --text: #e1e4ed;
+      --text-muted: #8b8fa7;
+      --accent: #6c5ce7;
+      --accent-light: #a29bfe;
+      --green: #00b894;
+      --orange: #fdcb6e;
+      --red: #e17055;
+      --blue: #74b9ff;
+      --cyan: #81ecec;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 16px;
+    }
+
+    /* ── Navigation ── */
+    .sidebar {
+      position: fixed;
+      left: 0; top: 0;
+      width: 320px;
+      height: 100vh;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px 0;
+      z-index: 100;
+    }
+
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 800;
+      padding: 0 24px 20px;
+      color: var(--accent-light);
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 8px 24px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .sidebar a:hover {
+      color: var(--text);
+      background: rgba(108, 92, 231, 0.08);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar .section-label {
+      padding: 16px 24px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+    }
+
+    /* ── Main Content ── */
+    .main {
+      margin-left: 320px;
+      max-width: 860px;
+      padding: 48px 56px 120px;
+    }
+
+    /* ── Cover ── */
+    .cover {
+      text-align: center;
+      padding: 80px 0 60px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 60px;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: rgba(108, 92, 231, 0.15);
+      color: var(--accent-light);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .cover h1 {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .cover h1 span { color: var(--accent-light); }
+
+    .cover p {
+      color: var(--text-muted);
+      font-size: 18px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Typography ── */
+    h2 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin: 72px 0 12px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    h2:first-of-type { border-top: none; margin-top: 0; }
+
+    h3 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin: 40px 0 12px;
+      color: var(--accent-light);
+    }
+
+    h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 28px 0 8px;
+      color: var(--cyan);
+    }
+
+    p { margin-bottom: 16px; }
+
+    /* ── Code ── */
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      font-size: 13.5px;
+      line-height: 1.65;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+    }
+
+    p code, li code {
+      background: var(--bg-code);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--cyan);
+    }
+
+    /* ── Cards ── */
+    .concept-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 20px 0 28px;
+    }
+
+    .concept-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .mapping-card {
+      background: rgba(0, 184, 148, 0.06);
+      border: 1px solid rgba(0, 184, 148, 0.2);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 20px 0 28px;
+    }
+
+    .mapping-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    .warning-card {
+      background: rgba(225, 112, 85, 0.06);
+      border: 1px solid rgba(225, 112, 85, 0.2);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 20px 0 28px;
+    }
+
+    .warning-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--red);
+      margin-bottom: 10px;
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 28px;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent-light);
+    }
+
+    td {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* ── Lists ── */
+    ul, ol {
+      margin: 12px 0 20px 24px;
+      color: var(--text-muted);
+    }
+
+    li { margin-bottom: 6px; }
+
+    /* ── Misc ── */
+    .file-path {
+      display: inline-block;
+      background: rgba(108, 92, 231, 0.12);
+      color: var(--accent-light);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      margin: 4px 0;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin: 16px 0;
+    }
+
+    .step-content { flex: 1; }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    .tree {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .tree span.folder { color: var(--orange); }
+    .tree span.file { color: var(--blue); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 32px 24px 80px; }
+    }
+
+    /* ── Print ── */
+    @media print {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      body { background: white; color: #1a1a2e; }
+      pre { border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ SIDEBAR ══════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-title">📦 StockFlow API</div>
+
+  <div class="section-label">Fundamentos</div>
+  <a href="#intro">Introdução e Visão Geral</a>
+  <a href="#architecture">Clean Architecture e DDD</a>
+  <a href="#setup">Configuração do Projeto</a>
+
+  <div class="section-label">Domínio</div>
+  <a href="#sec2">Seção 2 — Criando o Projeto</a>
+  <a href="#sec3">Seção 3 — Entidade Product</a>
+  <a href="#sec4">Seção 4 — Validação de Dados</a>
+  <a href="#sec5">Seção 5 — Repository Pattern</a>
+  <a href="#sec6">Seção 6 — Casos de Uso</a>
+
+  <div class="section-label">Infraestrutura</div>
+  <a href="#sec7">Seção 7 — Camada NestJS</a>
+  <a href="#sec8">Seção 8 — Prisma ORM</a>
+  <a href="#sec9">Seção 9 — Repositório Prisma</a>
+
+  <div class="section-label">Testes</div>
+  <a href="#sec10">Seção 10 — Refatoração de Testes</a>
+  <a href="#sec11">Seção 11 — Integração com Prisma</a>
+  <a href="#sec13">Seção 13 — Testes E2E</a>
+
+  <div class="section-label">Features</div>
+  <a href="#sec12">Seção 12 — Presenters</a>
+  <a href="#sec14">Seção 14 — Auth com JWT</a>
+  <a href="#sec15">Seção 15 — Swagger</a>
+
+  <div class="section-label">Deploy</div>
+  <a href="#sec16">Seção 16 — CI/CD + AWS</a>
+
+  <div class="section-label">Referência</div>
+  <a href="#entities">Mapa de Entidades</a>
+  <a href="#rules">Regras de Negócio</a>
+</nav>
+
+<!-- ══════════════════════════════════════════ MAIN ══════════════════════════════════════════ -->
+<div class="main">
+
+<!-- ── COVER ── -->
+<div class="cover">
+  <div class="cover-badge">POC — Proof of Concept</div>
+  <h1>StockFlow <span>API</span></h1>
+  <p>Guia completo para construir um sistema de gestão de loja virtual com NestJS, Clean Architecture e TypeScript — do zero ao deploy na AWS.</p>
+</div>
+
+<!-- ══════════════════════════════ INTRODUÇÃO ══════════════════════════════ -->
+<h2 id="intro">Introdução</h2>
+
+<p>Este documento é um guia passo a passo para construir a <strong>StockFlow API</strong> — um sistema de gerenciamento de loja virtual que controla produtos, estoque, fornecedores e pedidos de compra. O projeto aplica os mesmos conceitos do curso de NestJS com Clean Architecture, mas em um domínio diferente para fixar o aprendizado.</p>
+
+<h3>O que você vai construir</h3>
+
+<p>Uma API RESTful completa com quatro entidades principais:</p>
+
+<table>
+  <tr>
+    <th>Entidade</th>
+    <th>Responsabilidade</th>
+    <th>Exemplo no mundo real</th>
+  </tr>
+  <tr>
+    <td><strong>Product</strong></td>
+    <td>Produtos que a loja vende</td>
+    <td>Camiseta Preta M — SKU: CAM-PT-M</td>
+  </tr>
+  <tr>
+    <td><strong>Supplier</strong></td>
+    <td>Fornecedores que abastecem a loja</td>
+    <td>Malhas Brasil LTDA</td>
+  </tr>
+  <tr>
+    <td><strong>Stock</strong></td>
+    <td>Quantidade em estoque por produto</td>
+    <td>CAM-PT-M: 45 unidades (mín: 10)</td>
+  </tr>
+  <tr>
+    <td><strong>PurchaseOrder</strong></td>
+    <td>Pedidos de reposição ao fornecedor</td>
+    <td>Pedido #1204 — 200 camisetas — DELIVERED</td>
+  </tr>
+</table>
+
+<h3>Stack tecnológica</h3>
+<table>
+  <tr><th>Tecnologia</th><th>Papel</th></tr>
+  <tr><td>Node.js + TypeScript</td><td>Runtime e linguagem</td></tr>
+  <tr><td>NestJS</td><td>Framework da camada de infraestrutura</td></tr>
+  <tr><td>Prisma ORM</td><td>Acesso ao banco de dados</td></tr>
+  <tr><td>PostgreSQL</td><td>Banco de dados relacional</td></tr>
+  <tr><td>Docker</td><td>Ambiente de desenvolvimento</td></tr>
+  <tr><td>Jest</td><td>Testes unitários, integração e e2e</td></tr>
+  <tr><td>JWT</td><td>Autenticação</td></tr>
+  <tr><td>Swagger</td><td>Documentação da API</td></tr>
+  <tr><td>GitHub Actions</td><td>CI/CD</td></tr>
+  <tr><td>AWS (EC2 + RDS)</td><td>Deploy em produção</td></tr>
+</table>
+
+<!-- ══════════════════════════════ ARCHITECTURE ══════════════════════════════ -->
+<h2 id="architecture">Clean Architecture e DDD — O Modelo Mental</h2>
+
+<div class="concept-card">
+  <div class="label">💡 Conceito do curso</div>
+  <p>O curso ensina Clean Architecture e DDD aplicados a uma API. A ideia central é que o <strong>domínio</strong> (regras de negócio) não depende de nenhum framework — NestJS, Prisma, Express são detalhes de infraestrutura que podem ser trocados sem alterar a lógica do negócio.</p>
+</div>
+
+<h3>As camadas</h3>
+
+<pre><code>┌──────────────────────────────────────────────────────────────┐
+│                    INFRAESTRUTURA (NestJS)                    │
+│  Controllers, DTOs, Guards, Filters, Prisma Repositories     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │               APLICAÇÃO (Use Cases)                    │  │
+│  │  CreateProduct, UpdateStock, ReceiveDelivery, etc.     │  │
+│  │                                                        │  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │              DOMÍNIO (Entidades)                  │  │  │
+│  │  │  Product, Supplier, Stock, PurchaseOrder          │  │  │
+│  │  │  Validações, Regras de Negócio                    │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+
+Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
+- Domínio NÃO importa nada de NestJS ou Prisma
+- Aplicação conhece o domínio, mas NÃO conhece Prisma
+- Infraestrutura conhece tudo (implementa interfaces do domínio)
+</code></pre>
+
+<h3>Traduzindo para pastas</h3>
+
+<pre><code class="tree"><span class="folder">src/</span>
+├── <span class="folder">products/</span>               ← módulo de produtos
+│   ├── <span class="folder">domain/</span>              ← entidades, interfaces, validações
+│   │   ├── <span class="folder">entities/</span>
+│   │   ├── <span class="folder">repositories/</span>    ← interfaces (contratos)
+│   │   └── <span class="folder">validators/</span>
+│   ├── <span class="folder">application/</span>         ← casos de uso
+│   │   ├── <span class="folder">usecases/</span>
+│   │   └── <span class="folder">dtos/</span>
+│   └── <span class="folder">infrastructure/</span>      ← NestJS, Prisma, controllers
+│       ├── <span class="folder">database/</span>
+│       ├── <span class="folder">controllers/</span>
+│       ├── <span class="folder">presenters/</span>
+│       └── <span class="folder">dto/</span>
+├── <span class="folder">suppliers/</span>              ← mesmo padrão
+├── <span class="folder">stock/</span>                  ← mesmo padrão
+├── <span class="folder">purchase-orders/</span>        ← mesmo padrão
+├── <span class="folder">auth/</span>                   ← módulo de autenticação
+└── <span class="folder">shared/</span>                 ← código reutilizável entre módulos
+    ├── <span class="folder">domain/</span>
+    │   ├── <span class="file">entity.ts</span>          ← classe base Entity
+    │   ├── <span class="file">repository.ts</span>      ← interface base Repository
+    │   └── <span class="file">validators/</span>
+    ├── <span class="folder">application/</span>
+    │   └── <span class="file">usecase.ts</span>         ← interface base UseCase
+    └── <span class="folder">infrastructure/</span>
+        ├── <span class="file">env-config/</span>
+        ├── <span class="file">database/</span>
+        └── <span class="file">exception-filters/</span>
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🔗 Mapeamento curso → POC</div>
+  <p>No curso, tudo fica dentro de <code>src/users/</code>. Na POC, você vai replicar a mesma estrutura para cada módulo (<code>products/</code>, <code>suppliers/</code>, etc.), mas o código compartilhado fica em <code>src/shared/</code>. Isso ensina a lidar com <strong>múltiplos módulos</strong> — algo que o curso com um único módulo não cobre.</p>
+</div>
+
+<!-- ══════════════════════════════ ENTITIES MAP ══════════════════════════════ -->
+<h2 id="entities">Mapa Completo de Entidades</h2>
+
+<h3>Product</h3>
+<pre><code>// src/products/domain/entities/product.entity.ts
+
+interface ProductProps {
+  name: string
+  description: string
+  sku: string               // código único, imutável após criação
+  price: number             // preço de venda (em centavos)
+  costPrice: number         // preço de custo (em centavos)
+  category: string
+  supplierId: string
+  isActive: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+</code></pre>
+
+<h3>Supplier</h3>
+<pre><code>// src/suppliers/domain/entities/supplier.entity.ts
+
+interface SupplierProps {
+  name: string
+  email: string
+  phone: string
+  cnpj: string              // único
+  isActive: boolean
+  createdAt?: Date
+}
+</code></pre>
+
+<h3>Stock</h3>
+<pre><code>// src/stock/domain/entities/stock.entity.ts
+
+interface StockProps {
+  productId: string
+  quantity: number           // quantidade atual
+  minQuantity: number        // mínimo antes de alerta
+  location: string           // "Prateleira A3", "Depósito 2"
+  updatedAt?: Date
+}
+</code></pre>
+
+<h3>PurchaseOrder</h3>
+<pre><code>// src/purchase-orders/domain/entities/purchase-order.entity.ts
+
+type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'DELIVERED' | 'CANCELLED'
+
+interface PurchaseOrderItem {
+  productId: string
+  quantity: number
+  unitCost: number           // preço unitário de compra
+}
+
+interface PurchaseOrderProps {
+  supplierId: string
+  items: PurchaseOrderItem[]
+  status: PurchaseOrderStatus
+  totalCost: number          // calculado automaticamente
+  createdAt?: Date
+  updatedAt?: Date
+}
+</code></pre>
+
+<!-- ══════════════════════════════ RULES ══════════════════════════════ -->
+<h2 id="rules">Regras de Negócio</h2>
+
+<div class="warning-card">
+  <div class="label">⚠️ Importante</div>
+  <p>Estas regras devem viver na <strong>camada de domínio</strong> (dentro das entidades e dos use cases), nunca nos controllers ou no banco de dados. Essa é a essência da Clean Architecture.</p>
+</div>
+
+<table>
+  <tr><th>#</th><th>Regra</th><th>Onde implementar</th></tr>
+  <tr><td>1</td><td>SKU é único e imutável após criação</td><td>Entidade Product + UseCase</td></tr>
+  <tr><td>2</td><td>Preço de venda deve ser maior que preço de custo</td><td>Entidade Product (validação)</td></tr>
+  <tr><td>3</td><td>CNPJ do fornecedor é único</td><td>UseCase CreateSupplier</td></tr>
+  <tr><td>4</td><td>Não deletar fornecedor com pedidos ativos</td><td>UseCase DeleteSupplier</td></tr>
+  <tr><td>5</td><td>Estoque crítico = quantity &lt; minQuantity</td><td>Entidade Stock (getter)</td></tr>
+  <tr><td>6</td><td>PurchaseOrder só cancela em DRAFT ou SENT</td><td>Entidade PurchaseOrder</td></tr>
+  <tr><td>7</td><td>DELIVERED atualiza estoque automaticamente</td><td>UseCase ReceiveDelivery</td></tr>
+  <tr><td>8</td><td>totalCost é calculado (soma de quantity × unitCost)</td><td>Entidade PurchaseOrder</td></tr>
+</table>
+
+<!-- ══════════════════════════════ SEÇÃO 2 ══════════════════════════════ -->
+<h2 id="sec2">Seção 2 — Criando o Projeto</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso instala a CLI do NestJS, cria o projeto, configura variáveis de ambiente com um módulo dedicado (<code>EnvConfigModule</code>) e escreve testes unitários para o serviço de configuração. Isso garante que toda a aplicação lê configurações de um único lugar centralizado.</p>
+</div>
+
+<div class="mapping-card">
+  <div class="label">🔗 Na StockFlow API</div>
+  <p>Vamos fazer exatamente a mesma coisa, mas nossas variáveis de ambiente incluirão configurações de banco, Redis (se quiser cache), JWT e AWS.</p>
+</div>
+
+<h3>Passo 1 — Instalar NestJS CLI e criar projeto</h3>
+
+<pre><code># Instalar CLI global
+pnpm add -g @nestjs/cli
+
+# Criar projeto (selecionar pnpm quando perguntar o package manager)
+nest new stockflow-api --package-manager pnpm
+
+cd stockflow-api
+</code></pre>
+
+<h3>Passo 2 — Configurar ambiente de desenvolvimento</h3>
+
+<pre><code># Zod para toda validação do projeto (env, DTOs, inputs)
+pnpm add @nestjs/config zod class-transformer
+pnpm add -D @types/node
+</code></pre>
+
+<p>Criar o arquivo <code>.env</code> na raiz:</p>
+<pre><code># .env
+PORT=3000
+NODE_ENV=development
+
+# Database
+DATABASE_URL="postgresql://stockflow:stockflow123@localhost:5432/stockflow_db?schema=public"
+
+# JWT
+JWT_SECRET=sua-chave-secreta-aqui-minimo-32-caracteres
+JWT_EXPIRES_IN=15m
+</code></pre>
+
+<div class="warning-card">
+  <div class="label">⚠️ Segurança</div>
+  <p>Adicione <code>.env</code> ao <code>.gitignore</code> imediatamente. Crie um <code>.env.example</code> com os nomes das variáveis sem os valores reais para documentar o que é necessário.</p>
+</div>
+
+<h3>Passo 3 — Módulo de configuração de ambiente</h3>
+
+<p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts</p>
+<pre><code>export interface EnvConfig {
+  getPort(): number
+  getNodeEnv(): string
+  getDatabaseUrl(): string
+  getJwtSecret(): string
+  getJwtExpiresIn(): string
+}
+</code></pre>
+
+<p class="file-path">src/shared/infrastructure/env-config/env-config.service.ts</p>
+<pre><code>import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { EnvConfig } from './env-config.interface'
+
+@Injectable()
+export class EnvConfigService implements EnvConfig {
+  constructor(private configService: ConfigService) {}
+
+  getPort(): number {
+    return Number(this.configService.get&lt;number&gt;('PORT'))
+  }
+
+  getNodeEnv(): string {
+    return this.configService.get&lt;string&gt;('NODE_ENV')
+  }
+
+  getDatabaseUrl(): string {
+    return this.configService.get&lt;string&gt;('DATABASE_URL')
+  }
+
+  getJwtSecret(): string {
+    return this.configService.get&lt;string&gt;('JWT_SECRET')
+  }
+
+  getJwtExpiresIn(): string {
+    return this.configService.get&lt;string&gt;('JWT_EXPIRES_IN')
+  }
+}
+</code></pre>
+
+<p class="file-path">src/shared/infrastructure/env-config/env-config.module.ts</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { EnvConfigService } from './env-config.service'
+import { z } from 'zod'
+
+// Schema Zod para validação das variáveis de ambiente
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3000),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+})
+
+// Tipo inferido automaticamente pelo Zod — sem duplicar interfaces
+export type EnvVars = z.infer&lt;typeof envSchema&gt;
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      // validate substitui o validationSchema do Joi
+      validate: (config: Record&lt;string, unknown&gt;) =&gt; {
+        const parsed = envSchema.safeParse(config)
+
+        if (!parsed.success) {
+          const errors = parsed.error.format()
+          throw new Error(`Invalid environment variables: ${JSON.stringify(errors)}`)
+        }
+
+        return parsed.data
+      },
+    }),
+  ],
+  providers: [EnvConfigService],
+  exports: [EnvConfigService],
+})
+export class EnvConfigModule {}
+</code></pre>
+
+<h3>Passo 4 — Teste unitário do EnvConfigService</h3>
+
+<p class="file-path">src/shared/infrastructure/env-config/__tests__/env-config.service.spec.ts</p>
+<pre><code>import { Test, TestingModule } from '@nestjs/testing'
+import { EnvConfigService } from '../env-config.service'
+import { EnvConfigModule } from '../env-config.module'
+
+describe('EnvConfigService', () =&gt; {
+  let sut: EnvConfigService
+
+  beforeEach(async () =&gt; {
+    const module: TestingModule = await Test.createTestingModule({
+      imports: [EnvConfigModule],
+    }).compile()
+
+    sut = module.get&lt;EnvConfigService&gt;(EnvConfigService)
+  })
+
+  it('should be defined', () =&gt; {
+    expect(sut).toBeDefined()
+  })
+
+  it('should return the port', () =&gt; {
+    expect(sut.getPort()).toBe(3000)
+  })
+
+  it('should return the jwt secret', () =&gt; {
+    expect(sut.getJwtSecret()).toBeDefined()
+  })
+})
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Zod como validador único do projeto</div>
+  <p>Usamos <strong>Zod em toda a aplicação</strong> — uma lib só para toda validação:</p>
+  <table>
+    <tr><th>Contexto</th><th>Como usar Zod</th></tr>
+    <tr><td>Variáveis de ambiente</td><td>Função <code>validate</code> no <code>@nestjs/config</code> com schema Zod</td></tr>
+    <tr><td>DTOs de request (controllers)</td><td><code>ZodValidationPipe</code> customizado (substitui class-validator)</td></tr>
+    <tr><td>Input de use cases</td><td>Schema Zod direto no execute()</td></tr>
+    <tr><td>Entidades do domínio</td><td>Schema Zod na validação interna</td></tr>
+  </table>
+  <p>Vantagem: type inference automática com <code>z.infer&lt;typeof schema&gt;</code> — você define o schema uma vez e o TypeScript infere o tipo. Zero duplicação de tipos.</p>
+</div>
+
+<!-- ══════════════════════════════ SEÇÃO 3 ══════════════════════════════ -->
+<h2 id="sec3">Seção 3 — Implementando Entidades</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso cria a entidade <code>User</code> com props tipadas, getters, métodos de atualização, e uma classe base abstrata <code>Entity</code> com ID gerado por UUID. Também cria um helper <code>UserDataBuilder</code> para facilitar testes. O padrão é que toda entidade estende <code>Entity</code> e recebe suas props no construtor.</p>
+</div>
+
+<div class="mapping-card">
+  <div class="label">🔗 Na StockFlow API</div>
+  <p>Vamos criar a mesma estrutura, mas com <strong>Product</strong> como entidade principal (equivalente ao User do curso). Depois, você replicará o padrão para Supplier, Stock e PurchaseOrder.</p>
+</div>
+
+<h3>Passo 1 — Classe base Entity</h3>
+
+<p class="file-path">src/shared/domain/entities/entity.ts</p>
+<pre><code>import { v4 as uuidv4 } from 'uuid'
+
+export abstract class Entity&lt;Props&gt; {
+  public readonly _id: string
+  public readonly props: Props
+
+  constructor(props: Props, id?: string) {
+    this.props = props
+    this._id = id ?? uuidv4()
+  }
+
+  get id(): string {
+    return this._id
+  }
+}
+</code></pre>
+
+<h3>Passo 2 — Entidade Product</h3>
+
+<p class="file-path">src/products/domain/entities/product.entity.ts</p>
+<pre><code>import { Entity } from '@/shared/domain/entities/entity'
+
+export interface ProductProps {
+  name: string
+  description: string
+  sku: string
+  price: number           // em centavos (1999 = R$ 19,99)
+  costPrice: number       // em centavos
+  category: string
+  supplierId: string
+  isActive: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export class ProductEntity extends Entity&lt;ProductProps&gt; {
+  constructor(props: ProductProps, id?: string) {
+    super(
+      {
+        ...props,
+        isActive: props.isActive ?? true,
+        createdAt: props.createdAt ?? new Date(),
+        updatedAt: props.updatedAt ?? new Date(),
+      },
+      id,
+    )
+  }
+
+  // ── Getters ──
+  get name(): string {
+    return this.props.name
+  }
+
+  get description(): string {
+    return this.props.description
+  }
+
+  get sku(): string {
+    return this.props.sku
+  }
+
+  get price(): number {
+    return this.props.price
+  }
+
+  get costPrice(): number {
+    return this.props.costPrice
+  }
+
+  get category(): string {
+    return this.props.category
+  }
+
+  get supplierId(): string {
+    return this.props.supplierId
+  }
+
+  get isActive(): boolean {
+    return this.props.isActive
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt
+  }
+
+  get updatedAt(): Date {
+    return this.props.updatedAt
+  }
+
+  // ── Regra de negócio: margem de lucro ──
+  get profitMargin(): number {
+    if (this.costPrice === 0) return 0
+    return ((this.price - this.costPrice) / this.costPrice) * 100
+  }
+
+  // ── Métodos de atualização ──
+  updateName(value: string): void {
+    this.props.name = value
+    this.props.updatedAt = new Date()
+  }
+
+  updateDescription(value: string): void {
+    this.props.description = value
+    this.props.updatedAt = new Date()
+  }
+
+  updatePrice(value: number): void {
+    // Regra: preço de venda deve ser maior que custo
+    if (value &lt;= this.costPrice) {
+      throw new Error('Price must be greater than cost price')
+    }
+    this.props.price = value
+    this.props.updatedAt = new Date()
+  }
+
+  updateCostPrice(value: number): void {
+    this.props.costPrice = value
+    this.props.updatedAt = new Date()
+  }
+
+  deactivate(): void {
+    this.props.isActive = false
+    this.props.updatedAt = new Date()
+  }
+
+  activate(): void {
+    this.props.isActive = true
+    this.props.updatedAt = new Date()
+  }
+
+  // NOTA: não existe updateSku() — SKU é imutável após criação
+}
+</code></pre>
+
+<h3>Passo 3 — DataBuilder para testes</h3>
+
+<p class="file-path">src/products/domain/testing/helpers/product-data-builder.ts</p>
+<pre><code>import { faker } from '@faker-js/faker'
+import { ProductProps } from '../../entities/product.entity'
+
+export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): ProductProps {
+  return {
+    name: props.name ?? faker.commerce.productName(),
+    description: props.description ?? faker.commerce.productDescription(),
+    sku: props.sku ?? faker.string.alphanumeric(8).toUpperCase(),
+    price: props.price ?? faker.number.int({ min: 1000, max: 99900 }),
+    costPrice: props.costPrice ?? faker.number.int({ min: 500, max: 49900 }),
+    category: props.category ?? faker.commerce.department(),
+    supplierId: props.supplierId ?? faker.string.uuid(),
+    isActive: props.isActive ?? true,
+    createdAt: props.createdAt ?? new Date(),
+    updatedAt: props.updatedAt ?? new Date(),
+  }
+}
+</code></pre>
+
+<h3>Passo 4 — Testes unitários da entidade</h3>
+
+<p class="file-path">src/products/domain/entities/__tests__/product.entity.spec.ts</p>
+<pre><code>import { ProductEntity, ProductProps } from '../product.entity'
+import { ProductDataBuilder } from '../../testing/helpers/product-data-builder'
+
+describe('ProductEntity', () =&gt; {
+  let props: ProductProps
+  let sut: ProductEntity
+
+  beforeEach(() =&gt; {
+    props = ProductDataBuilder({ price: 5000, costPrice: 2000 })
+    sut = new ProductEntity(props)
+  })
+
+  // ── Construtor ──
+  it('should create a product with all props', () =&gt; {
+    expect(sut.props).toStrictEqual(props)
+    expect(sut.id).toBeDefined()
+  })
+
+  it('should accept an optional id', () =&gt; {
+    const id = 'custom-id-123'
+    const entity = new ProductEntity(props, id)
+    expect(entity.id).toBe(id)
+  })
+
+  // ── Getters ──
+  it('should return the name', () =&gt; {
+    expect(sut.name).toBe(props.name)
+  })
+
+  it('should return the sku', () =&gt; {
+    expect(sut.sku).toBe(props.sku)
+  })
+
+  it('should calculate profit margin', () =&gt; {
+    // price=5000, costPrice=2000 → margin = ((5000-2000)/2000)*100 = 150%
+    expect(sut.profitMargin).toBe(150)
+  })
+
+  // ── Métodos de atualização ──
+  it('should update the name', () =&gt; {
+    sut.updateName('New Name')
+    expect(sut.name).toBe('New Name')
+  })
+
+  it('should throw when price is less than cost', () =&gt; {
+    expect(() =&gt; sut.updatePrice(1000)).toThrow(
+      'Price must be greater than cost price',
+    )
+  })
+
+  it('should update price when valid', () =&gt; {
+    sut.updatePrice(8000)
+    expect(sut.price).toBe(8000)
+  })
+
+  it('should deactivate product', () =&gt; {
+    sut.deactivate()
+    expect(sut.isActive).toBe(false)
+  })
+})
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🏋️ Seu desafio</div>
+  <p>Após implementar <code>ProductEntity</code>, replique o mesmo padrão para <code>SupplierEntity</code>, <code>StockEntity</code> e <code>PurchaseOrderEntity</code>. Cada uma terá seus próprios getters, métodos de atualização e regras de negócio (veja a tabela de regras acima). A <code>PurchaseOrderEntity</code> é a mais complexa — ela tem estados (DRAFT → SENT → DELIVERED → CANCELLED) com transições válidas.</p>
+</div>
+
+<!-- ══════════════════════════════ SEÇÃO 4 ══════════════════════════════ -->
+<h2 id="sec4">Seção 4 — Validação dos Dados</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso implementa validação na camada de domínio usando <code>class-validator</code>. Cria uma interface de validação (<code>ValidatorFieldsInterface</code>), uma classe concreta que usa decorators do class-validator, e depois integra essa validação dentro da entidade User. Os testes cobrem cada propriedade individualmente, incluindo testes de integração entre a entidade e o validador.</p>
+</div>
+
+<div class="mapping-card">
+  <div class="label">🔗 Na StockFlow API</div>
+  <p>Mesma abordagem, mas as validações são diferentes: SKU precisa ter formato específico, price e costPrice devem ser inteiros positivos (centavos), a relação entre eles deve ser validada, etc.</p>
+</div>
+
+<h3>Passo 1 — Interface do validador</h3>
+
+<p class="file-path">src/shared/domain/validators/validator-fields.interface.ts</p>
+<pre><code>export type FieldsErrors = {
+  [field: string]: string[]
+}
+
+export interface ValidatorFieldsInterface&lt;ValidatedProps&gt; {
+  errors: FieldsErrors
+  validatedData: ValidatedProps
+  validate(data: any): boolean
+}
+</code></pre>
+
+<h3>Passo 2 — Implementação com Zod</h3>
+
+<p class="file-path">src/shared/domain/validators/zod-validator-fields.ts</p>
+<pre><code>import { ZodSchema, ZodError } from 'zod'
+import { FieldsErrors, ValidatorFieldsInterface } from './validator-fields.interface'
+
+export class ZodValidatorFields&lt;ValidatedProps&gt;
+  implements ValidatorFieldsInterface&lt;ValidatedProps&gt;
+{
+  errors: FieldsErrors = {}
+  validatedData: ValidatedProps = null
+
+  constructor(private schema: ZodSchema) {}
+
+  validate(data: any): boolean {
+    const result = this.schema.safeParse(data)
+
+    if (!result.success) {
+      this.errors = this.formatErrors(result.error)
+      return false
+    }
+
+    this.validatedData = result.data as ValidatedProps
+    return true
+  }
+
+  private formatErrors(error: ZodError): FieldsErrors {
+    const formatted: FieldsErrors = {}
+
+    for (const issue of error.issues) {
+      const field = issue.path.join('.')
+      if (!formatted[field]) formatted[field] = []
+      formatted[field].push(issue.message)
+    }
+
+    return formatted
+  }
+}
+</code></pre>
+
+<h3>Passo 3 — Schema e Validador do Product com Zod</h3>
+
+<p class="file-path">src/products/domain/validators/product.validator.ts</p>
+<pre><code>import { z } from 'zod'
+import { ZodValidatorFields } from '@/shared/domain/validators/zod-validator-fields'
+
+// Schema Zod — define regras E infere o tipo automaticamente
+export const productSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name must be less than 255 characters'),
+  description: z
+    .string()
+    .max(1000, 'Description must be less than 1000 characters')
+    .default(''),
+  sku: z
+    .string()
+    .regex(/^[A-Z0-9\-]{3,20}$/, 'SKU must be 3-20 uppercase alphanumeric characters or hyphens'),
+  price: z
+    .number()
+    .int('Price must be in cents (integer)')
+    .positive('Price must be positive'),
+  costPrice: z
+    .number()
+    .int('Cost price must be in cents (integer)')
+    .positive('Cost price must be positive'),
+  category: z
+    .string()
+    .min(1, 'Category is required'),
+  supplierId: z
+    .string()
+    .uuid('Supplier ID must be a valid UUID'),
+  isActive: z
+    .boolean()
+    .default(true),
+  createdAt: z
+    .date()
+    .optional(),
+  updatedAt: z
+    .date()
+    .optional(),
+})
+
+// Tipo inferido automaticamente — zero duplicação
+export type ProductValidated = z.infer&lt;typeof productSchema&gt;
+
+export class ProductValidator extends ZodValidatorFields&lt;ProductValidated&gt; {
+  constructor() {
+    super(productSchema)
+  }
+}
+
+export class ProductValidatorFactory {
+  static create(): ProductValidator {
+    return new ProductValidator()
+  }
+}
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Zod vs class-validator — por que trocamos</div>
+  <p>O curso usa <code>class-validator</code> (decorators + classes). Na POC usamos Zod porque:</p>
+  <ul>
+    <li><strong>Type inference:</strong> <code>z.infer&lt;typeof schema&gt;</code> gera o tipo automaticamente — com class-validator você precisa definir a interface separadamente</li>
+    <li><strong>Zero classes/decorators:</strong> schemas são objetos simples, mais fáceis de compor e reutilizar</li>
+    <li><strong>Ecossistema TypeScript-first:</strong> Zod foi construído para TypeScript, class-validator vem do mundo JavaScript</li>
+    <li><strong>Mesma lib em todas as camadas:</strong> env config, DTOs, domínio — tudo com Zod</li>
+  </ul>
+  <p>O padrão do curso (ValidatorFieldsInterface → implementação concreta → Factory) continua o mesmo — só trocamos o motor interno de class-validator para Zod.</p>
+</div>
+
+<h3>Passo 4 — Integrar validação na entidade</h3>
+
+<p>Adicione o método <code>validate()</code> na <code>ProductEntity</code>:</p>
+
+<pre><code>// Adicionar dentro de product.entity.ts
+import { EntityValidationError } from '@/shared/domain/errors/validation-error'
+import { ProductValidatorFactory } from '../validators/product.validator'
+
+export class ProductEntity extends Entity&lt;ProductProps&gt; {
+
+  constructor(props: ProductProps, id?: string) {
+    // ... código existente ...
+    this.validate()  // ← valida ao criar
+  }
+
+  private validate(): void {
+    const validator = ProductValidatorFactory.create()
+    const isValid = validator.validate(this.props)
+
+    if (!isValid) {
+      throw new EntityValidationError(validator.errors)
+    }
+  }
+
+  // Chamar validate() nos métodos de update também:
+  updateName(value: string): void {
+    this.props.name = value
+    this.validate()
+    this.props.updatedAt = new Date()
+  }
+
+  // ... etc
+}
+</code></pre>
+
+<p class="file-path">src/shared/domain/errors/validation-error.ts</p>
+<pre><code>import { FieldsErrors } from '../validators/validator-fields.interface'
+
+export class EntityValidationError extends Error {
+  constructor(public errors: FieldsErrors) {
+    super('Entity validation failed')
+    this.name = 'EntityValidationError'
+  }
+}
+</code></pre>
+
+<h3>Passo 5 — Testes de validação</h3>
+
+<pre><code>describe('ProductEntity validation', () =&gt; {
+  it('should throw when name is empty', () =&gt; {
+    const props = ProductDataBuilder({ name: '' })
+    expect(() =&gt; new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when sku has invalid format', () =&gt; {
+    const props = ProductDataBuilder({ sku: 'abc lowercase' })
+    expect(() =&gt; new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when price is negative', () =&gt; {
+    const props = ProductDataBuilder({ price: -100 })
+    expect(() =&gt; new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should accept valid props', () =&gt; {
+    const props = ProductDataBuilder({
+      sku: 'CAM-PT-M',
+      price: 5000,
+      costPrice: 2000,
+    })
+    const product = new ProductEntity(props)
+    expect(product.sku).toBe('CAM-PT-M')
+  })
+})
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 5 ══════════════════════════════ -->
+<h2 id="sec5">Seção 5 — Repository Pattern</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso cria uma <strong>abstração de repositório</strong> (interface) na camada de domínio, depois implementa um repositório <strong>InMemory</strong> para testes. Inclui busca personalizada com filtro, ordenação e paginação. O repositório InMemory simula o banco de dados na memória — usado nos testes unitários dos use cases.</p>
+</div>
+
+<h3>Passo 1 — Interface base do repositório</h3>
+
+<p class="file-path">src/shared/domain/repositories/repository-contracts.ts</p>
+<pre><code>export interface RepositoryInterface&lt;E&gt; {
+  insert(entity: E): Promise&lt;void&gt;
+  findById(id: string): Promise&lt;E&gt;
+  findAll(): Promise&lt;E[]&gt;
+  update(entity: E): Promise&lt;void&gt;
+  delete(id: string): Promise&lt;void&gt;
+}
+
+// Para repositórios com busca paginada
+export interface SearchParams {
+  page?: number
+  perPage?: number
+  sort?: string | null
+  sortDir?: 'asc' | 'desc' | null
+  filter?: string | null
+}
+
+export interface SearchResult&lt;E&gt; {
+  items: E[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+}
+
+export interface SearchableRepositoryInterface&lt;E&gt;
+  extends RepositoryInterface&lt;E&gt; {
+  search(params: SearchParams): Promise&lt;SearchResult&lt;E&gt;&gt;
+}
+</code></pre>
+
+<h3>Passo 2 — Interface do repositório de Product</h3>
+
+<p class="file-path">src/products/domain/repositories/product.repository.ts</p>
+<pre><code>import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
+import { ProductEntity } from '../entities/product.entity'
+
+export interface ProductRepository
+  extends SearchableRepositoryInterface&lt;ProductEntity&gt; {
+
+  // Métodos específicos de Product (além do CRUD base)
+  findBySku(sku: string): Promise&lt;ProductEntity&gt;
+  skuExists(sku: string): Promise&lt;boolean&gt;
+  findBySupplierId(supplierId: string): Promise&lt;ProductEntity[]&gt;
+}
+</code></pre>
+
+<h3>Passo 3 — Repositório InMemory base</h3>
+
+<p class="file-path">src/shared/domain/repositories/in-memory.repository.ts</p>
+<pre><code>import { Entity } from '../entities/entity'
+import { RepositoryInterface } from './repository-contracts'
+import { NotFoundError } from '../errors/not-found-error'
+
+export abstract class InMemoryRepository&lt;E extends Entity&lt;any&gt;&gt;
+  implements RepositoryInterface&lt;E&gt;
+{
+  items: E[] = []
+
+  async insert(entity: E): Promise&lt;void&gt; {
+    this.items.push(entity)
+  }
+
+  async findById(id: string): Promise&lt;E&gt; {
+    const entity = this.items.find(item =&gt; item.id === id)
+    if (!entity) {
+      throw new NotFoundError(`Entity with id ${id} not found`)
+    }
+    return entity
+  }
+
+  async findAll(): Promise&lt;E[]&gt; {
+    return this.items
+  }
+
+  async update(entity: E): Promise&lt;void&gt; {
+    const index = this.items.findIndex(item =&gt; item.id === entity.id)
+    if (index === -1) {
+      throw new NotFoundError(`Entity with id ${entity.id} not found`)
+    }
+    this.items[index] = entity
+  }
+
+  async delete(id: string): Promise&lt;void&gt; {
+    const index = this.items.findIndex(item =&gt; item.id === id)
+    if (index === -1) {
+      throw new NotFoundError(`Entity with id ${id} not found`)
+    }
+    this.items.splice(index, 1)
+  }
+}
+</code></pre>
+
+<h3>Passo 4 — Repositório InMemory de Product</h3>
+
+<p class="file-path">src/products/infrastructure/database/in-memory/product-in-memory.repository.ts</p>
+<pre><code>import { InMemorySearchableRepository } from '@/shared/domain/repositories/in-memory-searchable.repository'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { ConflictError } from '@/shared/domain/errors/conflict-error'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+
+export class ProductInMemoryRepository
+  extends InMemorySearchableRepository&lt;ProductEntity&gt;
+  implements ProductRepository
+{
+  // Campo usado para ordenação padrão
+  sortableFields: string[] = ['name', 'price', 'createdAt']
+
+  async findBySku(sku: string): Promise&lt;ProductEntity&gt; {
+    const entity = this.items.find(item =&gt; item.sku === sku)
+    if (!entity) {
+      throw new NotFoundError(`Product with SKU ${sku} not found`)
+    }
+    return entity
+  }
+
+  async skuExists(sku: string): Promise&lt;boolean&gt; {
+    return this.items.some(item =&gt; item.sku === sku)
+  }
+
+  async findBySupplierId(supplierId: string): Promise&lt;ProductEntity[]&gt; {
+    return this.items.filter(item =&gt; item.supplierId === supplierId)
+  }
+
+  // Implementar filtro de busca (override do método abstrato)
+  protected async applyFilter(
+    items: ProductEntity[],
+    filter: string | null,
+  ): Promise&lt;ProductEntity[]&gt; {
+    if (!filter) return items
+
+    return items.filter(item =&gt;
+      item.name.toLowerCase().includes(filter.toLowerCase()),
+    )
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🏋️ Seu desafio</div>
+  <p>Crie os repositórios InMemory para <code>SupplierEntity</code>, <code>StockEntity</code> e <code>PurchaseOrderEntity</code>, seguindo o mesmo padrão. Cada um terá métodos específicos (ex: <code>SupplierRepository.findByCnpj()</code>, <code>StockRepository.findCriticalStock()</code>).</p>
+</div>
+
+<!-- ══════════════════════════════ SEÇÃO 6 ══════════════════════════════ -->
+<h2 id="sec6">Seção 6 — Casos de Uso</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso implementa os use cases na camada de aplicação: Signup, GetUser, ListUsers, UpdateUser, UpdatePassword, DeleteUser e Signin. Cada use case recebe o repositório via injeção de dependência (interface, não implementação concreta) e contém a lógica de orquestração — validar, buscar, persistir.</p>
+</div>
+
+<h3>Interface base de Use Case</h3>
+
+<p class="file-path">src/shared/application/usecases/use-case.ts</p>
+<pre><code>export interface UseCase&lt;Input, Output&gt; {
+  execute(input: Input): Promise&lt;Output&gt;
+}
+</code></pre>
+
+<h3>CreateProduct — o use case mais importante</h3>
+
+<p class="file-path">src/products/application/usecases/create-product.usecase.ts</p>
+<pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { ConflictError } from '@/shared/domain/errors/conflict-error'
+
+export namespace CreateProductUseCase {
+  export interface Input {
+    name: string
+    description: string
+    sku: string
+    price: number
+    costPrice: number
+    category: string
+    supplierId: string
+  }
+
+  export interface Output {
+    id: string
+    name: string
+    sku: string
+    price: number
+    costPrice: number
+    category: string
+    supplierId: string
+    isActive: boolean
+    createdAt: Date
+  }
+
+  export class UseCase implements UseCase&lt;Input, Output&gt; {
+    constructor(private productRepository: ProductRepository) {}
+
+    async execute(input: Input): Promise&lt;Output&gt; {
+      // Regra: SKU é único
+      const skuExists = await this.productRepository.skuExists(input.sku)
+      if (skuExists) {
+        throw new ConflictError(`SKU ${input.sku} already exists`)
+      }
+
+      // Regra: preço de venda &gt; preço de custo
+      if (input.price &lt;= input.costPrice) {
+        throw new Error('Price must be greater than cost price')
+      }
+
+      // Cria a entidade (validações do domínio rodam aqui)
+      const entity = new ProductEntity(input)
+
+      // Persiste via repositório
+      await this.productRepository.insert(entity)
+
+      // Retorna o output mapeado
+      return {
+        id: entity.id,
+        name: entity.name,
+        sku: entity.sku,
+        price: entity.price,
+        costPrice: entity.costPrice,
+        category: entity.category,
+        supplierId: entity.supplierId,
+        isActive: entity.isActive,
+        createdAt: entity.createdAt,
+      }
+    }
+  }
+}
+</code></pre>
+
+<h3>ReceiveDelivery — o use case mais complexo da POC</h3>
+
+<p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.ts</p>
+<pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
+import { PurchaseOrderRepository } from '../../domain/repositories/purchase-order.repository'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+
+export namespace ReceiveDeliveryUseCase {
+  export interface Input {
+    purchaseOrderId: string
+  }
+
+  export interface Output {
+    id: string
+    status: string
+    updatedStockItems: Array&lt;{ productId: string; newQuantity: number }&gt;
+  }
+
+  export class UseCase implements UseCase&lt;Input, Output&gt; {
+    constructor(
+      private purchaseOrderRepo: PurchaseOrderRepository,
+      private stockRepo: StockRepository,
+    ) {}
+
+    async execute(input: Input): Promise&lt;Output&gt; {
+      // 1. Buscar pedido de compra
+      const order = await this.purchaseOrderRepo.findById(input.purchaseOrderId)
+
+      // 2. Mudar status para DELIVERED (entidade valida transição)
+      order.markAsDelivered()
+
+      // 3. Atualizar estoque de cada item
+      const updatedStockItems = []
+
+      for (const item of order.items) {
+        const stock = await this.stockRepo.findByProductId(item.productId)
+        stock.addQuantity(item.quantity)
+        await this.stockRepo.update(stock)
+
+        updatedStockItems.push({
+          productId: item.productId,
+          newQuantity: stock.quantity,
+        })
+      }
+
+      // 4. Persistir pedido atualizado
+      await this.purchaseOrderRepo.update(order)
+
+      return {
+        id: order.id,
+        status: order.status,
+        updatedStockItems,
+      }
+    }
+  }
+}
+</code></pre>
+
+<h3>Teste unitário do CreateProduct</h3>
+
+<pre><code>import { CreateProductUseCase } from '../create-product.usecase'
+import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
+import { ConflictError } from '@/shared/domain/errors/conflict-error'
+
+describe('CreateProductUseCase', () =&gt; {
+  let sut: CreateProductUseCase.UseCase
+  let repository: ProductInMemoryRepository
+
+  beforeEach(() =&gt; {
+    repository = new ProductInMemoryRepository()
+    sut = new CreateProductUseCase.UseCase(repository)
+  })
+
+  it('should create a product', async () =&gt; {
+    const input = {
+      name: 'Camiseta Preta M',
+      description: 'Camiseta 100% algodão',
+      sku: 'CAM-PT-M',
+      price: 5990,
+      costPrice: 2500,
+      category: 'Vestuário',
+      supplierId: 'some-uuid',
+    }
+
+    const output = await sut.execute(input)
+
+    expect(output.id).toBeDefined()
+    expect(output.sku).toBe('CAM-PT-M')
+    expect(output.isActive).toBe(true)
+    expect(repository.items).toHaveLength(1)
+  })
+
+  it('should throw when sku already exists', async () =&gt; {
+    const input = {
+      name: 'Product A',
+      description: 'Desc',
+      sku: 'SAME-SKU',
+      price: 5000,
+      costPrice: 2000,
+      category: 'Cat',
+      supplierId: 'uuid',
+    }
+
+    await sut.execute(input)
+
+    await expect(sut.execute({ ...input, name: 'Product B' })).rejects.toThrow(
+      ConflictError,
+    )
+  })
+
+  it('should throw when price is less than cost', async () =&gt; {
+    const input = {
+      name: 'Product',
+      description: 'Desc',
+      sku: 'SKU-123',
+      price: 1000,
+      costPrice: 2000,   // custo maior que venda
+      category: 'Cat',
+      supplierId: 'uuid',
+    }
+
+    await expect(sut.execute(input)).rejects.toThrow(
+      'Price must be greater than cost price',
+    )
+  })
+})
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🏋️ Use cases para você implementar</div>
+  <table>
+    <tr><th>Módulo</th><th>Use Cases</th></tr>
+    <tr><td>Products</td><td>CreateProduct, GetProduct, ListProducts, UpdateProduct, DeleteProduct</td></tr>
+    <tr><td>Suppliers</td><td>CreateSupplier, GetSupplier, ListSuppliers, UpdateSupplier, DeleteSupplier</td></tr>
+    <tr><td>Stock</td><td>GetStock, UpdateStock, ListCriticalStock</td></tr>
+    <tr><td>PurchaseOrders</td><td>CreatePurchaseOrder, GetPurchaseOrder, ListPurchaseOrders, CancelPurchaseOrder, ReceiveDelivery</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════ SEÇÃO 7 ══════════════════════════════ -->
+<h2 id="sec7">Seção 7 — Camada de Infraestrutura com NestJS</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso registra os use cases como providers no módulo NestJS, cria DTOs de request, implementa o controller com todas as rotas, e escreve testes unitários para cada método do controller. O NestJS fica na camada mais externa — é um detalhe de infraestrutura.</p>
+</div>
+
+<h3>Passo 1 — DTO de criação</h3>
+
+<p class="file-path">src/products/infrastructure/dto/create-product.dto.ts</p>
+<pre><code>export class CreateProductDto {
+  name: string
+  description: string
+  sku: string
+  price: number
+  costPrice: number
+  category: string
+  supplierId: string
+}
+</code></pre>
+
+<h3>Passo 2 — Controller</h3>
+
+<p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
+<pre><code>import {
+  Controller, Get, Post, Put, Delete,
+  Param, Body, Query, HttpCode,
+  Inject,
+} from '@nestjs/common'
+import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
+import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
+import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
+import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
+import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
+import { CreateProductDto } from '../dto/create-product.dto'
+import { UpdateProductDto } from '../dto/update-product.dto'
+import { ListProductsDto } from '../dto/list-products.dto'
+import { ProductPresenter, ProductCollectionPresenter } from '../presenters/product.presenter'
+
+@Controller('products')
+export class ProductsController {
+  @Inject(CreateProductUseCase.UseCase)
+  private createUseCase: CreateProductUseCase.UseCase
+
+  @Inject(GetProductUseCase.UseCase)
+  private getUseCase: GetProductUseCase.UseCase
+
+  @Inject(ListProductsUseCase.UseCase)
+  private listUseCase: ListProductsUseCase.UseCase
+
+  @Inject(UpdateProductUseCase.UseCase)
+  private updateUseCase: UpdateProductUseCase.UseCase
+
+  @Inject(DeleteProductUseCase.UseCase)
+  private deleteUseCase: DeleteProductUseCase.UseCase
+
+  @Post()
+  async create(@Body() dto: CreateProductDto) {
+    const output = await this.createUseCase.execute(dto)
+    return new ProductPresenter(output)
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const output = await this.getUseCase.execute({ id })
+    return new ProductPresenter(output)
+  }
+
+  @Get()
+  async search(@Query() params: ListProductsDto) {
+    const output = await this.listUseCase.execute(params)
+    return new ProductCollectionPresenter(output)
+  }
+
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+    const output = await this.updateUseCase.execute({ id, ...dto })
+    return new ProductPresenter(output)
+  }
+
+  @HttpCode(204)
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    await this.deleteUseCase.execute({ id })
+  }
+}
+</code></pre>
+
+<h3>Passo 3 — Module (registrar providers)</h3>
+
+<p class="file-path">src/products/infrastructure/products.module.ts</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { ProductsController } from './controllers/products.controller'
+import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
+import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
+import { CreateProductUseCase } from '../application/usecases/create-product.usecase'
+
+@Module({
+  controllers: [ProductsController],
+  providers: [
+    PrismaService,
+    // Bind da interface ao repositório concreto
+    {
+      provide: 'ProductRepository',
+      useFactory: (prisma: PrismaService) =&gt; {
+        return new ProductPrismaRepository(prisma)
+      },
+      inject: [PrismaService],
+    },
+    // Bind do use case
+    {
+      provide: CreateProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository) =&gt; {
+        return new CreateProductUseCase.UseCase(repo)
+      },
+      inject: ['ProductRepository'],
+    },
+    // ... registrar os demais use cases
+  ],
+})
+export class ProductsModule {}
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 8 ══════════════════════════════ -->
+<h2 id="sec8">Seção 8 — Prisma ORM</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso configura Docker Compose com PostgreSQL, instala o Prisma, define o schema, roda migrations e implementa o <code>PrismaService</code> que estende o PrismaClient do NestJS.</p>
+</div>
+
+<h3>Passo 1 — Docker Compose</h3>
+
+<p class="file-path">docker-compose.yml</p>
+<pre><code>version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: stockflow-db
+    environment:
+      POSTGRES_USER: stockflow
+      POSTGRES_PASSWORD: stockflow123
+      POSTGRES_DB: stockflow_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+</code></pre>
+
+<pre><code># Subir o banco
+docker compose up -d
+</code></pre>
+
+<h3>Passo 2 — Schema Prisma</h3>
+
+<pre><code># Instalar Prisma
+pnpm add -D prisma
+pnpm add @prisma/client
+
+npx prisma init
+</code></pre>
+
+<p class="file-path">prisma/schema.prisma</p>
+<pre><code>generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  sku         String   @unique
+  price       Int                // centavos
+  costPrice   Int      @map("cost_price")
+  category    String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  supplierId  String   @map("supplier_id")
+
+  stock       Stock?
+  orderItems  PurchaseOrderItem[]
+
+  @@map("products")
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  cnpj      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model Stock {
+  id          String   @id @default(uuid())
+  quantity    Int      @default(0)
+  minQuantity Int      @default(10) @map("min_quantity")
+  location    String
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String   @unique @map("product_id")
+
+  @@map("stocks")
+}
+
+model PurchaseOrder {
+  id        String              @id @default(uuid())
+  status    String              @default("DRAFT") // DRAFT, SENT, DELIVERED, CANCELLED
+  totalCost Int                 @map("total_cost")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  supplier   Supplier           @relation(fields: [supplierId], references: [id])
+  supplierId String             @map("supplier_id")
+  items      PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  quantity        Int
+  unitCost        Int           @map("unit_cost")
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String        @map("purchase_order_id")
+
+  product         Product       @relation(fields: [productId], references: [id])
+  productId       String        @map("product_id")
+
+  @@map("purchase_order_items")
+}
+</code></pre>
+
+<pre><code># Rodar migration
+npx prisma migrate dev --name init
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 9 ══════════════════════════════ -->
+<h2 id="sec9">Seção 9 — Repositório Prisma</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso implementa o <code>UserPrismaRepository</code> — a versão concreta do repositório que usa Prisma para acessar o banco real. Inclui um <code>ModelMapper</code> para converter entre modelo do Prisma e entidade do domínio, e testes de integração para cada método.</p>
+</div>
+
+<h3>ModelMapper — traduz Prisma ↔ Domínio</h3>
+
+<p class="file-path">src/products/infrastructure/database/prisma/product-model.mapper.ts</p>
+<pre><code>import { Product as ProductModel } from '@prisma/client'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+
+export class ProductModelMapper {
+  // Prisma Model → Domain Entity
+  static toEntity(model: ProductModel): ProductEntity {
+    return new ProductEntity(
+      {
+        name: model.name,
+        description: model.description ?? '',
+        sku: model.sku,
+        price: model.price,
+        costPrice: model.costPrice,
+        category: model.category,
+        supplierId: model.supplierId,
+        isActive: model.isActive,
+        createdAt: model.createdAt,
+        updatedAt: model.updatedAt,
+      },
+      model.id,  // passa o ID existente, não gera novo
+    )
+  }
+}
+</code></pre>
+
+<h3>Repositório Prisma de Product</h3>
+
+<p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.ts</p>
+<pre><code>import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { ProductModelMapper } from './product-model.mapper'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+
+export class ProductPrismaRepository implements ProductRepository {
+  constructor(private prisma: PrismaService) {}
+
+  async insert(entity: ProductEntity): Promise&lt;void&gt; {
+    await this.prisma.product.create({
+      data: {
+        id: entity.id,
+        name: entity.name,
+        description: entity.description,
+        sku: entity.sku,
+        price: entity.price,
+        costPrice: entity.costPrice,
+        category: entity.category,
+        supplierId: entity.supplierId,
+        isActive: entity.isActive,
+        createdAt: entity.createdAt,
+      },
+    })
+  }
+
+  async findById(id: string): Promise&lt;ProductEntity&gt; {
+    const model = await this.prisma.product.findUnique({
+      where: { id },
+    })
+
+    if (!model) {
+      throw new NotFoundError(`Product with id ${id} not found`)
+    }
+
+    return ProductModelMapper.toEntity(model)
+  }
+
+  async findBySku(sku: string): Promise&lt;ProductEntity&gt; {
+    const model = await this.prisma.product.findUnique({
+      where: { sku },
+    })
+
+    if (!model) {
+      throw new NotFoundError(`Product with SKU ${sku} not found`)
+    }
+
+    return ProductModelMapper.toEntity(model)
+  }
+
+  async skuExists(sku: string): Promise&lt;boolean&gt; {
+    const count = await this.prisma.product.count({
+      where: { sku },
+    })
+    return count &gt; 0
+  }
+
+  async findBySupplierId(supplierId: string): Promise&lt;ProductEntity[]&gt; {
+    const models = await this.prisma.product.findMany({
+      where: { supplierId },
+    })
+    return models.map(ProductModelMapper.toEntity)
+  }
+
+  async findAll(): Promise&lt;ProductEntity[]&gt; {
+    const models = await this.prisma.product.findMany()
+    return models.map(ProductModelMapper.toEntity)
+  }
+
+  async update(entity: ProductEntity): Promise&lt;void&gt; {
+    await this.prisma.product.update({
+      where: { id: entity.id },
+      data: {
+        name: entity.name,
+        description: entity.description,
+        price: entity.price,
+        costPrice: entity.costPrice,
+        category: entity.category,
+        isActive: entity.isActive,
+        updatedAt: entity.updatedAt,
+      },
+    })
+  }
+
+  async delete(id: string): Promise&lt;void&gt; {
+    await this.prisma.product.delete({
+      where: { id },
+    })
+  }
+
+  async search(params) {
+    const { page = 1, perPage = 15, sort, sortDir, filter } = params
+
+    const where = filter
+      ? { name: { contains: filter, mode: 'insensitive' as const } }
+      : {}
+
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        orderBy: sort ? { [sort]: sortDir ?? 'asc' } : { createdAt: 'desc' },
+        skip: (page - 1) * perPage,
+        take: perPage,
+      }),
+      this.prisma.product.count({ where }),
+    ])
+
+    return {
+      items: items.map(ProductModelMapper.toEntity),
+      total,
+      currentPage: page,
+      perPage,
+      lastPage: Math.ceil(total / perPage),
+    }
+  }
+}
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÕES 10-11 ══════════════════════════════ -->
+<h2 id="sec10">Seções 10 e 11 — Testes de Integração com Prisma</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso cria testes de integração que usam o banco real (PostgreSQL via Docker) para validar que os repositórios Prisma e os use cases funcionam corretamente com persistência real. Cada teste limpa o banco antes de rodar.</p>
+</div>
+
+<h3>Setup de teste com banco real</h3>
+
+<p class="file-path">src/shared/infrastructure/database/prisma/testing/setup-prisma-tests.ts</p>
+<pre><code>import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+// Limpar todas as tabelas antes dos testes
+export async function cleanDatabase() {
+  await prisma.purchaseOrderItem.deleteMany()
+  await prisma.purchaseOrder.deleteMany()
+  await prisma.stock.deleteMany()
+  await prisma.product.deleteMany()
+  await prisma.supplier.deleteMany()
+  await prisma.user.deleteMany()
+}
+
+export { prisma }
+</code></pre>
+
+<h3>Teste de integração do repositório</h3>
+
+<pre><code>import { cleanDatabase, prisma } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
+import { ProductPrismaRepository } from '../product-prisma.repository'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
+
+describe('ProductPrismaRepository integration tests', () =&gt; {
+  let repository: ProductPrismaRepository
+
+  beforeAll(async () =&gt; {
+    repository = new ProductPrismaRepository(prisma as any)
+  })
+
+  beforeEach(async () =&gt; {
+    await cleanDatabase()
+  })
+
+  afterAll(async () =&gt; {
+    await prisma.$disconnect()
+  })
+
+  describe('insert', () =&gt; {
+    it('should insert a product', async () =&gt; {
+      // Primeiro, precisa de um supplier (FK)
+      const supplier = await prisma.supplier.create({
+        data: {
+          name: 'Fornecedor Teste',
+          email: 'forn@test.com',
+          phone: '11999999999',
+          cnpj: '12345678000100',
+        },
+      })
+
+      const entity = new ProductEntity(
+        ProductDataBuilder({ supplierId: supplier.id }),
+      )
+
+      await repository.insert(entity)
+
+      const found = await prisma.product.findUnique({
+        where: { id: entity.id },
+      })
+
+      expect(found).toBeDefined()
+      expect(found.name).toBe(entity.name)
+      expect(found.sku).toBe(entity.sku)
+    })
+  })
+})
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 12 ══════════════════════════════ -->
+<h2 id="sec12">Seção 12 — Presenters</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso cria classes <code>Presenter</code> para formatar a resposta ao cliente. O <code>UserPresenter</code> seleciona quais campos retornar, o <code>PaginationPresenter</code> formata metadados de paginação, e o <code>CollectionPresenter</code> junta ambos para listagens.</p>
+</div>
+
+<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
+<pre><code>import { Transform } from 'class-transformer'
+
+export class ProductPresenter {
+  id: string
+  name: string
+  sku: string
+  category: string
+
+  @Transform(({ value }) =&gt; value / 100) // centavos → reais
+  price: number
+
+  @Transform(({ value }) =&gt; value / 100)
+  costPrice: number
+
+  isActive: boolean
+  supplierId: string
+
+  @Transform(({ value }) =&gt; value.toISOString())
+  createdAt: Date
+
+  constructor(output: any) {
+    this.id = output.id
+    this.name = output.name
+    this.sku = output.sku
+    this.price = output.price
+    this.costPrice = output.costPrice
+    this.category = output.category
+    this.isActive = output.isActive
+    this.supplierId = output.supplierId
+    this.createdAt = output.createdAt
+  }
+}
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 13 ══════════════════════════════ -->
+<h2 id="sec13">Seção 13 — Testes End-to-End (E2E)</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso implementa testes e2e usando Supertest — simulam requests HTTP reais contra a aplicação NestJS completa. Inclui interceptors (<code>WrapperData</code>), exception filters (<code>ConflictErrorFilter</code>, <code>NotFoundErrorFilter</code>), e <code>ValidationPipe</code> para validação automática de DTOs.</p>
+</div>
+
+<h3>Teste E2E de criação de produto</h3>
+
+<pre><code>import { Test, TestingModule } from '@nestjs/testing'
+import { INestApplication } from '@nestjs/common'
+import request from 'supertest'
+import { AppModule } from '@/app.module'
+import { cleanDatabase } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
+import { applyGlobalConfig } from '@/global-config'  // pipes, filters, interceptors
+
+describe('ProductsController e2e tests', () =&gt; {
+  let app: INestApplication
+
+  beforeAll(async () =&gt; {
+    const module: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile()
+
+    app = module.createNestApplication()
+    applyGlobalConfig(app)  // aplica os mesmos pipes/filters/interceptors de produção
+    await app.init()
+  })
+
+  beforeEach(async () =&gt; {
+    await cleanDatabase()
+  })
+
+  afterAll(async () =&gt; {
+    await app.close()
+  })
+
+  describe('POST /products', () =&gt; {
+    it('should create a product', async () =&gt; {
+      // Primeiro criar um supplier
+      const supplierRes = await request(app.getHttpServer())
+        .post('/suppliers')
+        .send({
+          name: 'Fornecedor A',
+          email: 'forn@test.com',
+          phone: '11999999999',
+          cnpj: '12345678000100',
+        })
+        .expect(201)
+
+      const res = await request(app.getHttpServer())
+        .post('/products')
+        .send({
+          name: 'Camiseta Preta',
+          description: 'Algodão',
+          sku: 'CAM-PT-M',
+          price: 5990,
+          costPrice: 2500,
+          category: 'Vestuário',
+          supplierId: supplierRes.body.data.id,
+        })
+        .expect(201)
+
+      expect(res.body.data.id).toBeDefined()
+      expect(res.body.data.sku).toBe('CAM-PT-M')
+    })
+
+    it('should return 422 when sku is invalid', async () =&gt; {
+      await request(app.getHttpServer())
+        .post('/products')
+        .send({ sku: 'lowercase invalid' })
+        .expect(422)
+    })
+
+    it('should return 409 when sku already exists', async () =&gt; {
+      // ... criar primeiro, tentar criar de novo com mesmo SKU
+    })
+  })
+})
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 14 ══════════════════════════════ -->
+<h2 id="sec14">Seção 14 — Autenticação com JWT</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso implementa um módulo de autenticação completo: <code>AuthModule</code>, <code>AuthService</code> (gera e valida JWT), <code>AuthGuard</code> (protege rotas), e testes para cada parte. O <code>AuthGuard</code> é aplicado nas rotas que precisam de autenticação.</p>
+</div>
+
+<div class="mapping-card">
+  <div class="label">🔗 Na StockFlow API</div>
+  <p>O módulo <code>User</code> na StockFlow é simples — apenas admin da loja. Foque na autenticação como gateway para proteger as rotas de produtos, fornecedores, estoque e pedidos.</p>
+</div>
+
+<h3>AuthModule</h3>
+
+<pre><code>import { Module } from '@nestjs/common'
+import { JwtModule } from '@nestjs/jwt'
+import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+import { AuthService } from './auth.service'
+import { AuthGuard } from './auth.guard'
+
+@Module({
+  imports: [
+    EnvConfigModule,
+    JwtModule.registerAsync({
+      imports: [EnvConfigModule],
+      useFactory: (envConfig: EnvConfigService) =&gt; ({
+        global: true,
+        secret: envConfig.getJwtSecret(),
+        signOptions: { expiresIn: envConfig.getJwtExpiresIn() },
+      }),
+      inject: [EnvConfigService],
+    }),
+  ],
+  providers: [AuthService, AuthGuard],
+  exports: [AuthService, AuthGuard],
+})
+export class AuthModule {}
+</code></pre>
+
+<h3>AuthGuard</h3>
+
+<pre><code>import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(
+    private jwtService: JwtService,
+    private envConfig: EnvConfigService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise&lt;boolean&gt; {
+    const request = context.switchToHttp().getRequest()
+    const token = this.extractToken(request)
+
+    if (!token) {
+      throw new UnauthorizedException('Token not provided')
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.envConfig.getJwtSecret(),
+      })
+      request['user'] = payload
+    } catch {
+      throw new UnauthorizedException('Invalid token')
+    }
+
+    return true
+  }
+
+  private extractToken(request: any): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? []
+    return type === 'Bearer' ? token : undefined
+  }
+}
+</code></pre>
+
+<h3>Proteger rotas</h3>
+
+<pre><code>// No controller, aplicar o guard
+import { UseGuards } from '@nestjs/common'
+import { AuthGuard } from '@/auth/auth.guard'
+
+@Controller('products')
+@UseGuards(AuthGuard)  // Todas as rotas de produtos exigem autenticação
+export class ProductsController {
+  // ...
+}
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 15 ══════════════════════════════ -->
+<h2 id="sec15">Seção 15 — Swagger</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso configura o Swagger com o pacote <code>@nestjs/swagger</code> e adiciona decorators em DTOs, Presenters e Controllers para gerar a documentação automaticamente. Isso permite testar a API pelo browser.</p>
+</div>
+
+<h3>Setup</h3>
+
+<pre><code>pnpm add @nestjs/swagger
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Zod + Swagger juntos</div>
+  <p><code>@ApiProperty</code> é para documentação (Swagger). Zod é para validação. Os dois coexistem: o DTO usa decorators do Swagger para gerar os docs, e um <code>ZodValidationPipe</code> customizado roda o schema Zod antes do controller processar.</p>
+</div>
+
+<p class="file-path">src/shared/infrastructure/pipes/zod-validation.pipe.ts</p>
+<pre><code>import { PipeTransform, BadRequestException } from '@nestjs/common'
+import { ZodSchema } from 'zod'
+
+export class ZodValidationPipe implements PipeTransform {
+  constructor(private schema: ZodSchema) {}
+
+  transform(value: unknown) {
+    const result = this.schema.safeParse(value)
+
+    if (!result.success) {
+      const errors = result.error.issues.map(issue =&gt; ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }))
+      throw new BadRequestException({ message: 'Validation failed', errors })
+    }
+
+    return result.data
+  }
+}
+</code></pre>
+
+<p class="file-path">src/main.ts</p>
+<pre><code>import { NestFactory } from '@nestjs/core'
+import { AppModule } from './app.module'
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
+import { applyGlobalConfig } from './global-config'
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule)
+  applyGlobalConfig(app)
+
+  const config = new DocumentBuilder()
+    .setTitle('StockFlow API')
+    .setDescription('API de Gestão de Loja Virtual — Produtos, Estoque, Fornecedores e Pedidos')
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .build()
+
+  const document = SwaggerModule.createDocument(app, config)
+  SwaggerModule.setup('docs', app, document)
+
+  await app.listen(3000)
+  console.log('API rodando em http://localhost:3000')
+  console.log('Docs em http://localhost:3000/docs')
+}
+
+bootstrap()
+</code></pre>
+
+<h3>Decorators nos DTOs</h3>
+
+<p class="file-path">src/products/infrastructure/dto/create-product.dto.ts</p>
+<pre><code>import { ApiProperty } from '@nestjs/swagger'
+import { z } from 'zod'
+
+// Schema Zod — fonte da verdade para validação
+export const createProductSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().max(1000).default(''),
+  sku: z.string().regex(/^[A-Z0-9\-]{3,20}$/),
+  price: z.number().int().positive(),
+  costPrice: z.number().int().positive(),
+  category: z.string().min(1),
+  supplierId: z.string().uuid(),
+})
+
+// Tipo inferido do schema — zero duplicação
+export type CreateProductInput = z.infer&lt;typeof createProductSchema&gt;
+
+// Classe DTO — apenas para Swagger gerar a documentação
+export class CreateProductDto {
+  @ApiProperty({ description: 'Nome do produto', example: 'Camiseta Preta M' })
+  name: string
+
+  @ApiProperty({ description: 'Descrição', example: 'Camiseta 100% algodão' })
+  description: string
+
+  @ApiProperty({ description: 'Código SKU (único, imutável)', example: 'CAM-PT-M' })
+  sku: string
+
+  @ApiProperty({ description: 'Preço de venda em centavos', example: 5990 })
+  price: number
+
+  @ApiProperty({ description: 'Preço de custo em centavos', example: 2500 })
+  costPrice: number
+
+  @ApiProperty({ description: 'Categoria', example: 'Vestuário' })
+  category: string
+
+  @ApiProperty({ description: 'UUID do fornecedor' })
+  supplierId: string
+}
+</code></pre>
+
+<p>No controller, aplique o <code>ZodValidationPipe</code> na rota:</p>
+
+<pre><code>import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
+import { createProductSchema } from '../dto/create-product.dto'
+
+@Post()
+async create(
+  @Body(new ZodValidationPipe(createProductSchema)) dto: CreateProductInput,
+) {
+  const output = await this.createUseCase.execute(dto)
+  return new ProductPresenter(output)
+}
+</code></pre>
+
+<!-- ══════════════════════════════ SEÇÃO 16 ══════════════════════════════ -->
+<h2 id="sec16">Seção 16 — CI/CD e Deploy na AWS</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso faz deploy no Render e cria workflows no GitHub Actions para CI. Na POC, faremos o mesmo CI, mas o deploy será na <strong>AWS</strong> usando EC2 + RDS PostgreSQL.</p>
+</div>
+
+<h3>GitHub Actions — CI</h3>
+
+<p class="file-path">.github/workflows/ci.yml</p>
+<pre><code>name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: stockflow
+          POSTGRES_PASSWORD: stockflow123
+          POSTGRES_DB: stockflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install --frozen-lockfile
+      - run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://stockflow:stockflow123@localhost:5432/stockflow_test
+      - run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgresql://stockflow:stockflow123@localhost:5432/stockflow_test
+          JWT_SECRET: test-secret-key-minimum-32-chars
+</code></pre>
+
+<h3>Deploy na AWS — Passo a passo</h3>
+
+<h4>1. Criar o banco de dados (RDS)</h4>
+<pre><code># Via AWS Console ou CLI:
+# - Engine: PostgreSQL 15
+# - Instance: db.t3.micro (free tier)
+# - Storage: 20GB
+# - VPC: default
+# - Public access: No (acesso apenas da EC2 na mesma VPC)
+# - Database name: stockflow_db
+# - Master username: stockflow
+# - Master password: (gerar senha segura)
+
+# Anotar o endpoint:
+# stockflow-db.xxxx.us-east-1.rds.amazonaws.com
+</code></pre>
+
+<h4>2. Criar a instância EC2</h4>
+<pre><code># - AMI: Amazon Linux 2023
+# - Instance type: t3.micro (free tier)
+# - Key pair: criar nova (stockflow-key.pem)
+# - Security group:
+#   - Inbound: SSH (22) do seu IP + HTTP (3000) de qualquer lugar
+# - Same VPC que o RDS
+
+# Conectar via SSH:
+ssh -i stockflow-key.pem ec2-user@EC2_PUBLIC_IP
+</code></pre>
+
+<h4>3. Setup do servidor</h4>
+<pre><code># Na EC2:
+# Instalar Node.js
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo yum install -y nodejs git
+
+# Clonar repositório
+git clone https://github.com/seu-user/stockflow-api.git
+cd stockflow-api
+
+# Instalar dependências e buildar
+pnpm install --frozen-lockfile
+pnpm build
+
+# Criar .env de produção
+cat > .env << 'EOF'
+PORT=3000
+NODE_ENV=production
+DATABASE_URL=postgresql://stockflow:SENHA@stockflow-db.xxxx.rds.amazonaws.com:5432/stockflow_db
+JWT_SECRET=gerar-chave-segura-com-minimo-32-caracteres
+JWT_EXPIRES_IN=15m
+EOF
+
+# Rodar migrations
+npx prisma migrate deploy
+
+# Instalar PM2 (process manager)
+pnpm add -g pm2
+
+# Iniciar aplicação
+pm2 start dist/main.js --name stockflow-api
+pm2 save
+pm2 startup  # configura auto-start no reboot
+</code></pre>
+
+<h4>4. Workflow de deploy automático</h4>
+
+<p class="file-path">.github/workflows/deploy.yml</p>
+<pre><code>name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]  # só deploy se testes passarem
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd stockflow-api
+            git pull origin main
+            pnpm install --frozen-lockfile
+            pnpm build
+            npx prisma migrate deploy
+            pm2 restart stockflow-api
+</code></pre>
+
+<div class="warning-card">
+  <div class="label">⚠️ Secrets no GitHub</div>
+  <p>Vá em <strong>Settings → Secrets and Variables → Actions</strong> do repositório e adicione: <code>EC2_HOST</code> (IP público da EC2) e <code>EC2_SSH_KEY</code> (conteúdo do arquivo .pem). Nunca commite credenciais.</p>
+</div>
+
+<!-- ══════════════════════════════ CHECKLIST FINAL ══════════════════════════════ -->
+<hr>
+
+<h2>Checklist de Progresso</h2>
+
+<p>Use esta lista para acompanhar o que já implementou:</p>
+
+<table>
+  <tr><th>#</th><th>Tarefa</th><th>Seção</th></tr>
+  <tr><td>☐</td><td>Criar projeto NestJS + configuração de ambiente</td><td>2</td></tr>
+  <tr><td>☐</td><td>Classe base Entity + ProductEntity com testes</td><td>3</td></tr>
+  <tr><td>☐</td><td>SupplierEntity com testes</td><td>3</td></tr>
+  <tr><td>☐</td><td>StockEntity com testes</td><td>3</td></tr>
+  <tr><td>☐</td><td>PurchaseOrderEntity com testes (transições de status)</td><td>3</td></tr>
+  <tr><td>☐</td><td>Validadores com Zod para cada entidade</td><td>4</td></tr>
+  <tr><td>☐</td><td>Testes de integração entidade + validador</td><td>4</td></tr>
+  <tr><td>☐</td><td>Interfaces de repositório</td><td>5</td></tr>
+  <tr><td>☐</td><td>InMemoryRepository base + InMemorySearchable</td><td>5</td></tr>
+  <tr><td>☐</td><td>InMemory para cada entidade + testes</td><td>5</td></tr>
+  <tr><td>☐</td><td>Use cases de Product (Create, Get, List, Update, Delete)</td><td>6</td></tr>
+  <tr><td>☐</td><td>Use cases de Supplier</td><td>6</td></tr>
+  <tr><td>☐</td><td>Use cases de Stock (Update, ListCritical)</td><td>6</td></tr>
+  <tr><td>☐</td><td>Use cases de PurchaseOrder (Create, Cancel, ReceiveDelivery)</td><td>6</td></tr>
+  <tr><td>☐</td><td>Controllers + DTOs + Modules NestJS</td><td>7</td></tr>
+  <tr><td>☐</td><td>Docker Compose + Prisma Schema + Migrations</td><td>8</td></tr>
+  <tr><td>☐</td><td>Repositórios Prisma + ModelMappers</td><td>9</td></tr>
+  <tr><td>☐</td><td>Testes de integração com banco real</td><td>10-11</td></tr>
+  <tr><td>☐</td><td>Presenters (Product, Supplier, Pagination, Collection)</td><td>12</td></tr>
+  <tr><td>☐</td><td>Testes E2E completos</td><td>13</td></tr>
+  <tr><td>☐</td><td>Auth Module + JWT + AuthGuard</td><td>14</td></tr>
+  <tr><td>☐</td><td>Swagger completo</td><td>15</td></tr>
+  <tr><td>☐</td><td>GitHub Actions CI</td><td>16</td></tr>
+  <tr><td>☐</td><td>Deploy AWS (EC2 + RDS)</td><td>16</td></tr>
+</table>
+
+<hr>
+
+<p style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 14px;">
+  StockFlow API — POC Guide v1.0<br>
+  Baseado no curso "Node.js Avançado com Clean Architecture, NestJS e TypeScript"<br>
+  Todos os conceitos do curso aplicados a um domínio de gestão de loja virtual.
+</p>
+
+</div><!-- /main -->
+
+</body>
+</html>
