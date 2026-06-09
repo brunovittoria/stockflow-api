@@ -636,7 +636,90 @@ JWT_EXPIRES_IN=15m
   <p>Adicione <code>.env</code> ao <code>.gitignore</code> imediatamente. Crie um <code>.env.example</code> com os nomes das variáveis sem os valores reais para documentar o que é necessário.</p>
 </div>
 
-<h3>Passo 3 — Módulo de configuração de ambiente</h3>
+<h3>Passo 3 — Criar a estrutura de pastas do projeto</h3>
+
+<p>Antes de escrever qualquer código, crie toda a estrutura de diretórios. Isso te dá uma visão clara da arquitetura e evita mover arquivos depois.</p>
+
+<pre><code># Na raiz do projeto, rode o comando abaixo para criar todas as pastas de uma vez:
+
+mkdir -p src/shared/domain/{entities,repositories,validators,errors}
+mkdir -p src/shared/application/usecases
+mkdir -p src/shared/infrastructure/{env-config,database/prisma,pipes,exception-filters}
+
+mkdir -p src/products/domain/{entities,repositories,validators,errors,testing/helpers}
+mkdir -p src/products/application/{usecases,dtos}
+mkdir -p src/products/infrastructure/{controllers,database/{prisma,in-memory},dto,presenters}
+
+mkdir -p src/suppliers/domain/{entities,repositories,validators,errors,testing/helpers}
+mkdir -p src/suppliers/application/{usecases,dtos}
+mkdir -p src/suppliers/infrastructure/{controllers,database/{prisma,in-memory},dto,presenters}
+
+mkdir -p src/stock/domain/{entities,repositories,validators,errors,testing/helpers}
+mkdir -p src/stock/application/{usecases,dtos}
+mkdir -p src/stock/infrastructure/{controllers,database/{prisma,in-memory},dto,presenters}
+
+mkdir -p src/purchase-orders/domain/{entities,repositories,validators,errors,testing/helpers}
+mkdir -p src/purchase-orders/application/{usecases,dtos}
+mkdir -p src/purchase-orders/infrastructure/{controllers,database/{prisma,in-memory},dto,presenters}
+
+mkdir -p src/auth
+</code></pre>
+
+<p>Depois de rodar, a estrutura ficará assim:</p>
+
+<pre><code class="tree"><span class="folder">src/</span>
+├── <span class="folder">shared/</span>                         ← código reutilizado por todos os módulos
+│   ├── <span class="folder">domain/</span>
+│   │   ├── <span class="folder">entities/</span>               ← classe base Entity
+│   │   ├── <span class="folder">repositories/</span>           ← interfaces e InMemory base
+│   │   ├── <span class="folder">validators/</span>             ← ZodValidatorFields
+│   │   └── <span class="folder">errors/</span>                 ← NotFoundError, ConflictError, etc.
+│   ├── <span class="folder">application/</span>
+│   │   └── <span class="folder">usecases/</span>               ← interface base UseCase
+│   └── <span class="folder">infrastructure/</span>
+│       ├── <span class="folder">env-config/</span>             ← EnvConfigModule + EnvConfigService
+│       ├── <span class="folder">database/prisma/</span>         ← PrismaService
+│       ├── <span class="folder">pipes/</span>                   ← ZodValidationPipe
+│       └── <span class="folder">exception-filters/</span>       ← NotFoundFilter, ConflictFilter, etc.
+│
+├── <span class="folder">products/</span>
+│   ├── <span class="folder">domain/</span>
+│   │   ├── <span class="folder">entities/</span>               ← ProductEntity
+│   │   ├── <span class="folder">repositories/</span>           ← ProductRepository (interface)
+│   │   ├── <span class="folder">validators/</span>             ← productSchema (Zod) + ProductValidator
+│   │   ├── <span class="folder">errors/</span>
+│   │   └── <span class="folder">testing/helpers/</span>        ← ProductDataBuilder
+│   ├── <span class="folder">application/</span>
+│   │   └── <span class="folder">usecases/</span>               ← CreateProduct, GetProduct, etc.
+│   └── <span class="folder">infrastructure/</span>
+│       ├── <span class="folder">controllers/</span>            ← ProductsController
+│       ├── <span class="folder">database/</span>
+│       │   ├── <span class="folder">prisma/</span>              ← ProductPrismaRepository + ModelMapper
+│       │   └── <span class="folder">in-memory/</span>           ← ProductInMemoryRepository
+│       ├── <span class="folder">dto/</span>                    ← CreateProductDto, UpdateProductDto, etc.
+│       ├── <span class="folder">presenters/</span>             ← ProductPresenter
+│       └── <span class="file">products.module.ts</span>
+│
+├── <span class="folder">suppliers/</span>                      ← mesma estrutura de products/
+├── <span class="folder">stock/</span>                          ← mesma estrutura de products/
+├── <span class="folder">purchase-orders/</span>                ← mesma estrutura de products/
+│
+└── <span class="folder">auth/</span>                           ← AuthModule, AuthService, AuthGuard
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🔗 Por que essa organização?</div>
+  <p>Cada módulo é <strong>autossuficiente</strong> — contém suas próprias camadas de domínio, aplicação e infraestrutura. O <code>shared/</code> existe para evitar duplicação do que é genérico (classe Entity, interface UseCase, erros comuns). Quando você for trabalhar em um módulo, tudo que ele precisa está dentro da sua própria pasta.</p>
+</div>
+
+<div class="warning-card">
+  <div class="label">⚠️ Pasta vazia no Git</div>
+  <p>Git não rastreia pastas vazias. Para garantir que todas as pastas sejam commitadas, crie um arquivo <code>.gitkeep</code> dentro de cada uma:</p>
+  <pre><code>find src -type d -empty -exec touch {}/.gitkeep \;</code></pre>
+  <p>Conforme você for criando os arquivos reais, pode deletar os <code>.gitkeep</code>.</p>
+</div>
+
+<h3>Passo 4 — Módulo de configuração de ambiente</h3>
 
 <p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts</p>
 <pre><code>export interface EnvConfig {
