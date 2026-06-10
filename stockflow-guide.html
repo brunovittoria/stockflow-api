@@ -336,6 +336,7 @@
 
   <div class="section-label">Fundamentos</div>
   <a href="#intro">Introdução e Visão Geral</a>
+  <a href="#ddd-simples">DDD em linguagem simples</a>
   <a href="#architecture">Clean Architecture e DDD</a>
   <a href="#setup">Configuração do Projeto</a>
 
@@ -430,6 +431,150 @@
   <tr><td>GitHub Actions</td><td>CI/CD</td></tr>
   <tr><td>AWS (EC2 + RDS)</td><td>Deploy em produção</td></tr>
 </table>
+
+<!-- ══════════════════════════════ DDD EM LINGUAGEM SIMPLES ══════════════════════════════ -->
+<h2 id="ddd-simples">DDD — Entendendo as Camadas de Verdade</h2>
+
+<p>Antes de escrever qualquer código, você precisa entender <em>por que</em> o projeto está organizado dessa forma. Vamos usar uma analogia do mundo real para tornar isso concreto.</p>
+
+<h3>A analogia da pizzaria</h3>
+
+<p>Imagine que você vai montar uma pizzaria. Ela tem três áreas bem separadas, cada uma com uma responsabilidade clara:</p>
+
+<div class="concept-card">
+  <div class="label">🍕 A cozinha — equivale ao DOMÍNIO</div>
+  <p>É onde ficam as <strong>receitas e as regras do negócio</strong>. O chef sabe que uma pizza Margherita leva molho, mussarela e manjericão. Ele sabe que massa crua não pode ser servida. Essas regras existem independente de o cliente ter pedido pelo telefone, pelo app ou pessoalmente.</p>
+  <p>A cozinha <strong>não se preocupa</strong> com como o pedido chegou, se o pagamento foi no débito ou crédito, ou se o sistema usa PostgreSQL ou MongoDB. Ela só sabe fazer pizza do jeito certo.</p>
+  <p><strong>Na StockFlow:</strong> a regra "preço de venda deve ser maior que preço de custo" e "SKU é imutável" vivem aqui. Não importa se o pedido veio de uma requisição HTTP, de um job agendado ou de um teste — a regra sempre vale.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">📋 O gerente de pedidos — equivale à APLICAÇÃO</div>
+  <p>É quem <strong>coordena o fluxo</strong> de uma operação completa. Quando um pedido chega, o gerente verifica se o produto está disponível, confirma o pagamento, passa para a cozinha, e avisa quando está pronto. Ele não sabe fazer pizza — ele orquestra quem sabe.</p>
+  <p>O gerente <strong>não toca em detalhes técnicos</strong> — ele não liga para o iFood diretamente, não opera o maquininho de cartão. Ele fala com abstrações: "aceitar pagamento", "verificar estoque", "notificar cliente".</p>
+  <p><strong>Na StockFlow:</strong> o use case <code>ReceiveDelivery</code> coordena: busca o pedido, muda o status para DELIVERED, atualiza o estoque de cada item, salva tudo. Ele não sabe se o banco é PostgreSQL — ele só sabe que existe um repositório que guarda dados.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">🚗 A entrega e o caixa — equivale à INFRAESTRUTURA</div>
+  <p>São os <strong>detalhes técnicos concretos</strong>. O maquininho de cartão (Prisma/banco de dados), o app de delivery (NestJS/HTTP), o telefone (controller), o sistema de caixa (autenticação). Essas ferramentas podem mudar — trocar o iFood pelo Rappi, mudar de cartão para PIX — e a cozinha continua fazendo a mesma pizza.</p>
+  <p><strong>Na StockFlow:</strong> o <code>ProductPrismaRepository</code> que conversa com o PostgreSQL, o <code>ProductsController</code> que recebe requisições HTTP, o <code>AuthGuard</code> que valida JWT. Se amanhã você trocar PostgreSQL por MongoDB, só muda esse pedaço — o domínio e os use cases continuam intactos.</p>
+</div>
+
+<h3>Por que essa separação importa na prática?</h3>
+
+<p>Veja o que acontece <strong>sem</strong> separação de camadas — algo muito comum em projetos iniciantes:</p>
+
+<pre><code>// ❌ Tudo misturado num controller — difícil de testar, de manter e de evoluir
+@Post('/purchase-orders/:id/deliver')
+async deliver(@Param('id') id: string) {
+
+  // Busca no banco (infraestrutura) misturada com...
+  const order = await this.prisma.purchaseOrder.findUnique({ where: { id } })
+
+  // ...regra de negócio (domínio) misturada com...
+  if (order.status !== 'SENT') {
+    throw new BadRequestException('Só pode entregar pedidos com status SENT')
+  }
+
+  // ...operação de banco (infraestrutura) misturada com...
+  await this.prisma.purchaseOrder.update({
+    where: { id },
+    data: { status: 'DELIVERED' }
+  })
+
+  // ...outra regra de negócio (domínio)
+  for (const item of order.items) {
+    await this.prisma.stock.update({
+      where: { productId: item.productId },
+      data: { quantity: { increment: item.quantity } }
+    })
+  }
+}
+</code></pre>
+
+<p>O problema desse código: para testar a regra "só pode entregar se status for SENT", você precisa subir o banco inteiro, rodar migrations, criar dados. Um teste simples vira um trabalho de infraestrutura.</p>
+
+<p>Agora veja o mesmo cenário <strong>com</strong> separação de camadas:</p>
+
+<pre><code>// ✅ Domínio — regra isolada, testável sem nada externo
+class PurchaseOrderEntity {
+  markAsDelivered(): void {
+    if (this.status !== 'SENT') {
+      throw new Error('Só pode entregar pedidos com status SENT')
+    }
+    this.props.status = 'DELIVERED'
+  }
+}
+
+// ✅ Aplicação — orquestra sem se preocupar com detalhes técnicos
+class ReceiveDeliveryUseCase {
+  async execute({ orderId }) {
+    const order = await this.orderRepo.findById(orderId)  // não sabe se é Prisma ou não
+    order.markAsDelivered()                               // regra do domínio
+    for (const item of order.items) {
+      const stock = await this.stockRepo.findByProductId(item.productId)
+      stock.addQuantity(item.quantity)
+      await this.stockRepo.update(stock)
+    }
+    await this.orderRepo.update(order)
+  }
+}
+
+// ✅ Infraestrutura — detalhes técnicos isolados
+class PurchaseOrderPrismaRepository {
+  async findById(id: string) {
+    const model = await this.prisma.purchaseOrder.findUnique({ where: { id } })
+    return PurchaseOrderMapper.toEntity(model)  // converte modelo do banco → entidade
+  }
+}
+</code></pre>
+
+<h3>A regra de ouro — direção das dependências</h3>
+
+<pre><code>INFRAESTRUTURA  →  conhece  →  APLICAÇÃO  →  conhece  →  DOMÍNIO
+    (NestJS)                  (Use Cases)               (Entidades)
+
+DOMÍNIO nunca importa nada de Aplicação ou Infraestrutura
+APLICAÇÃO nunca importa nada de Infraestrutura (NestJS, Prisma)
+INFRAESTRUTURA pode importar de todos
+</code></pre>
+
+<p>Se você abrir um arquivo dentro de <code>products/domain/</code> e ver um <code>import from '@nestjs/...'</code> ou <code>import from '@prisma/...'</code>, algo está errado. O domínio é puro TypeScript — sem dependências externas.</p>
+
+<h3>Resumo: o que vai em cada camada</h3>
+
+<table>
+  <tr>
+    <th>Camada</th>
+    <th>Pasta</th>
+    <th>O que fica aqui</th>
+    <th>O que NUNCA fica aqui</th>
+  </tr>
+  <tr>
+    <td><strong>Domínio</strong></td>
+    <td><code>*/domain/</code></td>
+    <td>Entidades, regras de negócio, interfaces de repositório, erros de domínio, validadores Zod</td>
+    <td>NestJS, Prisma, HTTP, banco de dados</td>
+  </tr>
+  <tr>
+    <td><strong>Aplicação</strong></td>
+    <td><code>*/application/</code></td>
+    <td>Use cases (CreateProduct, ReceiveDelivery, etc.), tipos de input/output</td>
+    <td>NestJS decorators, Prisma, SQL, detalhes de HTTP</td>
+  </tr>
+  <tr>
+    <td><strong>Infraestrutura</strong></td>
+    <td><code>*/infrastructure/</code></td>
+    <td>Controllers, repositórios Prisma, DTOs HTTP, Guards, Filters, Presenters</td>
+    <td>Regras de negócio (essas devem estar no domínio)</td>
+  </tr>
+</table>
+
+<div class="mapping-card">
+  <div class="label">💡 Dica prática</div>
+  <p>Quando for escrever um código e não souber onde colocar, se pergunte: <strong>"Isso é uma regra do negócio ou um detalhe técnico?"</strong> Regra do negócio (ex: "não pode deletar fornecedor com pedidos ativos") → domínio. Detalhe técnico (ex: "salvar no PostgreSQL", "receber via HTTP POST") → infraestrutura. Coordenar os dois → aplicação.</p>
+</div>
 
 <!-- ══════════════════════════════ ARCHITECTURE ══════════════════════════════ -->
 <h2 id="architecture">Clean Architecture e DDD — O Modelo Mental</h2>
@@ -602,6 +747,10 @@ interface PurchaseOrderProps {
 
 <h3>Passo 1 — Instalar NestJS CLI e criar projeto</h3>
 
+<p>A CLI (Command Line Interface) do NestJS é uma ferramenta que roda no terminal e gera a estrutura inicial do projeto automaticamente. Sem ela, você teria que criar todos os arquivos de configuração manualmente. Com ela, um único comando já te dá um projeto funcional com TypeScript configurado, testes prontos e estrutura de pastas básica.</p>
+
+<p>O <code>--package-manager pnpm</code> diz para a CLI já configurar o projeto para usar pnpm em vez de npm — evita que ela instale as dependências com npm e você precise reinstalar com pnpm depois.</p>
+
 <pre><code># Instalar CLI global
 pnpm add -g @nestjs/cli
 
@@ -611,7 +760,18 @@ nest new stockflow-api --package-manager pnpm
 cd stockflow-api
 </code></pre>
 
-<h3>Passo 2 — Configurar ambiente de desenvolvimento</h3>
+<h3>Passo 2 — Instalar dependências e criar o .env</h3>
+
+<p>Toda aplicação precisa de configurações que mudam dependendo do ambiente — em desenvolvimento você usa um banco local, em produção você usa o banco da AWS. Essas configurações <strong>nunca devem estar no código</strong> (senão você commitaria sua senha do banco no GitHub). A solução é o arquivo <code>.env</code>: um arquivo local que cada ambiente tem com seus próprios valores.</p>
+
+<p>Instalamos três pacotes aqui:</p>
+<ul>
+  <li><code>@nestjs/config</code> — módulo do NestJS que lê o arquivo <code>.env</code> e disponibiliza os valores para a aplicação</li>
+  <li><code>zod</code> — biblioteca de validação que usaremos em toda a aplicação (variáveis de ambiente, DTOs, entidades)</li>
+  <li><code>class-transformer</code> — transforma objetos JavaScript simples em instâncias de classes e vice-versa (usado nos Presenters)</li>
+</ul>
+
+<p>O arquivo <code>.env.example</code> que você deve criar junto é um "template" — ele documenta quais variáveis o projeto precisa sem expor os valores reais. Quando outro desenvolvedor clonar o projeto, ele sabe exatamente o que precisa configurar.</p>
 
 <pre><code># Zod para toda validação do projeto (env, DTOs, inputs)
 pnpm add @nestjs/config zod class-transformer
@@ -638,7 +798,16 @@ JWT_EXPIRES_IN=15m
 
 <h3>Passo 3 — Criar a estrutura de pastas do projeto</h3>
 
-<p>Antes de escrever qualquer código, crie toda a estrutura de diretórios. Isso te dá uma visão clara da arquitetura e evita mover arquivos depois.</p>
+<p>Criar as pastas antes de escrever código pode parecer desnecessário, mas tem um motivo importante: <strong>a estrutura de pastas é a arquitetura visível do projeto</strong>. Quando você olha para a árvore de diretórios, deve conseguir entender imediatamente como o projeto está organizado e onde cada tipo de código deve viver.</p>
+
+<p>Fazemos isso agora para três razões:</p>
+<ul>
+  <li><strong>Clareza mental:</strong> você vê a arquitetura completa antes de começar a codificar, evitando dúvidas de "onde isso vai?"</li>
+  <li><strong>Consistência:</strong> todos os módulos (products, suppliers, stock, purchase-orders) seguem exatamente a mesma estrutura — facilita navegação e manutenção</li>
+  <li><strong>Evitar refatoração:</strong> mover arquivos depois que o projeto está crescendo é trabalhoso e pode quebrar imports</li>
+</ul>
+
+<p>Antes de escrever qualquer código, crie toda a estrutura de diretórios.</p>
 
 <pre><code># Na raiz do projeto, rode o comando abaixo para criar todas as pastas de uma vez:
 
@@ -720,6 +889,24 @@ mkdir -p src/auth
 </div>
 
 <h3>Passo 4 — Módulo de configuração de ambiente</h3>
+
+<p>Agora vamos criar a forma correta de ler e usar as variáveis do <code>.env</code> dentro da aplicação. Você pode se perguntar: "por que não simplesmente usar <code>process.env.DATABASE_URL</code> diretamente no código?"</p>
+
+<p>O problema é que <code>process.env</code> retorna <code>string | undefined</code> para qualquer variável — o TypeScript não tem como saber quais existem nem quais são seus tipos. Se você esquecer de configurar uma variável, o erro só aparece em tempo de execução, quando a aplicação já está rodando.</p>
+
+<p>A solução é criar um <strong>serviço de configuração</strong> que:</p>
+<ul>
+  <li><strong>Valida na inicialização:</strong> se uma variável obrigatória estiver faltando, a aplicação nem sobe — você descobre o erro antes de qualquer requisição chegar</li>
+  <li><strong>Centraliza o acesso:</strong> todo o código que precisar de configuração chama <code>envConfigService.getJwtSecret()</code> em vez de espalhar <code>process.env.JWT_SECRET</code> por vários arquivos</li>
+  <li><strong>Tipagem correta:</strong> <code>getPort()</code> retorna <code>number</code>, não <code>string</code> — sem conversões manuais espalhadas pelo código</li>
+</ul>
+
+<p>Criamos três arquivos que trabalham juntos:</p>
+<ul>
+  <li><strong>Interface</strong> (<code>env-config.interface.ts</code>) — define o contrato: quais métodos o serviço de configuração deve ter. Isso permite trocar a implementação no futuro sem quebrar nada</li>
+  <li><strong>Service</strong> (<code>env-config.service.ts</code>) — a implementação concreta que lê as variáveis usando o <code>ConfigService</code> do NestJS</li>
+  <li><strong>Module</strong> (<code>env-config.module.ts</code>) — registra o service no NestJS e configura o Zod para validar as variáveis assim que a aplicação iniciar</li>
+</ul>
 
 <p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts</p>
 <pre><code>export interface EnvConfig {
@@ -862,7 +1049,11 @@ describe('EnvConfigService', () =&gt; {
 
 <h3>Passo 1 — Classe base Entity</h3>
 
-<p class="file-path">src/shared/domain/entities/entity.ts</p>
+<p>Toda entidade do sistema (Product, Supplier, Stock, PurchaseOrder) tem algo em comum: precisa de um <strong>identificador único</strong>. Em vez de repetir esse código em cada entidade, criamos uma classe base abstrata que todas elas herdam.</p>
+
+<p>Usamos <strong>UUID</strong> (Universally Unique Identifier) como ID em vez de um número auto-incremento do banco. Por quê? Porque o UUID é gerado na camada de domínio, sem precisar falar com o banco. Isso significa que você pode criar uma entidade, fazer validações e testes nela, sem que o banco de dados precise existir ainda. O ID do banco auto-incremento só existe depois de salvar — o UUID existe desde o momento da criação da entidade.</p>
+
+<p>O parâmetro opcional <code>id?</code> no construtor serve para quando você está <em>reconstruindo</em> uma entidade que já existia no banco — nesse caso, você passa o ID que já estava salvo em vez de gerar um novo.</p>
 <pre><code>import { v4 as uuidv4 } from 'uuid'
 
 export abstract class Entity&lt;Props&gt; {
@@ -882,7 +1073,15 @@ export abstract class Entity&lt;Props&gt; {
 
 <h3>Passo 2 — Entidade Product</h3>
 
-<p class="file-path">src/products/domain/entities/product.entity.ts</p>
+<p>Aqui criamos a entidade <code>Product</code> — e é importante entender o que uma "entidade" é no contexto do DDD. Uma entidade <strong>não é apenas um objeto com dados</strong>. É um objeto que tem identidade única e que sabe <em>se comportar</em> de acordo com as regras do negócio.</p>
+
+<p>Repare em algumas decisões de design:</p>
+<ul>
+  <li><strong>Props em centavos (<code>price: number</code>):</strong> guardamos preços como inteiros em centavos (1990 = R$19,90) para evitar problemas com ponto flutuante. R$19.90 em float pode virar 19.899999999 em operações matemáticas.</li>
+  <li><strong>Getters em vez de acesso direto:</strong> a entidade expõe <code>product.name</code> como getter, não como propriedade pública direta. Isso permite que no futuro você adicione lógica dentro do getter sem quebrar quem usa.</li>
+  <li><strong>Não existe <code>updateSku()</code>:</strong> isso é intencional. SKU é imutável após criação — é uma regra de negócio. A ausência do método <em>é</em> a regra.</li>
+  <li><strong>Regra no <code>updatePrice()</code>:</strong> o método verifica se o novo preço é maior que o custo. Essa verificação mora aqui, não no controller, não no use case — ela está na entidade porque é uma invariante do negócio que deve sempre ser respeitada.</li>
+</ul>
 <pre><code>import { Entity } from '@/shared/domain/entities/entity'
 
 export interface ProductProps {
@@ -999,7 +1198,14 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 
 <h3>Passo 3 — DataBuilder para testes</h3>
 
-<p class="file-path">src/products/domain/testing/helpers/product-data-builder.ts</p>
+<p>Ao escrever testes, você vai precisar criar instâncias de <code>ProductEntity</code> repetidamente. Sem o DataBuilder, cada teste teria que preencher todos os campos manualmente — nome, sku, preço, custo, categoria, supplierId... Se a entidade tiver 10 campos, são 10 linhas repetidas em cada teste.</p>
+
+<p>O DataBuilder resolve isso gerando dados válidos e aleatórios (usando a lib <code>faker</code>) para todos os campos. A grande vantagem é o <strong>parâmetro parcial</strong> (<code>Partial&lt;ProductProps&gt;</code>): você só passa os campos que importam para aquele teste específico, e o resto é preenchido automaticamente.</p>
+
+<p>Por exemplo: se você quer testar a regra "preço deve ser maior que custo", você passa só <code>price</code> e <code>costPrice</code> — o resto do produto não importa para esse teste.</p>
+
+<p>Antes de criar os testes, instale o faker:</p>
+<pre><code>pnpm add -D @faker-js/faker</code></pre>
 <pre><code>import { faker } from '@faker-js/faker'
 import { ProductProps } from '../../entities/product.entity'
 
@@ -1021,7 +1227,11 @@ export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): Pro
 
 <h3>Passo 4 — Testes unitários da entidade</h3>
 
-<p class="file-path">src/products/domain/entities/__tests__/product.entity.spec.ts</p>
+<p>Testes unitários verificam uma unidade de código de forma <strong>isolada</strong> — sem banco, sem NestJS, sem HTTP. Para a entidade <code>Product</code>, testamos se os getters retornam os valores corretos, se as regras de negócio são aplicadas, e se os métodos de atualização funcionam como esperado.</p>
+
+<p>Repare na variável chamada <code>sut</code> (System Under Test — "sistema sendo testado"). É uma convenção de testes que deixa claro qual é o objeto principal sendo testado em cada bloco. Em vez de chamar de <code>product</code> ou <code>entity</code>, usar <code>sut</code> torna os testes mais padronizados e legíveis.</p>
+
+<p>O <code>beforeEach</code> recria a entidade antes de cada teste — assim os testes são independentes entre si. Se um teste modificar a entidade (ex: chamar <code>deactivate()</code>), isso não afeta o próximo teste.</p>
 <pre><code>import { ProductEntity, ProductProps } from '../product.entity'
 import { ProductDataBuilder } from '../../testing/helpers/product-data-builder'
 
@@ -1104,7 +1314,9 @@ describe('ProductEntity', () =&gt; {
 
 <h3>Passo 1 — Interface do validador</h3>
 
-<p class="file-path">src/shared/domain/validators/validator-fields.interface.ts</p>
+<p>Antes de implementar a validação, definimos uma <strong>interface</strong> que descreve como qualquer validador deve se comportar. Isso segue o mesmo princípio do repositório: o domínio declara o contrato, a implementação concreta pode mudar.</p>
+
+<p>A interface tem três partes: <code>errors</code> (os erros encontrados, organizados por campo), <code>validatedData</code> (os dados válidos após a validação), e <code>validate()</code> (o método que executa a validação e retorna <code>true</code> ou <code>false</code>). Qualquer classe que implemente essa interface pode ser usada como validador — seja com Zod, seja com qualquer outra lib no futuro.</p>
 <pre><code>export type FieldsErrors = {
   [field: string]: string[]
 }
@@ -1118,7 +1330,9 @@ export interface ValidatorFieldsInterface&lt;ValidatedProps&gt; {
 
 <h3>Passo 2 — Implementação com Zod</h3>
 
-<p class="file-path">src/shared/domain/validators/zod-validator-fields.ts</p>
+<p>Aqui criamos a implementação concreta da interface — a classe que de fato executa a validação usando Zod. Ela fica em <code>shared/domain/</code> porque <strong>todos os módulos vão reutilizá-la</strong> — Product, Supplier, Stock e PurchaseOrder usarão essa mesma classe base, só passando schemas Zod diferentes.</p>
+
+<p>O método <code>safeParse</code> do Zod é diferente de <code>parse</code>: em vez de lançar uma exceção quando encontra erro, ele retorna um objeto com <code>success: true/false</code>. Isso nos dá controle para formatar os erros do jeito que queremos antes de jogar para quem chamou.</p>
 <pre><code>import { ZodSchema, ZodError } from 'zod'
 import { FieldsErrors, ValidatorFieldsInterface } from './validator-fields.interface'
 
@@ -1158,7 +1372,9 @@ export class ZodValidatorFields&lt;ValidatedProps&gt;
 
 <h3>Passo 3 — Schema e Validador do Product com Zod</h3>
 
-<p class="file-path">src/products/domain/validators/product.validator.ts</p>
+<p>Agora criamos o schema específico do Product — as regras de validação que definem o que é um produto válido. Repare na grande vantagem do Zod aqui: <code>export type ProductValidated = z.infer&lt;typeof productSchema&gt;</code> gera o tipo TypeScript automaticamente a partir das regras do schema. Você define as regras <strong>uma vez</strong> e o TypeScript já sabe os tipos de todos os campos — sem repetir interfaces.</p>
+
+<p>Cada regra tem uma mensagem de erro personalizada (segundo argumento de cada método). Isso significa que quando a validação falhar, o erro vai dizer exatamente o que está errado — "SKU must be 3-20 uppercase alphanumeric characters" é muito mais útil do que "invalid input".</p>
 <pre><code>import { z } from 'zod'
 import { ZodValidatorFields } from '@/shared/domain/validators/zod-validator-fields'
 
@@ -1314,7 +1530,11 @@ export class EntityValidationError extends Error {
 
 <h3>Passo 1 — Interface base do repositório</h3>
 
-<p class="file-path">src/shared/domain/repositories/repository-contracts.ts</p>
+<p>O Repository Pattern resolve um problema de dependência: o domínio precisa salvar e buscar dados, mas não pode depender do Prisma (infraestrutura). A solução é o domínio <strong>declarar o que precisa</strong> através de uma interface — sem saber como vai ser implementado.</p>
+
+<p>Pense assim: a interface é como um contrato de serviço. O domínio diz "preciso de alguém que saiba inserir, buscar por ID, listar todos, atualizar e deletar". Quem vai cumprir esse contrato? Pode ser o Prisma em produção, ou um array em memória nos testes. A interface não se importa.</p>
+
+<p>O <code>SearchableRepositoryInterface</code> estende o básico com um método <code>search</code> que aceita filtros, ordenação e paginação — usado nos endpoints de listagem com query params.</p>
 <pre><code>export interface RepositoryInterface&lt;E&gt; {
   insert(entity: E): Promise&lt;void&gt;
   findById(id: string): Promise&lt;E&gt;
@@ -1348,7 +1568,9 @@ export interface SearchableRepositoryInterface&lt;E&gt;
 
 <h3>Passo 2 — Interface do repositório de Product</h3>
 
-<p class="file-path">src/products/domain/repositories/product.repository.ts</p>
+<p>Além dos métodos genéricos de CRUD, o repositório de Product precisa de métodos específicos do negócio — como <code>findBySku</code> e <code>skuExists</code>. Esses métodos são declarados aqui, na interface de domínio, porque fazem parte do contrato que qualquer implementação (Prisma, InMemory) deve cumprir.</p>
+
+<p>Nota importante: a interface fica em <code>domain/repositories/</code> (domínio), mas as implementações (<code>ProductPrismaRepository</code>, <code>ProductInMemoryRepository</code>) ficam em <code>infrastructure/</code>. O domínio nunca vai saber como esses métodos são implementados.</p>
 <pre><code>import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
 import { ProductEntity } from '../entities/product.entity'
 
@@ -1364,7 +1586,11 @@ export interface ProductRepository
 
 <h3>Passo 3 — Repositório InMemory base</h3>
 
-<p class="file-path">src/shared/domain/repositories/in-memory.repository.ts</p>
+<p>Este é um dos arquivos mais importantes para os testes da aplicação. O <code>InMemoryRepository</code> implementa o contrato do repositório usando um simples <strong>array em memória</strong> (<code>items: E[] = []</code>) em vez do banco de dados.</p>
+
+<p>Por que isso é valioso? Porque nos testes unitários dos use cases, você passa um <code>ProductInMemoryRepository</code> em vez do <code>ProductPrismaRepository</code>. Os testes rodam em milissegundos, sem precisar de Docker, sem banco, sem migrations. O use case não sabe a diferença — ele só fala com a interface, e ambas as implementações cumprem o mesmo contrato.</p>
+
+<p>O array <code>items</code> é público para facilitar verificações nos testes: você consegue inspecionar diretamente o que foi inserido com <code>expect(repository.items).toHaveLength(1)</code>.</p>
 <pre><code>import { Entity } from '../entities/entity'
 import { RepositoryInterface } from './repository-contracts'
 import { NotFoundError } from '../errors/not-found-error'
@@ -1477,7 +1703,14 @@ export class ProductInMemoryRepository
 
 <h3>CreateProduct — o use case mais importante</h3>
 
-<p class="file-path">src/products/application/usecases/create-product.usecase.ts</p>
+<p>Use cases são o coração da camada de aplicação. Cada um representa <strong>uma ação que o sistema pode fazer</strong> — como criar um produto. Repare na estrutura do arquivo: ele usa um <code>namespace</code> para agrupar o <code>Input</code>, o <code>Output</code> e a classe <code>UseCase</code> juntos. Isso mantém tudo relacionado ao mesmo caso de uso em um lugar só.</p>
+
+<p>Pontos importantes deste use case:</p>
+<ul>
+  <li><strong>Recebe a interface, não a implementação:</strong> o construtor recebe <code>ProductRepository</code> (interface), não <code>ProductPrismaRepository</code>. Isso é injeção de dependência — quem cria o use case decide qual implementação passar.</li>
+  <li><strong>Sequência de operações:</strong> primeiro verifica o SKU (regra de unicidade), depois verifica o preço, depois cria a entidade (que roda suas próprias validações Zod), depois persiste. Se qualquer passo falhar, os seguintes não executam.</li>
+  <li><strong>Output é um objeto simples:</strong> não retornamos a entidade diretamente. Retornamos um objeto com apenas os campos que fazem sentido expor. Isso desacopla o que o caso de uso entrega do que a entidade contém internamente.</li>
+</ul>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
@@ -1962,7 +2195,11 @@ npx prisma migrate dev --name init
 
 <h3>ModelMapper — traduz Prisma ↔ Domínio</h3>
 
-<p class="file-path">src/products/infrastructure/database/prisma/product-model.mapper.ts</p>
+<p>Aqui temos um problema interessante: o Prisma retorna objetos do tipo <code>Product</code> (modelo do banco), mas o use case espera receber um <code>ProductEntity</code> (entidade do domínio). São dois objetos diferentes — o modelo do Prisma é um objeto plano com dados do banco, a entidade tem comportamentos e validações.</p>
+
+<p>O <code>ModelMapper</code> é o tradutor entre esses dois mundos. Ele pega um objeto Prisma e constrói uma <code>ProductEntity</code> a partir dele. Note o detalhe crítico: passamos o <code>model.id</code> como segundo argumento — isso diz para a entidade "use este ID que já existe no banco" em vez de gerar um novo UUID.</p>
+
+<p>Esse arquivo fica na camada de infraestrutura porque ele conhece os dois lados: sabe o formato do Prisma e sabe construir a entidade do domínio.</p>
 <pre><code>import { Product as ProductModel } from '@prisma/client'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 
@@ -1990,7 +2227,9 @@ export class ProductModelMapper {
 
 <h3>Repositório Prisma de Product</h3>
 
-<p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.ts</p>
+<p>Esta é a implementação concreta do contrato <code>ProductRepository</code> que usa o Prisma para falar com o PostgreSQL. Repare que a classe <strong>implementa a interface</strong> (<code>implements ProductRepository</code>) — o TypeScript vai reclamar se você esquecer de implementar algum método do contrato.</p>
+
+<p>Compare o <code>findById</code> aqui com o mesmo método no InMemory: o comportamento é idêntico do ponto de vista do use case (retorna uma entidade ou lança <code>NotFoundError</code>), mas a implementação é completamente diferente. É exatamente isso que o padrão Repository permite — trocar a implementação sem mudar quem usa.</p>
 <pre><code>import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
