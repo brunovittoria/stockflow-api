@@ -70,6 +70,13 @@
       border-left-color: var(--accent);
     }
 
+    .sidebar a.active {
+      color: var(--accent-light);
+      background: rgba(108, 92, 231, 0.12);
+      border-left-color: var(--accent);
+      font-weight: 600;
+    }
+
     .sidebar .section-label {
       padding: 16px 24px 6px;
       font-size: 11px;
@@ -326,6 +333,229 @@
       body { background: white; color: #1a1a2e; }
       pre { border: 1px solid #ddd; }
     }
+
+    /* ── Progress / Checklist ── */
+    .progress-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 36px 40px 40px;
+      margin: 0 0 60px;
+    }
+
+    .progress-section-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .progress-section-subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .progress-overall {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 36px;
+      padding: 20px 24px;
+      background: rgba(108, 92, 231, 0.07);
+      border: 1px solid rgba(108, 92, 231, 0.2);
+      border-radius: 10px;
+    }
+
+    .progress-overall-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-light);
+      white-space: nowrap;
+    }
+
+    .progress-bar-wrap {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      transition: width 0.4s ease;
+    }
+
+    .progress-overall-count {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-light);
+      white-space: nowrap;
+      min-width: 60px;
+      text-align: right;
+    }
+
+    .checklist-group {
+      margin-bottom: 28px;
+    }
+
+    .checklist-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checklist-group-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .checklist-group-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(108, 92, 231, 0.15);
+      color: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+
+    .checklist-group-badge.done {
+      background: rgba(0, 184, 148, 0.15);
+      color: var(--green);
+    }
+
+    .checklist-mini-bar {
+      width: 80px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      height: 5px;
+      overflow: hidden;
+    }
+
+    .checklist-mini-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+      transition: width 0.4s ease;
+    }
+
+    .checklist-items {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-left: 4px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 9px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .checklist-item:hover {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .checklist-item input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 17px;
+      height: 17px;
+      min-width: 17px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      margin-top: 2px;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .checklist-item input[type="checkbox"]:checked {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .checklist-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 0px;
+      width: 5px;
+      height: 9px;
+      border: 2px solid white;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .checklist-item-label {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      transition: color 0.15s;
+      flex: 1;
+    }
+
+    .checklist-item.checked .checklist-item-label {
+      color: var(--text);
+      text-decoration: line-through;
+      text-decoration-color: rgba(255,255,255,0.2);
+    }
+
+    .checklist-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0 20px;
+    }
+
+    .sidebar-progress-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 24px 16px;
+      padding: 8px 12px;
+      background: rgba(108, 92, 231, 0.1);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--accent-light);
+      font-weight: 600;
+      text-decoration: none !important;
+      border-left: none !important;
+    }
+
+    .sidebar-progress-pill:hover {
+      background: rgba(108, 92, 231, 0.18) !important;
+    }
+
+    .sidebar-progress-mini-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .sidebar-progress-mini-fill {
+      height: 100%;
+      background: var(--accent-light);
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
   </style>
 </head>
 <body>
@@ -333,6 +563,13 @@
 <!-- ══════════════════════════════════════════ SIDEBAR ══════════════════════════════════════════ -->
 <nav class="sidebar">
   <div class="sidebar-title">📦 StockFlow API</div>
+
+  <a href="#progresso" class="sidebar-progress-pill" id="sidebar-pill">
+    <span id="sidebar-pill-text">0% concluído</span>
+    <div class="sidebar-progress-mini-bar">
+      <div class="sidebar-progress-mini-fill" id="sidebar-pill-bar" style="width:0%"></div>
+    </div>
+  </a>
 
   <div class="section-label">Fundamentos</div>
   <a href="#intro">Introdução e Visão Geral</a>
@@ -378,6 +615,414 @@
   <div class="cover-badge">POC — Proof of Concept</div>
   <h1>StockFlow <span>API</span></h1>
   <p>Guia completo para construir um sistema de gestão de loja virtual com NestJS, Clean Architecture e TypeScript — do zero ao deploy na AWS.</p>
+</div>
+
+<!-- ══════════════════════════════ PROGRESSO ══════════════════════════════ -->
+<div class="progress-section" id="progresso">
+  <div class="progress-section-title">Meu Progresso</div>
+  <div class="progress-section-subtitle">Marque cada etapa conforme avança na construção da StockFlow API.</div>
+
+  <div class="progress-overall">
+    <span class="progress-overall-label">Progresso geral</span>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="overall-bar" style="width:0%"></div>
+    </div>
+    <span class="progress-overall-count" id="overall-count">0 / 0</span>
+  </div>
+
+  <!-- ── Seção 2 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 2 — Criando o Projeto
+        <span class="checklist-group-badge" id="badge-sec2">0/5</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec2" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s2-1">
+        <input type="checkbox" data-group="sec2" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Instalar NestJS CLI e criar o projeto com pnpm</span>
+      </label>
+      <label class="checklist-item" id="item-s2-2">
+        <input type="checkbox" data-group="sec2" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar estrutura de pastas (shared/, products/, suppliers/, stock/, purchase-orders/)</span>
+      </label>
+      <label class="checklist-item" id="item-s2-3">
+        <input type="checkbox" data-group="sec2" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar arquivo .env e .env.example com as variáveis necessárias</span>
+      </label>
+      <label class="checklist-item" id="item-s2-4">
+        <input type="checkbox" data-group="sec2" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar EnvConfigInterface, EnvConfigService e EnvConfigModule com validação Zod</span>
+      </label>
+      <label class="checklist-item" id="item-s2-5">
+        <input type="checkbox" data-group="sec2" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Escrever e rodar os testes do EnvConfigService</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 3 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 3 — Entidades do Domínio
+        <span class="checklist-group-badge" id="badge-sec3">0/5</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec3" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s3-1">
+        <input type="checkbox" data-group="sec3" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar classe base abstrata <code>Entity</code> com UUID em shared/domain/</span>
+      </label>
+      <label class="checklist-item" id="item-s3-2">
+        <input type="checkbox" data-group="sec3" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>ProductEntity</code> com props, getters e métodos de negócio</span>
+      </label>
+      <label class="checklist-item" id="item-s3-3">
+        <input type="checkbox" data-group="sec3" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>ProductDataBuilder</code> (helper para testes com Faker)</span>
+      </label>
+      <label class="checklist-item" id="item-s3-4">
+        <input type="checkbox" data-group="sec3" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Escrever testes unitários da <code>ProductEntity</code> (getters, regras, métodos)</span>
+      </label>
+      <label class="checklist-item" id="item-s3-5">
+        <input type="checkbox" data-group="sec3" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Replicar padrão para <code>SupplierEntity</code>, <code>StockEntity</code> e <code>PurchaseOrderEntity</code></span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 4 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 4 — Validação dos Dados
+        <span class="checklist-group-badge" id="badge-sec4">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec4" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s4-1">
+        <input type="checkbox" data-group="sec4" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar interface <code>ValidatorFieldsInterface</code> e tipo <code>FieldsErrors</code></span>
+      </label>
+      <label class="checklist-item" id="item-s4-2">
+        <input type="checkbox" data-group="sec4" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>ZodValidatorFields</code> (classe base concreta)</span>
+      </label>
+      <label class="checklist-item" id="item-s4-3">
+        <input type="checkbox" data-group="sec4" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar schema e validador Zod para <code>ProductEntity</code></span>
+      </label>
+      <label class="checklist-item" id="item-s4-4">
+        <input type="checkbox" data-group="sec4" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Integrar validação dentro das entidades e replicar para demais módulos</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 5 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 5 — Repository Pattern
+        <span class="checklist-group-badge" id="badge-sec5">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec5" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s5-1">
+        <input type="checkbox" data-group="sec5" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar interface base <code>RepositoryInterface</code> em shared/domain/</span>
+      </label>
+      <label class="checklist-item" id="item-s5-2">
+        <input type="checkbox" data-group="sec5" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>ProductInMemoryRepository</code> com busca, filtro e paginação</span>
+      </label>
+      <label class="checklist-item" id="item-s5-3">
+        <input type="checkbox" data-group="sec5" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Testar o repositório InMemory</span>
+      </label>
+      <label class="checklist-item" id="item-s5-4">
+        <input type="checkbox" data-group="sec5" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Replicar repositório InMemory para Supplier, Stock e PurchaseOrder</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 6 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 6 — Casos de Uso
+        <span class="checklist-group-badge" id="badge-sec6">0/5</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec6" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s6-1">
+        <input type="checkbox" data-group="sec6" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar interface base <code>UseCase</code> em shared/application/</span>
+      </label>
+      <label class="checklist-item" id="item-s6-2">
+        <input type="checkbox" data-group="sec6" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar use cases de Product (Create, List, Get, Update, Delete)</span>
+      </label>
+      <label class="checklist-item" id="item-s6-3">
+        <input type="checkbox" data-group="sec6" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Testar todos os use cases de Product com repositório InMemory</span>
+      </label>
+      <label class="checklist-item" id="item-s6-4">
+        <input type="checkbox" data-group="sec6" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar use cases de Supplier, Stock e PurchaseOrder</span>
+      </label>
+      <label class="checklist-item" id="item-s6-5">
+        <input type="checkbox" data-group="sec6" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>ReceiveDelivery</code> (atualiza estoque ao confirmar entrega)</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 7 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 7 — Camada NestJS (Controllers)
+        <span class="checklist-group-badge" id="badge-sec7">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec7" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s7-1">
+        <input type="checkbox" data-group="sec7" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>ProductsModule</code> e registrar use cases como providers</span>
+      </label>
+      <label class="checklist-item" id="item-s7-2">
+        <input type="checkbox" data-group="sec7" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>ProductsController</code> com todas as rotas REST</span>
+      </label>
+      <label class="checklist-item" id="item-s7-3">
+        <input type="checkbox" data-group="sec7" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar DTOs de request com validação Zod</span>
+      </label>
+      <label class="checklist-item" id="item-s7-4">
+        <input type="checkbox" data-group="sec7" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Testar os controllers e replicar para demais módulos</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 8 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 8 — Prisma ORM
+        <span class="checklist-group-badge" id="badge-sec8">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec8" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s8-1">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Instalar e configurar Prisma no projeto</span>
+      </label>
+      <label class="checklist-item" id="item-s8-2">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Escrever o schema do banco (Product, Supplier, Stock, PurchaseOrder)</span>
+      </label>
+      <label class="checklist-item" id="item-s8-3">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Subir PostgreSQL com Docker e rodar as migrations</span>
+      </label>
+      <label class="checklist-item" id="item-s8-4">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar e configurar o <code>PrismaService</code> (módulo shared)</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 9 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 9 — Repositório Prisma
+        <span class="checklist-group-badge" id="badge-sec9">0/3</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec9" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s9-1">
+        <input type="checkbox" data-group="sec9" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>ProductPrismaRepository</code></span>
+      </label>
+      <label class="checklist-item" id="item-s9-2">
+        <input type="checkbox" data-group="sec9" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>ModelMapper</code> (Prisma model ↔ Domain entity)</span>
+      </label>
+      <label class="checklist-item" id="item-s9-3">
+        <input type="checkbox" data-group="sec9" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Replicar para Supplier, Stock e PurchaseOrder</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 10-11 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seções 10 e 11 — Testes com Prisma
+        <span class="checklist-group-badge" id="badge-sec10">0/3</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec10" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s10-1">
+        <input type="checkbox" data-group="sec10" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Refatorar testes para usar helpers e padrões consistentes</span>
+      </label>
+      <label class="checklist-item" id="item-s10-2">
+        <input type="checkbox" data-group="sec10" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Escrever testes de integração do <code>ProductPrismaRepository</code> (banco real)</span>
+      </label>
+      <label class="checklist-item" id="item-s10-3">
+        <input type="checkbox" data-group="sec10" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Replicar testes de integração para os demais repositórios</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 12-13 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seções 12 e 13 — Presenters e Testes E2E
+        <span class="checklist-group-badge" id="badge-sec12">0/3</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec12" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s12-1">
+        <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar presenters para formatar o output das respostas</span>
+      </label>
+      <label class="checklist-item" id="item-s12-2">
+        <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Configurar ambiente de testes E2E com banco real</span>
+      </label>
+      <label class="checklist-item" id="item-s12-3">
+        <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Escrever testes E2E para os endpoints de Product</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 14 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seção 14 — Autenticação com JWT
+        <span class="checklist-group-badge" id="badge-sec14">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec14" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s14-1">
+        <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>AuthModule</code> com geração e validação de JWT</span>
+      </label>
+      <label class="checklist-item" id="item-s14-2">
+        <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Implementar <code>JwtStrategy</code> e <code>AuthGuard</code></span>
+      </label>
+      <label class="checklist-item" id="item-s14-3">
+        <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Proteger rotas com <code>@UseGuards(AuthGuard)</code></span>
+      </label>
+      <label class="checklist-item" id="item-s14-4">
+        <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Testar fluxo de autenticação (login → token → rota protegida)</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Seção 15-16 ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Seções 15 e 16 — Swagger e Deploy
+        <span class="checklist-group-badge" id="badge-sec15">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-sec15" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-s15-1">
+        <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Configurar Swagger e documentar todos os endpoints</span>
+      </label>
+      <label class="checklist-item" id="item-s15-2">
+        <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar pipeline CI/CD com GitHub Actions (build + test)</span>
+      </label>
+      <label class="checklist-item" id="item-s15-3">
+        <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Configurar infraestrutura AWS (EC2 + RDS)</span>
+      </label>
+      <label class="checklist-item" id="item-s15-4">
+        <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Realizar o deploy em produção e validar o ambiente</span>
+      </label>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ INTRODUÇÃO ══════════════════════════════ -->
@@ -2980,6 +3625,119 @@ jobs:
 </p>
 
 </div><!-- /main -->
+
+<script>
+  const STORAGE_KEY = 'stockflow-progress-v1'
+
+  const groups = {
+    sec2:  { total: 5 },
+    sec3:  { total: 5 },
+    sec4:  { total: 4 },
+    sec5:  { total: 4 },
+    sec6:  { total: 5 },
+    sec7:  { total: 4 },
+    sec8:  { total: 4 },
+    sec9:  { total: 3 },
+    sec10: { total: 3 },
+    sec12: { total: 3 },
+    sec14: { total: 4 },
+    sec15: { total: 4 },
+  }
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') }
+    catch { return {} }
+  }
+
+  function saveState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }
+
+  function updateProgress(checkbox) {
+    const state = loadState()
+    const id = checkbox.closest('label').id
+    state[id] = checkbox.checked
+    saveState(state)
+    render()
+  }
+
+  function render() {
+    const state = loadState()
+    const allCheckboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]')
+
+    allCheckboxes.forEach(cb => {
+      const label = cb.closest('label')
+      const id = label.id
+      const checked = !!state[id]
+      cb.checked = checked
+      label.classList.toggle('checked', checked)
+    })
+
+    let totalItems = 0
+    let totalChecked = 0
+
+    Object.entries(groups).forEach(([groupId, { total }]) => {
+      const groupCheckboxes = document.querySelectorAll(`[data-group="${groupId}"]`)
+      let checked = 0
+      groupCheckboxes.forEach(cb => { if (cb.checked) checked++ })
+
+      const pct = total > 0 ? Math.round((checked / total) * 100) : 0
+      const bar = document.getElementById(`bar-${groupId}`)
+      const badge = document.getElementById(`badge-${groupId}`)
+      if (bar) bar.style.width = pct + '%'
+      if (badge) {
+        badge.textContent = `${checked}/${total}`
+        badge.classList.toggle('done', checked === total)
+      }
+
+      totalItems += total
+      totalChecked += checked
+    })
+
+    const overallPct = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0
+    const overallBar = document.getElementById('overall-bar')
+    const overallCount = document.getElementById('overall-count')
+    const sidebarBar = document.getElementById('sidebar-pill-bar')
+    const sidebarText = document.getElementById('sidebar-pill-text')
+
+    if (overallBar) overallBar.style.width = overallPct + '%'
+    if (overallCount) overallCount.textContent = `${totalChecked} / ${totalItems}`
+    if (sidebarBar) sidebarBar.style.width = overallPct + '%'
+    if (sidebarText) sidebarText.textContent = `${overallPct}% concluído`
+  }
+
+  document.addEventListener('DOMContentLoaded', render)
+
+  // ── Active sidebar link on scroll ──
+  const sidebarLinks = document.querySelectorAll('.sidebar a[href^="#"]')
+
+  function setActiveLink(id) {
+    sidebarLinks.forEach(link => {
+      const isActive = link.getAttribute('href') === '#' + id
+      link.classList.toggle('active', isActive)
+    })
+  }
+
+  const sectionIds = Array.from(sidebarLinks)
+    .map(a => a.getAttribute('href').slice(1))
+    .filter(id => document.getElementById(id))
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        setActiveLink(entry.target.id)
+      }
+    })
+  }, {
+    rootMargin: '-10% 0px -80% 0px',
+    threshold: 0,
+  })
+
+  sectionIds.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) observer.observe(el)
+  })
+</script>
 
 </body>
 </html>
