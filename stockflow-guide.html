@@ -1423,6 +1423,67 @@ pnpm add @nestjs/config zod class-transformer
 pnpm add -D @types/node
 </code></pre>
 
+<h3>Passo 2.1 — Configurar o alias @ no TypeScript</h3>
+
+<p>O NestJS permite usar <code>@/</code> como atalho para a pasta <code>src/</code> em todos os imports. Isso evita caminhos relativos confusos como <code>../../../shared/domain/entity</code> e torna qualquer import legível e independente de onde o arquivo está.</p>
+
+<p>Para que o TypeScript e o Jest reconheçam esse alias, é necessário configurar dois arquivos:</p>
+
+<p class="file-path">tsconfig.json  ← editar arquivo existente</p>
+<pre><code>{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]     // ← adicionar esta linha
+    },
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false
+  }
+}
+</code></pre>
+
+<p>O Jest também precisa saber sobre o alias, pois ele não lê o <code>tsconfig.json</code> diretamente. Adicione o <code>moduleNameMapper</code> no seu arquivo de configuração do Jest:</p>
+
+<p class="file-path">jest.config.ts  ← editar arquivo existente</p>
+<pre><code>import type { Config } from 'jest'
+
+const config: Config = {
+  moduleFileExtensions: ['js', 'json', 'ts'],
+  rootDir: 'src',
+  testRegex: '.*\\.spec\\.ts$',
+  transform: {
+    '^.+\\.(t|j)s$': 'ts-jest',
+  },
+  collectCoverageFrom: ['**/*.(t|j)s'],
+  coverageDirectory: '../coverage',
+  testEnvironment: 'node',
+  moduleNameMapper: {
+    '^@/(.*)$': '&lt;rootDir&gt;/$1',   // ← mapeia @/ para src/
+  },
+}
+
+export default config
+</code></pre>
+
+<div class="warning-card">
+  <div class="label">⚠️ Faça isso antes de escrever qualquer import</div>
+  <p>Configure o alias agora, antes de criar qualquer arquivo do projeto. Se você escrever imports relativos primeiro e tentar converter depois, vai precisar corrigir um por um. Com o alias configurado desde o início, todos os imports já saem no formato <code>@/</code> correto.</p>
+</div>
+
 <p>Criar o arquivo <code>.env</code> na raiz:</p>
 <pre><code># .env
 PORT=3000
@@ -1638,8 +1699,8 @@ export class EnvConfigModule {}
 
 <p class="file-path">src/shared/infrastructure/env-config/__tests__/env-config.service.spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
-import { EnvConfigService } from '../env-config.service'
-import { EnvConfigModule } from '../env-config.module'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
 
 describe('EnvConfigService', () =&gt; {
   let sut: EnvConfigService
@@ -1852,7 +1913,7 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 <p>Antes de criar os testes, instale o faker:</p>
 <pre><code>pnpm add -D @faker-js/faker</code></pre>
 <pre><code>import { faker } from '@faker-js/faker'
-import { ProductProps } from '../../entities/product.entity'
+import { ProductProps } from '@/products/domain/entities/product.entity'
 
 export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): ProductProps {
   return {
@@ -1877,8 +1938,8 @@ export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): Pro
 <p>Repare na variável chamada <code>sut</code> (System Under Test — "sistema sendo testado"). É uma convenção de testes que deixa claro qual é o objeto principal sendo testado em cada bloco. Em vez de chamar de <code>product</code> ou <code>entity</code>, usar <code>sut</code> torna os testes mais padronizados e legíveis.</p>
 
 <p>O <code>beforeEach</code> recria a entidade antes de cada teste — assim os testes são independentes entre si. Se um teste modificar a entidade (ex: chamar <code>deactivate()</code>), isso não afeta o próximo teste.</p>
-<pre><code>import { ProductEntity, ProductProps } from '../product.entity'
-import { ProductDataBuilder } from '../../testing/helpers/product-data-builder'
+<pre><code>import { ProductEntity, ProductProps } from '@/products/domain/entities/product.entity'
+import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 
 describe('ProductEntity', () =&gt; {
   let props: ProductProps
@@ -2095,7 +2156,7 @@ export class ProductValidatorFactory {
 
 <pre><code>// Adicionar dentro de product.entity.ts
 import { EntityValidationError } from '@/shared/domain/errors/validation-error'
-import { ProductValidatorFactory } from '../validators/product.validator'
+import { ProductValidatorFactory } from '@/products/domain/validators/product.validator'
 
 export class ProductEntity extends Entity&lt;ProductProps&gt; {
 
@@ -2125,7 +2186,7 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 </code></pre>
 
 <p class="file-path">src/shared/domain/errors/validation-error.ts</p>
-<pre><code>import { FieldsErrors } from '../validators/validator-fields.interface'
+<pre><code>import { FieldsErrors } from '@/shared/domain/validators/validator-fields.interface'
 
 export class EntityValidationError extends Error {
   constructor(public errors: FieldsErrors) {
@@ -2217,7 +2278,7 @@ export interface SearchableRepositoryInterface&lt;E&gt;
 
 <p>Nota importante: a interface fica em <code>domain/repositories/</code> (domínio), mas as implementações (<code>ProductPrismaRepository</code>, <code>ProductInMemoryRepository</code>) ficam em <code>infrastructure/</code>. O domínio nunca vai saber como esses métodos são implementados.</p>
 <pre><code>import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { ProductEntity } from '../entities/product.entity'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
 
 export interface ProductRepository
   extends SearchableRepositoryInterface&lt;ProductEntity&gt; {
@@ -2236,9 +2297,9 @@ export interface ProductRepository
 <p>Por que isso é valioso? Porque nos testes unitários dos use cases, você passa um <code>ProductInMemoryRepository</code> em vez do <code>ProductPrismaRepository</code>. Os testes rodam em milissegundos, sem precisar de Docker, sem banco, sem migrations. O use case não sabe a diferença — ele só fala com a interface, e ambas as implementações cumprem o mesmo contrato.</p>
 
 <p>O array <code>items</code> é público para facilitar verificações nos testes: você consegue inspecionar diretamente o que foi inserido com <code>expect(repository.items).toHaveLength(1)</code>.</p>
-<pre><code>import { Entity } from '../entities/entity'
-import { RepositoryInterface } from './repository-contracts'
-import { NotFoundError } from '../errors/not-found-error'
+<pre><code>import { Entity } from '@/shared/domain/entities/entity'
+import { RepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
 
 export abstract class InMemoryRepository&lt;E extends Entity&lt;any&gt;&gt;
   implements RepositoryInterface&lt;E&gt;
@@ -2426,7 +2487,7 @@ export namespace CreateProductUseCase {
 
 <p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.ts</p>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
-import { PurchaseOrderRepository } from '../../domain/repositories/purchase-order.repository'
+import { PurchaseOrderRepository } from '@/purchase-orders/domain/repositories/purchase-order.repository'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 
 export namespace ReceiveDeliveryUseCase {
@@ -2482,7 +2543,7 @@ export namespace ReceiveDeliveryUseCase {
 
 <h3>Teste unitário do CreateProduct</h3>
 
-<pre><code>import { CreateProductUseCase } from '../create-product.usecase'
+<pre><code>import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
 import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
 import { ConflictError } from '@/shared/domain/errors/conflict-error'
 
@@ -2596,10 +2657,10 @@ import { GetProductUseCase } from '@/products/application/usecases/get-product.u
 import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
 import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
 import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
-import { CreateProductDto } from '../dto/create-product.dto'
-import { UpdateProductDto } from '../dto/update-product.dto'
-import { ListProductsDto } from '../dto/list-products.dto'
-import { ProductPresenter, ProductCollectionPresenter } from '../presenters/product.presenter'
+import { CreateProductDto } from '@/products/infrastructure/dto/create-product.dto'
+import { UpdateProductDto } from '@/products/infrastructure/dto/update-product.dto'
+import { ListProductsDto } from '@/products/infrastructure/dto/list-products.dto'
+import { ProductPresenter, ProductCollectionPresenter } from '@/products/infrastructure/presenters/product.presenter'
 
 @Controller('products')
 export class ProductsController {
@@ -2657,7 +2718,7 @@ export class ProductsController {
 import { ProductsController } from './controllers/products.controller'
 import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
-import { CreateProductUseCase } from '../application/usecases/create-product.usecase'
+import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
 
 @Module({
   controllers: [ProductsController],
@@ -3024,7 +3085,7 @@ export { prisma }
 <h3>Teste de integração do repositório</h3>
 
 <pre><code>import { cleanDatabase, prisma } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
-import { ProductPrismaRepository } from '../product-prisma.repository'
+import { ProductPrismaRepository } from '@/products/infrastructure/database/prisma/product-prisma.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 
@@ -3409,7 +3470,7 @@ export class CreateProductDto {
 <p>No controller, aplique o <code>ZodValidationPipe</code> na rota:</p>
 
 <pre><code>import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
-import { createProductSchema } from '../dto/create-product.dto'
+import { createProductSchema } from '@/products/infrastructure/dto/create-product.dto'
 
 @Post()
 async create(

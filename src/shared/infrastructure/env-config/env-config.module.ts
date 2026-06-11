@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { EnvConfigService } from './env-config.service'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
 import { z } from 'zod'
 
 const envSchema = z.object({
