@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker'
-import { ProductProps } from '@/shared/domain/entities/product.entity'
+import { ProductProps } from '@/products/domain/entities/product.entity'
 
 export function ProductDataBuilder(props: Partial<ProductProps> = {}): ProductProps {
   return {

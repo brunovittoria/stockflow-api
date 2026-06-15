@@ -1,4 +1,4 @@
-import { ProductEntity, ProductProps } from '@/shared/domain/entities/product.entity'
+import { ProductEntity, ProductProps } from '@/products/domain/entities/product.entity'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 
 describe('ProductEntity', () => {

@@ -60,11 +60,11 @@ export class ProductEntity extends Entity<ProductProps> {
   }
 
   get createdAt(): Date {
-    return this.props.createdAt
+    return this.props.createdAt!
   }
 
   get updatedAt(): Date {
-    return this.props.updatedAt
+    return this.props.updatedAt!
   }
 
   // ── Regra de negócio: margem de lucro ──
