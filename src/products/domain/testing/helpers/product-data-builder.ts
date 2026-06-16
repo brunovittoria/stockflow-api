@@ -1,7 +1,9 @@
 import { faker } from '@faker-js/faker'
 import { ProductProps } from '@/products/domain/entities/product.entity'
 
-export function ProductDataBuilder(props: Partial<ProductProps> = {}): ProductProps {
+export function ProductDataBuilder(
+  props: Partial<ProductProps> = {},
+): ProductProps {
   return {
     name: props.name ?? faker.commerce.productName(),
     description: props.description ?? faker.commerce.productDescription(),

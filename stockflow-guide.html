@@ -1295,8 +1295,9 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 <h2 id="entities">Mapa Completo de Entidades</h2>
 
 <h3>Product</h3>
-<p class="file-path">src/products/domain/entities/product.entity.ts</p>
-<pre><code>interface ProductProps {
+<pre><code>// src/products/domain/entities/product.entity.ts
+
+interface ProductProps {
   name: string
   description: string
   sku: string               // código único, imutável após criação
@@ -1311,8 +1312,9 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 </code></pre>
 
 <h3>Supplier</h3>
-<p class="file-path">src/suppliers/domain/entities/supplier.entity.ts</p>
-<pre><code>interface SupplierProps {
+<pre><code>// src/suppliers/domain/entities/supplier.entity.ts
+
+interface SupplierProps {
   name: string
   email: string
   phone: string
@@ -1323,8 +1325,9 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 </code></pre>
 
 <h3>Stock</h3>
-<p class="file-path">src/stock/domain/entities/stock.entity.ts</p>
-<pre><code>interface StockProps {
+<pre><code>// src/stock/domain/entities/stock.entity.ts
+
+interface StockProps {
   productId: string
   quantity: number           // quantidade atual
   minQuantity: number        // mínimo antes de alerta
@@ -1334,8 +1337,9 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 </code></pre>
 
 <h3>PurchaseOrder</h3>
-<p class="file-path">src/purchase-orders/domain/entities/purchase-order.entity.ts</p>
-<pre><code>type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'DELIVERED' | 'CANCELLED'
+<pre><code>// src/purchase-orders/domain/entities/purchase-order.entity.ts
+
+type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'DELIVERED' | 'CANCELLED'
 
 interface PurchaseOrderItem {
   productId: string
@@ -1418,67 +1422,6 @@ cd stockflow-api
 pnpm add @nestjs/config zod class-transformer
 pnpm add -D @types/node
 </code></pre>
-
-<h3>Passo 2.1 — Configurar o alias @ no TypeScript</h3>
-
-<p>O NestJS permite usar <code>@/</code> como atalho para a pasta <code>src/</code> em todos os imports. Isso evita caminhos relativos confusos como <code>../../../shared/domain/entity</code> e torna qualquer import legível e independente de onde o arquivo está.</p>
-
-<p>Para que o TypeScript e o Jest reconheçam esse alias, é necessário configurar dois arquivos:</p>
-
-<p class="file-path">tsconfig.json  ← editar arquivo existente</p>
-<pre><code>{
-  "compilerOptions": {
-    "module": "commonjs",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"]     // ← adicionar esta linha
-    },
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
-  }
-}
-</code></pre>
-
-<p>O Jest também precisa saber sobre o alias, pois ele não lê o <code>tsconfig.json</code> diretamente. Adicione o <code>moduleNameMapper</code> no seu arquivo de configuração do Jest:</p>
-
-<p class="file-path">jest.config.ts  ← editar arquivo existente</p>
-<pre><code>import type { Config } from 'jest'
-
-const config: Config = {
-  moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir: 'src',
-  testRegex: '.*\\.spec\\.ts$',
-  transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
-  },
-  collectCoverageFrom: ['**/*.(t|j)s'],
-  coverageDirectory: '../coverage',
-  testEnvironment: 'node',
-  moduleNameMapper: {
-    '^@/(.*)$': '&lt;rootDir&gt;/$1',   // ← mapeia @/ para src/
-  },
-}
-
-export default config
-</code></pre>
-
-<div class="warning-card">
-  <div class="label">⚠️ Faça isso antes de escrever qualquer import</div>
-  <p>Configure o alias agora, antes de criar qualquer arquivo do projeto. Se você escrever imports relativos primeiro e tentar converter depois, vai precisar corrigir um por um. Com o alias configurado desde o início, todos os imports já saem no formato <code>@/</code> correto.</p>
-</div>
 
 <p>Criar o arquivo <code>.env</code> na raiz:</p>
 <pre><code># .env
@@ -1695,8 +1638,8 @@ export class EnvConfigModule {}
 
 <p class="file-path">src/shared/infrastructure/env-config/__tests__/env-config.service.spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
-import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
-import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
+import { EnvConfigService } from '../env-config.service'
+import { EnvConfigModule } from '../env-config.module'
 
 describe('EnvConfigService', () =&gt; {
   let sut: EnvConfigService
@@ -1756,7 +1699,6 @@ describe('EnvConfigService', () =&gt; {
 <p>Usamos <strong>UUID</strong> (Universally Unique Identifier) como ID em vez de um número auto-incremento do banco. Por quê? Porque o UUID é gerado na camada de domínio, sem precisar falar com o banco. Isso significa que você pode criar uma entidade, fazer validações e testes nela, sem que o banco de dados precise existir ainda. O ID do banco auto-incremento só existe depois de salvar — o UUID existe desde o momento da criação da entidade.</p>
 
 <p>O parâmetro opcional <code>id?</code> no construtor serve para quando você está <em>reconstruindo</em> uma entidade que já existia no banco — nesse caso, você passa o ID que já estava salvo em vez de gerar um novo.</p>
-<p class="file-path">src/shared/domain/entities/entity.ts</p>
 <pre><code>import { v4 as uuidv4 } from 'uuid'
 
 export abstract class Entity&lt;Props&gt; {
@@ -1785,7 +1727,6 @@ export abstract class Entity&lt;Props&gt; {
   <li><strong>Não existe <code>updateSku()</code>:</strong> isso é intencional. SKU é imutável após criação — é uma regra de negócio. A ausência do método <em>é</em> a regra.</li>
   <li><strong>Regra no <code>updatePrice()</code>:</strong> o método verifica se o novo preço é maior que o custo. Essa verificação mora aqui, não no controller, não no use case — ela está na entidade porque é uma invariante do negócio que deve sempre ser respeitada.</li>
 </ul>
-<p class="file-path">src/products/domain/entities/product.entity.ts</p>
 <pre><code>import { Entity } from '@/shared/domain/entities/entity'
 
 export interface ProductProps {
@@ -1910,9 +1851,8 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 
 <p>Antes de criar os testes, instale o faker:</p>
 <pre><code>pnpm add -D @faker-js/faker</code></pre>
-<p class="file-path">src/products/domain/testing/helpers/product-data-builder.ts</p>
 <pre><code>import { faker } from '@faker-js/faker'
-import { ProductProps } from '@/products/domain/entities/product.entity'
+import { ProductProps } from '../../entities/product.entity'
 
 export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): ProductProps {
   return {
@@ -1937,9 +1877,8 @@ export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): Pro
 <p>Repare na variável chamada <code>sut</code> (System Under Test — "sistema sendo testado"). É uma convenção de testes que deixa claro qual é o objeto principal sendo testado em cada bloco. Em vez de chamar de <code>product</code> ou <code>entity</code>, usar <code>sut</code> torna os testes mais padronizados e legíveis.</p>
 
 <p>O <code>beforeEach</code> recria a entidade antes de cada teste — assim os testes são independentes entre si. Se um teste modificar a entidade (ex: chamar <code>deactivate()</code>), isso não afeta o próximo teste.</p>
-<p class="file-path">src/products/domain/entities/product.entity.spec.ts</p>
-<pre><code>import { ProductEntity, ProductProps } from '@/products/domain/entities/product.entity'
-import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
+<pre><code>import { ProductEntity, ProductProps } from '../product.entity'
+import { ProductDataBuilder } from '../../testing/helpers/product-data-builder'
 
 describe('ProductEntity', () =&gt; {
   let props: ProductProps
@@ -2002,7 +1941,31 @@ describe('ProductEntity', () =&gt; {
 
 <div class="mapping-card">
   <div class="label">🏋️ Seu desafio</div>
-  <p>Após implementar <code>ProductEntity</code>, replique o mesmo padrão para <code>SupplierEntity</code>, <code>StockEntity</code> e <code>PurchaseOrderEntity</code>. Cada uma terá seus próprios getters, métodos de atualização e regras de negócio (veja a tabela de regras acima). A <code>PurchaseOrderEntity</code> é a mais complexa — ela tem estados (DRAFT → SENT → DELIVERED → CANCELLED) com transições válidas.</p>
+  <p>Após implementar <code>ProductEntity</code>, replique o mesmo padrão para as três entidades abaixo. Cada uma tem seus próprios getters, métodos de atualização e regras de negócio que devem viver dentro da entidade — não no controller, não no use case.</p>
+
+  <h4>SupplierEntity</h4>
+  <ul>
+    <li>CNPJ é único — verificado no use case via <code>supplierRepo.cnpjExists()</code></li>
+    <li>Não pode ser deletado se tiver pedidos de compra ativos — verificado no use case <code>DeleteSupplier</code></li>
+    <li>Métodos: <code>updateName()</code>, <code>updateEmail()</code>, <code>updatePhone()</code>, <code>deactivate()</code>, <code>activate()</code></li>
+  </ul>
+
+  <h4>StockEntity</h4>
+  <ul>
+    <li>Getter <code>isCritical</code>: retorna <code>true</code> quando <code>quantity &lt; minQuantity</code> — regra mora aqui na entidade</li>
+    <li>Método <code>addQuantity(amount)</code>: soma ao estoque atual (chamado quando pedido é entregue)</li>
+    <li>Método <code>subtractQuantity(amount)</code>: lança erro se resultado for negativo</li>
+    <li>Método <code>updateMinQuantity(value)</code>: atualiza o limite de alerta</li>
+  </ul>
+
+  <h4>PurchaseOrderEntity — a mais complexa</h4>
+  <p>Ela tem um ciclo de vida com transições válidas. O método de mudança de status deve validar se a transição é permitida:</p>
+  <ul>
+    <li><code>DRAFT → SENT</code>: método <code>send()</code> — só pode se status for DRAFT</li>
+    <li><code>SENT → DELIVERED</code>: método <code>markAsDelivered()</code> — só pode se status for SENT</li>
+    <li><code>DRAFT → CANCELLED</code> ou <code>SENT → CANCELLED</code>: método <code>cancel()</code> — não pode cancelar se já foi entregue</li>
+    <li><code>totalCost</code> é calculado automaticamente no construtor: soma de <code>quantity × unitCost</code> de cada item</li>
+  </ul>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 4 ══════════════════════════════ -->
@@ -2023,7 +1986,6 @@ describe('ProductEntity', () =&gt; {
 <p>Antes de implementar a validação, definimos uma <strong>interface</strong> que descreve como qualquer validador deve se comportar. Isso segue o mesmo princípio do repositório: o domínio declara o contrato, a implementação concreta pode mudar.</p>
 
 <p>A interface tem três partes: <code>errors</code> (os erros encontrados, organizados por campo), <code>validatedData</code> (os dados válidos após a validação), e <code>validate()</code> (o método que executa a validação e retorna <code>true</code> ou <code>false</code>). Qualquer classe que implemente essa interface pode ser usada como validador — seja com Zod, seja com qualquer outra lib no futuro.</p>
-<p class="file-path">src/shared/domain/validators/validator-fields.interface.ts</p>
 <pre><code>export type FieldsErrors = {
   [field: string]: string[]
 }
@@ -2040,7 +2002,6 @@ export interface ValidatorFieldsInterface&lt;ValidatedProps&gt; {
 <p>Aqui criamos a implementação concreta da interface — a classe que de fato executa a validação usando Zod. Ela fica em <code>shared/domain/</code> porque <strong>todos os módulos vão reutilizá-la</strong> — Product, Supplier, Stock e PurchaseOrder usarão essa mesma classe base, só passando schemas Zod diferentes.</p>
 
 <p>O método <code>safeParse</code> do Zod é diferente de <code>parse</code>: em vez de lançar uma exceção quando encontra erro, ele retorna um objeto com <code>success: true/false</code>. Isso nos dá controle para formatar os erros do jeito que queremos antes de jogar para quem chamou.</p>
-<p class="file-path">src/shared/domain/validators/zod-validator-fields.ts</p>
 <pre><code>import { ZodSchema, ZodError } from 'zod'
 import { FieldsErrors, ValidatorFieldsInterface } from './validator-fields.interface'
 
@@ -2083,7 +2044,6 @@ export class ZodValidatorFields&lt;ValidatedProps&gt;
 <p>Agora criamos o schema específico do Product — as regras de validação que definem o que é um produto válido. Repare na grande vantagem do Zod aqui: <code>export type ProductValidated = z.infer&lt;typeof productSchema&gt;</code> gera o tipo TypeScript automaticamente a partir das regras do schema. Você define as regras <strong>uma vez</strong> e o TypeScript já sabe os tipos de todos os campos — sem repetir interfaces.</p>
 
 <p>Cada regra tem uma mensagem de erro personalizada (segundo argumento de cada método). Isso significa que quando a validação falhar, o erro vai dizer exatamente o que está errado — "SKU must be 3-20 uppercase alphanumeric characters" é muito mais útil do que "invalid input".</p>
-<p class="file-path">src/products/domain/validators/product.validator.ts</p>
 <pre><code>import { z } from 'zod'
 import { ZodValidatorFields } from '@/shared/domain/validators/zod-validator-fields'
 
@@ -2157,10 +2117,9 @@ export class ProductValidatorFactory {
 
 <p>Adicione o método <code>validate()</code> na <code>ProductEntity</code>:</p>
 
-<p class="file-path">src/products/domain/entities/product.entity.ts  ← editar arquivo existente</p>
 <pre><code>// Adicionar dentro de product.entity.ts
 import { EntityValidationError } from '@/shared/domain/errors/validation-error'
-import { ProductValidatorFactory } from '@/products/domain/validators/product.validator'
+import { ProductValidatorFactory } from '../validators/product.validator'
 
 export class ProductEntity extends Entity&lt;ProductProps&gt; {
 
@@ -2190,7 +2149,7 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 </code></pre>
 
 <p class="file-path">src/shared/domain/errors/validation-error.ts</p>
-<pre><code>import { FieldsErrors } from '@/shared/domain/validators/validator-fields.interface'
+<pre><code>import { FieldsErrors } from '../validators/validator-fields.interface'
 
 export class EntityValidationError extends Error {
   constructor(public errors: FieldsErrors) {
@@ -2202,7 +2161,6 @@ export class EntityValidationError extends Error {
 
 <h3>Passo 5 — Testes de validação</h3>
 
-<p class="file-path">src/products/domain/entities/product.entity.spec.ts</p>
 <pre><code>describe('ProductEntity validation', () =&gt; {
   it('should throw when name is empty', () =&gt; {
     const props = ProductDataBuilder({ name: '' })
@@ -2246,7 +2204,6 @@ export class EntityValidationError extends Error {
 <p>Pense assim: a interface é como um contrato de serviço. O domínio diz "preciso de alguém que saiba inserir, buscar por ID, listar todos, atualizar e deletar". Quem vai cumprir esse contrato? Pode ser o Prisma em produção, ou um array em memória nos testes. A interface não se importa.</p>
 
 <p>O <code>SearchableRepositoryInterface</code> estende o básico com um método <code>search</code> que aceita filtros, ordenação e paginação — usado nos endpoints de listagem com query params.</p>
-<p class="file-path">src/shared/domain/repositories/repository-contracts.ts</p>
 <pre><code>export interface RepositoryInterface&lt;E&gt; {
   insert(entity: E): Promise&lt;void&gt;
   findById(id: string): Promise&lt;E&gt;
@@ -2283,9 +2240,8 @@ export interface SearchableRepositoryInterface&lt;E&gt;
 <p>Além dos métodos genéricos de CRUD, o repositório de Product precisa de métodos específicos do negócio — como <code>findBySku</code> e <code>skuExists</code>. Esses métodos são declarados aqui, na interface de domínio, porque fazem parte do contrato que qualquer implementação (Prisma, InMemory) deve cumprir.</p>
 
 <p>Nota importante: a interface fica em <code>domain/repositories/</code> (domínio), mas as implementações (<code>ProductPrismaRepository</code>, <code>ProductInMemoryRepository</code>) ficam em <code>infrastructure/</code>. O domínio nunca vai saber como esses métodos são implementados.</p>
-<p class="file-path">src/products/domain/repositories/product.repository.ts</p>
 <pre><code>import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { ProductEntity } from '../entities/product.entity'
 
 export interface ProductRepository
   extends SearchableRepositoryInterface&lt;ProductEntity&gt; {
@@ -2304,10 +2260,9 @@ export interface ProductRepository
 <p>Por que isso é valioso? Porque nos testes unitários dos use cases, você passa um <code>ProductInMemoryRepository</code> em vez do <code>ProductPrismaRepository</code>. Os testes rodam em milissegundos, sem precisar de Docker, sem banco, sem migrations. O use case não sabe a diferença — ele só fala com a interface, e ambas as implementações cumprem o mesmo contrato.</p>
 
 <p>O array <code>items</code> é público para facilitar verificações nos testes: você consegue inspecionar diretamente o que foi inserido com <code>expect(repository.items).toHaveLength(1)</code>.</p>
-<p class="file-path">src/shared/domain/repositories/in-memory.repository.ts</p>
-<pre><code>import { Entity } from '@/shared/domain/entities/entity'
-import { RepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+<pre><code>import { Entity } from '../entities/entity'
+import { RepositoryInterface } from './repository-contracts'
+import { NotFoundError } from '../errors/not-found-error'
 
 export abstract class InMemoryRepository&lt;E extends Entity&lt;any&gt;&gt;
   implements RepositoryInterface&lt;E&gt;
@@ -2425,7 +2380,6 @@ export class ProductInMemoryRepository
   <li><strong>Sequência de operações:</strong> primeiro verifica o SKU (regra de unicidade), depois verifica o preço, depois cria a entidade (que roda suas próprias validações Zod), depois persiste. Se qualquer passo falhar, os seguintes não executam.</li>
   <li><strong>Output é um objeto simples:</strong> não retornamos a entidade diretamente. Retornamos um objeto com apenas os campos que fazem sentido expor. Isso desacopla o que o caso de uso entrega do que a entidade contém internamente.</li>
 </ul>
-<p class="file-path">src/products/application/usecases/create-product.usecase.ts</p>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
@@ -2496,7 +2450,7 @@ export namespace CreateProductUseCase {
 
 <p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.ts</p>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
-import { PurchaseOrderRepository } from '@/purchase-orders/domain/repositories/purchase-order.repository'
+import { PurchaseOrderRepository } from '../../domain/repositories/purchase-order.repository'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 
 export namespace ReceiveDeliveryUseCase {
@@ -2552,8 +2506,7 @@ export namespace ReceiveDeliveryUseCase {
 
 <h3>Teste unitário do CreateProduct</h3>
 
-<p class="file-path">src/products/application/usecases/create-product.usecase.spec.ts</p>
-<pre><code>import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
+<pre><code>import { CreateProductUseCase } from '../create-product.usecase'
 import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
 import { ConflictError } from '@/shared/domain/errors/conflict-error'
 
@@ -2667,10 +2620,10 @@ import { GetProductUseCase } from '@/products/application/usecases/get-product.u
 import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
 import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
 import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
-import { CreateProductDto } from '@/products/infrastructure/dto/create-product.dto'
-import { UpdateProductDto } from '@/products/infrastructure/dto/update-product.dto'
-import { ListProductsDto } from '@/products/infrastructure/dto/list-products.dto'
-import { ProductPresenter, ProductCollectionPresenter } from '@/products/infrastructure/presenters/product.presenter'
+import { CreateProductDto } from '../dto/create-product.dto'
+import { UpdateProductDto } from '../dto/update-product.dto'
+import { ListProductsDto } from '../dto/list-products.dto'
+import { ProductPresenter, ProductCollectionPresenter } from '../presenters/product.presenter'
 
 @Controller('products')
 export class ProductsController {
@@ -2728,7 +2681,7 @@ export class ProductsController {
 import { ProductsController } from './controllers/products.controller'
 import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
-import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
+import { CreateProductUseCase } from '../application/usecases/create-product.usecase'
 
 @Module({
   controllers: [ProductsController],
@@ -2916,7 +2869,6 @@ npx prisma migrate dev --name init
 <p>O <code>ModelMapper</code> é o tradutor entre esses dois mundos. Ele pega um objeto Prisma e constrói uma <code>ProductEntity</code> a partir dele. Note o detalhe crítico: passamos o <code>model.id</code> como segundo argumento — isso diz para a entidade "use este ID que já existe no banco" em vez de gerar um novo UUID.</p>
 
 <p>Esse arquivo fica na camada de infraestrutura porque ele conhece os dois lados: sabe o formato do Prisma e sabe construir a entidade do domínio.</p>
-<p class="file-path">src/products/infrastructure/database/prisma/product-model.mapper.ts</p>
 <pre><code>import { Product as ProductModel } from '@prisma/client'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 
@@ -2947,7 +2899,6 @@ export class ProductModelMapper {
 <p>Esta é a implementação concreta do contrato <code>ProductRepository</code> que usa o Prisma para falar com o PostgreSQL. Repare que a classe <strong>implementa a interface</strong> (<code>implements ProductRepository</code>) — o TypeScript vai reclamar se você esquecer de implementar algum método do contrato.</p>
 
 <p>Compare o <code>findById</code> aqui com o mesmo método no InMemory: o comportamento é idêntico do ponto de vista do use case (retorna uma entidade ou lança <code>NotFoundError</code>), mas a implementação é completamente diferente. É exatamente isso que o padrão Repository permite — trocar a implementação sem mudar quem usa.</p>
-<p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.ts</p>
 <pre><code>import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
@@ -3096,9 +3047,8 @@ export { prisma }
 
 <h3>Teste de integração do repositório</h3>
 
-<p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.spec.ts</p>
 <pre><code>import { cleanDatabase, prisma } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
-import { ProductPrismaRepository } from '@/products/infrastructure/database/prisma/product-prisma.repository'
+import { ProductPrismaRepository } from '../product-prisma.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 
@@ -3200,7 +3150,6 @@ export class ProductPresenter {
 
 <h3>Teste E2E de criação de produto</h3>
 
-<p class="file-path">test/products/products.e2e-spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
@@ -3288,7 +3237,6 @@ describe('ProductsController e2e tests', () =&gt; {
 
 <h3>AuthModule</h3>
 
-<p class="file-path">src/auth/auth.module.ts</p>
 <pre><code>import { Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
 import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
@@ -3317,7 +3265,6 @@ export class AuthModule {}
 
 <h3>AuthGuard</h3>
 
-<p class="file-path">src/auth/auth.guard.ts</p>
 <pre><code>import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
@@ -3358,7 +3305,6 @@ export class AuthGuard implements CanActivate {
 
 <h3>Proteger rotas</h3>
 
-<p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar arquivo existente</p>
 <pre><code>// No controller, aplicar o guard
 import { UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@/auth/auth.guard'
@@ -3486,9 +3432,8 @@ export class CreateProductDto {
 
 <p>No controller, aplique o <code>ZodValidationPipe</code> na rota:</p>
 
-<p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar arquivo existente</p>
 <pre><code>import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
-import { createProductSchema } from '@/products/infrastructure/dto/create-product.dto'
+import { createProductSchema } from '../dto/create-product.dto'
 
 @Post()
 async create(

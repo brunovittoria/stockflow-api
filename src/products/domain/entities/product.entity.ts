@@ -4,8 +4,8 @@ export interface ProductProps {
   name: string
   description: string
   sku: string
-  price: number           // em centavos (1999 = R$ 19,99)
-  costPrice: number       // em centavos
+  price: number // em centavos (1999 = R$ 19,99)
+  costPrice: number // em centavos
   category: string
   supplierId: string
   isActive: boolean
@@ -60,11 +60,11 @@ export class ProductEntity extends Entity<ProductProps> {
   }
 
   get createdAt(): Date {
-    return this.props.createdAt!
+    return this.props.createdAt ?? new Date()
   }
 
   get updatedAt(): Date {
-    return this.props.updatedAt!
+    return this.props.updatedAt ?? new Date()
   }
 
   // ── Regra de negócio: margem de lucro ──

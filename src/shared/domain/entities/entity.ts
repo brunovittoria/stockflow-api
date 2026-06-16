@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 
 export abstract class Entity<Props> {
   public readonly _id: string
@@ -6,7 +6,7 @@ export abstract class Entity<Props> {
 
   constructor(props: Props, id?: string) {
     this.props = props
-    this._id = id ?? uuidv4()
+    this._id = id ?? randomUUID()
   }
 
   get id(): string {
