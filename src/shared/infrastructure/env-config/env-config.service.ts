@@ -9,7 +9,7 @@ export class EnvConfigService implements EnvConfig {
   getPort(): number {
     return Number(this.configService.getOrThrow<number>('PORT'))
   }
-  
+
   getNodeEnv(): string {
     return this.configService.getOrThrow<string>('NODE_ENV')
   }
