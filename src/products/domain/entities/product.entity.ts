@@ -1,4 +1,6 @@
 import { Entity } from '@/shared/domain/entities/entity'
+import { EntityValidationError } from '@/shared/domain/errors'
+import { ProductValidatorFactory } from '@/products/domain/validators/product.validator'
 
 export interface ProductProps {
   name: string
@@ -24,6 +26,16 @@ export class ProductEntity extends Entity<ProductProps> {
       },
       id,
     )
+    this.validate()
+  }
+
+  private validate(): void {
+    const validator = ProductValidatorFactory.create()
+    const isValid = validator.validate(this.props)
+
+    if (!isValid) {
+      throw new EntityValidationError(validator.errors)
+    }
   }
 
   // ── Getters ──
@@ -76,35 +88,40 @@ export class ProductEntity extends Entity<ProductProps> {
   // ── Métodos de atualização ──
   updateName(value: string): void {
     this.props.name = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updateDescription(value: string): void {
     this.props.description = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updatePrice(value: number): void {
-    // Regra: preço de venda deve ser maior que custo
     if (value <= this.costPrice) {
       throw new Error('Price must be greater than cost price')
     }
     this.props.price = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updateCostPrice(value: number): void {
     this.props.costPrice = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   deactivate(): void {
     this.props.isActive = false
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   activate(): void {
     this.props.isActive = true
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
