@@ -3,7 +3,9 @@ import {
   ProductProps,
 } from '@/products/domain/entities/product.entity'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
+import { EntityValidationError } from '@/shared/domain/errors'
 
+// ── Testes da Entidade ──
 describe('ProductEntity', () => {
   let props: ProductProps
   let sut: ProductEntity
@@ -59,5 +61,33 @@ describe('ProductEntity', () => {
   it('should deactivate product', () => {
     sut.deactivate()
     expect(sut.isActive).toBe(false)
+  })
+})
+
+// ── Testes de Validação ──
+describe('ProductEntity validation', () => {
+  it('should throw when name is empty', () => {
+    const props = ProductDataBuilder({ name: '' })
+    expect(() => new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when sku has invalid format', () => {
+    const props = ProductDataBuilder({ sku: 'abc lowercase' })
+    expect(() => new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when price is negative', () => {
+    const props = ProductDataBuilder({ price: -100 })
+    expect(() => new ProductEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should accept valid props', () => {
+    const props = ProductDataBuilder({
+      sku: 'CAM-PT-M',
+      price: 5000,
+      costPrice: 2000,
+    })
+    const product = new ProductEntity(props)
+    expect(product.sku).toBe('CAM-PT-M')
   })
 })
