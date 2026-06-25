@@ -1,3 +1,4 @@
+import { EntityValidationError } from '@/shared/domain/errors'
 import {
   SupplierEntity,
   SupplierProps,
@@ -96,5 +97,33 @@ describe('SupplierEntity', () => {
     sut.deactivate()
     sut.activate()
     expect(sut.isActive).toBe(true)
+  })
+})
+
+// ── Testes de Validação ──
+describe('SupplierEntity validation', () => {
+  it('should throw when name is empty', () => {
+    const props = SupplierDataBuilder({ name: '' })
+    expect(() => new SupplierEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when cnpj is invalid', () => {
+    const props = SupplierDataBuilder({ cnpj: '12.345.678/0001-95' })
+    expect(() => new SupplierEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when email is invalid', () => {
+    const props = SupplierDataBuilder({ email: 'invalid-email' })
+    expect(() => new SupplierEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should accept valid props', () => {
+    const props = SupplierDataBuilder({
+      name: 'Valid Name',
+      cnpj: '12345678901234',
+      email: 'valid@email.com',
+    })
+    const supplier = new SupplierEntity(props)
+    expect(supplier.name).toBe('Valid Name')
   })
 })

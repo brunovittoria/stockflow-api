@@ -1,4 +1,6 @@
 import { Entity } from '@/shared/domain/entities/entity'
+import { EntityValidationError } from '@/shared/domain/errors'
+import { SupplierValidatorFactory } from '@/suppliers/domain/validators/supplier.validator'
 
 export interface SupplierProps {
   name: string
@@ -21,6 +23,16 @@ export class SupplierEntity extends Entity<SupplierProps> {
       },
       id,
     )
+    this.validate()
+  }
+
+  private validate(): void {
+    const validator = SupplierValidatorFactory.create()
+    const isValid = validator.validate(this.props)
+
+    if (!isValid) {
+      throw new EntityValidationError(validator.errors)
+    }
   }
 
   // ── Getters ──
@@ -55,26 +67,31 @@ export class SupplierEntity extends Entity<SupplierProps> {
   // ── Métodos de atualização ──
   updateName(value: string): void {
     this.props.name = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updateEmail(value: string): void {
     this.props.email = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updatePhone(value: string): void {
     this.props.phone = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   deactivate(): void {
     this.props.isActive = false
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   activate(): void {
     this.props.isActive = true
+    this.validate()
     this.props.updatedAt = new Date()
   }
 }
