@@ -1,4 +1,6 @@
 import { Entity } from '@/shared/domain/entities/entity'
+import { EntityValidationError } from '@/shared/domain/errors'
+import { PurchaseOrderValidatorFactory } from '@/purchase-orders/domain/validators/purchase-order.validator'
 
 export type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'DELIVERED' | 'CANCELLED'
 
@@ -37,6 +39,16 @@ export class PurchaseOrderEntity extends Entity<PurchaseOrderProps> {
       },
       id,
     )
+    this.validate()
+  }
+
+  private validate(): void {
+    const validator = PurchaseOrderValidatorFactory.create()
+    const isValid = validator.validate(this.props)
+
+    if (!isValid) {
+      throw new EntityValidationError(validator.errors)
+    }
   }
 
   private static calculateTotalCost(items: PurchaseOrderItem[]): number {
@@ -74,6 +86,7 @@ export class PurchaseOrderEntity extends Entity<PurchaseOrderProps> {
       throw new Error('Só pode enviar pedidos com status DRAFT')
     }
     this.props.status = 'SENT'
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
@@ -84,6 +97,7 @@ export class PurchaseOrderEntity extends Entity<PurchaseOrderProps> {
       )
     }
     this.props.status = 'DELIVERED'
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
@@ -92,6 +106,7 @@ export class PurchaseOrderEntity extends Entity<PurchaseOrderProps> {
       throw new Error('Só pode cancelar pedidos com status DRAFT ou SENT')
     }
     this.props.status = 'CANCELLED'
+    this.validate()
     this.props.updatedAt = new Date()
   }
 }

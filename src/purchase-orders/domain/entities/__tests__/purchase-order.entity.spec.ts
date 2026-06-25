@@ -1,8 +1,12 @@
+import { EntityValidationError } from '@/shared/domain/errors'
 import { PurchaseOrderEntity } from '@/purchase-orders/domain/entities/purchase-order.entity'
 import {
   PurchaseOrderDataBuilder,
   PurchaseOrderDataBuilderProps,
 } from '@/purchase-orders/domain/testing/helpers/purchase-order-data-builder'
+
+const VALID_UUID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+const VALID_UUID_2 = 'b1cccd00-0d1c-4fa9-bc7e-7cc0ce491b22'
 
 describe('PurchaseOrderEntity', () => {
   let props: PurchaseOrderDataBuilderProps
@@ -38,8 +42,8 @@ describe('PurchaseOrderEntity', () => {
     const entity = new PurchaseOrderEntity({
       supplierId: props.supplierId,
       items: [
-        { productId: 'p1', quantity: 10, unitCost: 2000 },
-        { productId: 'p2', quantity: 5, unitCost: 1000 },
+        { productId: VALID_UUID, quantity: 10, unitCost: 2000 },
+        { productId: VALID_UUID_2, quantity: 5, unitCost: 1000 },
       ],
     })
 
@@ -50,7 +54,7 @@ describe('PurchaseOrderEntity', () => {
   it('should ignore totalCost passed in props and recalculate', () => {
     const entity = new PurchaseOrderEntity({
       supplierId: props.supplierId,
-      items: [{ productId: 'p1', quantity: 2, unitCost: 500 }],
+      items: [{ productId: VALID_UUID, quantity: 2, unitCost: 500 }],
       totalCost: 99999,
     })
 
@@ -126,5 +130,54 @@ describe('PurchaseOrderEntity', () => {
     expect(() => sut.cancel()).toThrow(
       'Só pode cancelar pedidos com status DRAFT ou SENT',
     )
+  })
+})
+
+// ── Testes de Validação ──
+describe('PurchaseOrderEntity validation', () => {
+  it('should throw when supplierId is invalid', () => {
+    const props = PurchaseOrderDataBuilder({ supplierId: 'invalid-uuid' })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when items is empty', () => {
+    const props = PurchaseOrderDataBuilder({ items: [] })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when items is invalid', () => {
+    const props = PurchaseOrderDataBuilder({
+      items: [{ productId: 'invalid-uuid', quantity: 1, unitCost: 100 }],
+    })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when quantity is negative', () => {
+    const props = PurchaseOrderDataBuilder({
+      items: [{ productId: VALID_UUID, quantity: -1, unitCost: 100 }],
+    })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when unitCost is negative', () => {
+    const props = PurchaseOrderDataBuilder({
+      items: [{ productId: VALID_UUID, quantity: 1, unitCost: -100 }],
+    })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when status is invalid', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const props = PurchaseOrderDataBuilder({ status: 'INVALID' as any })
+    expect(() => new PurchaseOrderEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should accept valid props', () => {
+    const props = PurchaseOrderDataBuilder({
+      supplierId: VALID_UUID,
+      items: [{ productId: VALID_UUID, quantity: 1, unitCost: 100 }],
+    })
+    const entity = new PurchaseOrderEntity(props)
+    expect(entity.supplierId).toBe(VALID_UUID)
   })
 })
