@@ -235,6 +235,38 @@
       margin-bottom: 10px;
     }
 
+    .challenge-card {
+      background: rgba(253, 203, 110, 0.07);
+      border: 1px solid rgba(253, 203, 110, 0.3);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 20px 0 28px;
+    }
+
+    .challenge-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--orange);
+      margin-bottom: 10px;
+    }
+
+    .challenge-card h4 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+    }
+
+    .challenge-card ol,
+    .challenge-card ul {
+      margin: 6px 0 10px;
+      padding-left: 22px;
+    }
+
+    .challenge-card li {
+      margin-bottom: 4px;
+    }
+
     /* ── Tables ── */
     table {
       width: 100%;
@@ -2201,6 +2233,66 @@ export class EntityValidationError extends Error {
   })
 })
 </code></pre>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Seu desafio</div>
+  <p>Após integrar a validação na <code>ProductEntity</code>, replique o mesmo padrão para os três módulos restantes. O fluxo é sempre o mesmo: schema Zod → Validator → Factory → integrar <code>validate()</code> na entidade.</p>
+
+  <h4>1. Testes de validação do Product (Passo 5)</h4>
+  <p>Adicione um segundo <code>describe</code> no arquivo <code>product.entity.spec.ts</code> para cobrir a integração com o validador Zod:</p>
+  <ul>
+    <li><code>name: ''</code> → deve lançar <code>EntityValidationError</code></li>
+    <li><code>sku: 'abc lowercase'</code> → deve lançar <code>EntityValidationError</code> (regex inválido)</li>
+    <li><code>price: -100</code> → deve lançar <code>EntityValidationError</code> (inteiro positivo)</li>
+    <li>props válidos com <code>sku: 'CAM-PT-M'</code> → deve criar sem erro</li>
+  </ul>
+
+  <h4>2. SupplierValidator</h4>
+  <p>Crie <code>src/suppliers/domain/validators/supplier.validator.ts</code> com schema Zod para:</p>
+  <ul>
+    <li><code>name</code>: string, 1–255 caracteres</li>
+    <li><code>cnpj</code>: string com formato <code>/^\d{14}$/</code> (14 dígitos numéricos)</li>
+    <li><code>email</code>: string email válido</li>
+    <li><code>phone</code>: string opcional</li>
+    <li><code>isActive</code>: boolean com default <code>true</code></li>
+  </ul>
+  <p>Depois integre <code>validate()</code> na <code>SupplierEntity</code> e adicione testes de validação no <code>supplier.entity.spec.ts</code>.</p>
+
+  <h4>3. StockValidator</h4>
+  <p>Crie <code>src/stock/domain/validators/stock.validator.ts</code> com schema Zod para:</p>
+  <ul>
+    <li><code>productId</code>: UUID válido</li>
+    <li><code>quantity</code>: inteiro maior ou igual a 0</li>
+    <li><code>minQuantity</code>: inteiro maior ou igual a 0</li>
+    <li><code>location</code>: string opcional, máx 100 caracteres</li>
+    <li><code>isActive</code>: boolean com default <code>true</code></li>
+  </ul>
+  <p>Depois integre <code>validate()</code> na <code>StockEntity</code> e adicione testes de validação no <code>stock.entity.spec.ts</code>.</p>
+
+  <h4>4. PurchaseOrderValidator</h4>
+  <p>Crie <code>src/purchase-orders/domain/validators/purchase-order.validator.ts</code> com schema Zod para:</p>
+  <ul>
+    <li><code>supplierId</code>: UUID válido</li>
+    <li><code>items</code>: array com pelo menos 1 item, cada item com:
+      <ul>
+        <li><code>productId</code>: UUID válido</li>
+        <li><code>quantity</code>: inteiro positivo</li>
+        <li><code>unitCost</code>: inteiro positivo (centavos)</li>
+      </ul>
+    </li>
+    <li><code>status</code>: enum <code>DRAFT | SENT | DELIVERED | CANCELLED</code></li>
+    <li><code>totalCost</code>: inteiro maior ou igual a 0</li>
+  </ul>
+  <p>Depois integre <code>validate()</code> na <code>PurchaseOrderEntity</code> e adicione testes de validação no <code>purchase-order.entity.spec.ts</code>.</p>
+
+  <p><strong>Dica:</strong> o padrão é sempre o mesmo. Para cada módulo:</p>
+  <ol>
+    <li>Crie <code>src/{modulo}/domain/validators/{modulo}.validator.ts</code></li>
+    <li>Exporte <code>{Modulo}Schema</code>, <code>{Modulo}Validated</code>, <code>{Modulo}Validator</code> e <code>{Modulo}ValidatorFactory</code></li>
+    <li>Adicione <code>private validate()</code> na entidade e chame no constructor e em todos os métodos de update</li>
+    <li>Adicione <code>describe('{Modulo}Entity validation')</code> no spec com testes de campos inválidos e válidos</li>
+  </ol>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 5 ══════════════════════════════ -->
 <h2 id="sec5">Seção 5 — Repository Pattern</h2>
