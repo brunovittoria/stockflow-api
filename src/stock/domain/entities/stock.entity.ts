@@ -1,4 +1,6 @@
 import { Entity } from '@/shared/domain/entities/entity'
+import { EntityValidationError } from '@/shared/domain/errors'
+import { StockValidatorFactory } from '@/stock/domain/validators/stock.validator'
 
 export interface StockProps {
   productId: string
@@ -21,6 +23,15 @@ export class StockEntity extends Entity<StockProps> {
       },
       id,
     )
+    this.validate()
+  }
+  private validate(): void {
+    const validator = StockValidatorFactory.create()
+    const isValid = validator.validate(this.props)
+
+    if (!isValid) {
+      throw new EntityValidationError(validator.errors)
+    }
   }
 
   // ── Getters ──
@@ -60,21 +71,25 @@ export class StockEntity extends Entity<StockProps> {
   // ── Métodos de atualização ──
   updateMinQuantity(value: number): void {
     this.props.minQuantity = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   deactivate(): void {
     this.props.isActive = false
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   activate(): void {
     this.props.isActive = true
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   addQuantity(amount: number): void {
     this.props.quantity += amount
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
@@ -83,11 +98,13 @@ export class StockEntity extends Entity<StockProps> {
     if (this.props.quantity < 0) {
       throw new Error('Quantity cannot be negative')
     }
+    this.validate()
     this.props.updatedAt = new Date()
   }
 
   updateLocation(value: string): void {
     this.props.location = value
+    this.validate()
     this.props.updatedAt = new Date()
   }
 }

@@ -1,5 +1,6 @@
 import { StockEntity, StockProps } from '@/stock/domain/entities/stock.entity'
 import { StockDataBuilder } from '@/stock/domain/testing/helpers/stock-data-builder'
+import { EntityValidationError } from '@/shared/domain/errors'
 
 describe('StockEntity', () => {
   let props: StockProps
@@ -116,5 +117,35 @@ describe('StockEntity', () => {
     sut.deactivate()
     sut.activate()
     expect(sut.isActive).toBe(true)
+  })
+})
+
+// ── Testes de Validação ──
+describe('StockEntity validation', () => {
+  it('should throw when productId is not a valid UUID', () => {
+    const props = StockDataBuilder({ productId: 'invalid-uuid' })
+    expect(() => new StockEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when quantity is negative', () => {
+    const props = StockDataBuilder({ quantity: -1 })
+    expect(() => new StockEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should throw when minQuantity is negative', () => {
+    const props = StockDataBuilder({ minQuantity: -1 })
+    expect(() => new StockEntity(props)).toThrow(EntityValidationError)
+  })
+
+  it('should accept quantity of zero (out of stock)', () => {
+    const props = StockDataBuilder({ quantity: 0 })
+    const entity = new StockEntity(props)
+    expect(entity.quantity).toBe(0)
+  })
+
+  it('should accept valid props', () => {
+    const props = StockDataBuilder({ quantity: 10, minQuantity: 5 })
+    const entity = new StockEntity(props)
+    expect(entity.productId).toBe(props.productId)
   })
 })
