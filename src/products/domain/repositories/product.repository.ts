@@ -1,5 +1,5 @@
 import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { ProductEntity } from '../entities/product.entity'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
 
 export interface ProductRepository extends SearchableRepositoryInterface<ProductEntity> {
   // Métodos específicos de Product (além do CRUD base)

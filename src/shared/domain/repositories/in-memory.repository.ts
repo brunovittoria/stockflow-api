@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { Entity } from '../entities/entity'
-import { RepositoryInterface } from './repository-contracts'
-import { NotFoundError } from '../errors/not-found-error'
+import { Entity } from '@/shared/domain/entities/entity'
+import { RepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
 
 export abstract class InMemoryRepository<
   E extends Entity<any>,
