@@ -38,11 +38,15 @@ export class SupplierInMemoryRepository
   }
 
   async findByCreatedAt(createdAt: Date): Promise<SupplierEntity[]> {
-    return this.items.filter((item) => item.createdAt === createdAt)
+    return this.items.filter(
+      (item) => item.createdAt.getTime() === createdAt.getTime(),
+    )
   }
 
   async findByUpdatedAt(updatedAt: Date): Promise<SupplierEntity[]> {
-    return this.items.filter((item) => item.updatedAt === updatedAt)
+    return this.items.filter(
+      (item) => item.updatedAt.getTime() === updatedAt.getTime(),
+    )
   }
 
   async findByCreatedAtAndUpdatedAt(
@@ -50,7 +54,9 @@ export class SupplierInMemoryRepository
     updatedAt: Date,
   ): Promise<SupplierEntity[]> {
     return this.items.filter(
-      (item) => item.createdAt === createdAt && item.updatedAt === updatedAt,
+      (item) =>
+        item.createdAt.getTime() === createdAt.getTime() &&
+        item.updatedAt.getTime() === updatedAt.getTime(),
     )
   }
 
