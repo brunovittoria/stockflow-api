@@ -1,0 +1,34 @@
+---
+description: Todo use case deve ter um docstring JSDoc no topo do arquivo
+alwaysApply: true
+---
+
+# Docstring em Use Cases
+
+Todo arquivo `*.usecase.ts` deve ter um comentário JSDoc antes do `namespace`, descrevendo:
+
+- O que o use case representa no mundo real
+- As regras de negócio aplicadas (se houver)
+- O fluxo numerado de execução
+
+## Exemplo
+
+```typescript
+/**
+ * CreateProductUseCase
+ *
+ * Registra um novo produto no sistema.
+ *
+ * Regras de negócio aplicadas:
+ *  - SKU deve ser único (lança ConflictError se já existir)
+ *  - Preço de venda deve ser maior que o preço de custo
+ *
+ * Fluxo:
+ *  1. Verifica se o SKU já está em uso
+ *  2. Valida a margem de lucro (price > costPrice)
+ *  3. Cria a entidade com isActive = true por padrão
+ *  4. Persiste via repositório
+ *  5. Retorna os dados do produto criado
+ */
+export namespace CreateProductUseCase {
+```

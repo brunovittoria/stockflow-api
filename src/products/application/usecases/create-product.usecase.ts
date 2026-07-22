@@ -3,6 +3,23 @@ import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { ConflictError } from '@/shared/domain/errors/conflict-error'
 
+/**
+ * CreateProductUseCase
+ *
+ * Registra um novo produto no sistema.
+ *
+ * Regras de negócio aplicadas:
+ *  - SKU deve ser único (lança ConflictError se já existir)
+ *  - Preço de venda deve ser maior que o preço de custo
+ *
+ * Fluxo:
+ *  1. Verifica se o SKU já está em uso
+ *  2. Valida a margem de lucro (price > costPrice)
+ *  3. Cria a entidade com isActive = true por padrão
+ *  4. Persiste via repositório
+ *  5. Retorna os dados do produto criado
+ */
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace CreateProductUseCase {
   export interface Input {
