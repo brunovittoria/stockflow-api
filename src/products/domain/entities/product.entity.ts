@@ -113,6 +113,12 @@ export class ProductEntity extends Entity<ProductProps> {
     this.props.updatedAt = new Date()
   }
 
+  updateCategory(value: string): void {
+    this.props.category = value
+    this.validate()
+    this.props.updatedAt = new Date()
+  }
+
   deactivate(): void {
     this.props.isActive = false
     this.validate()

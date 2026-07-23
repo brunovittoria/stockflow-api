@@ -1,0 +1,14 @@
+---
+description: Quando o type service do ESLint/TypeScript não reconhecer um método ou tipo recém-adicionado, pedir ao usuário para recarregar o TS Server no Cursor antes de aplicar workarounds como eslint-disable.
+alwaysApply: true
+---
+
+# Reload do TS Server no Cursor
+
+Quando um erro de lint como "Unsafe call of a type that could not be resolved" ou "Cannot find name" aparecer em um método ou tipo que foi **recém-adicionado** e o `tsc --noEmit` compilar sem erros, **não adicionar eslint-disable**.
+
+Em vez disso, pedir ao usuário:
+
+> "Faz o reload do TS Server no Cursor: `Cmd + Shift + P` → **TypeScript: Restart TS Server**"
+
+Isso resolve cache stale do language server e elimina falsos positivos do ESLint sem poluir o código com comentários de supressão desnecessários.
