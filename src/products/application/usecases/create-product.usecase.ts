@@ -59,7 +59,7 @@ export namespace CreateProductUseCase {
         throw new Error('Price must be greater than cost price')
       }
 
-      // Cria a entidade (validações do domínio rodam aqui)
+      // Cria a entidade (validações do domínio rodam aqui, caso falhe, a exceção é lançada)
       const entity = new ProductEntity({ ...input, isActive: true })
 
       // Persiste via repositório
