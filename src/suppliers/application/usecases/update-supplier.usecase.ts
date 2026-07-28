@@ -1,6 +1,7 @@
 import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
 import { SupplierRepository } from '@/suppliers/domain/repositories/supplier.repository'
 import { NotFoundError } from '@/shared/domain/errors'
+import { SupplierEntity } from '@/suppliers/domain/entities/supplier.entity'
 
 /**
  * UpdateSupplierUseCase
@@ -44,7 +45,9 @@ export namespace UpdateSupplierUseCase {
     constructor(private supplierRepository: SupplierRepository) {}
 
     async execute(input: Input): Promise<Output> {
-      const supplier = await this.supplierRepository.findById(input.id)
+      const supplier: SupplierEntity = await this.supplierRepository.findById(
+        input.id,
+      )
 
       if (!supplier) {
         throw new NotFoundError(`Supplier not found for id ${input.id}`)

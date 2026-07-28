@@ -69,6 +69,15 @@ export class StockEntity extends Entity<StockProps> {
   }
 
   // ── Métodos de atualização ──
+  updateQuantity(value: number): void {
+    if (value < 0) {
+      throw new Error('Quantity cannot be negative')
+    }
+    this.props.quantity = value
+    this.validate()
+    this.props.updatedAt = new Date()
+  }
+
   updateMinQuantity(value: number): void {
     this.props.minQuantity = value
     this.validate()
