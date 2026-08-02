@@ -2,6 +2,7 @@ import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-c
 import { PurchaseOrderRepository } from '../../domain/repositories/purchase-order.repository'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { PurchaseOrderStatus } from '@/purchase-orders/domain/entities/purchase-order.entity'
 
 /**
  * ReceiveDeliveryUseCase
@@ -28,7 +29,7 @@ export namespace ReceiveDeliveryUseCase {
 
   export interface Output {
     id: string
-    status: string
+    status: PurchaseOrderStatus
     updatedStockItems: Array<{ productId: string; newQuantity: number }>
   }
 
