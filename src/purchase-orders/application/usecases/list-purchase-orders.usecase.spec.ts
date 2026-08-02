@@ -21,7 +21,9 @@ describe('ListPurchaseOrdersUseCase', () => {
 
   it('should return all orders with default pagination', async () => {
     for (let i = 0; i < 3; i++) {
-      await repository.insert(new PurchaseOrderEntity(PurchaseOrderDataBuilder({})))
+      await repository.insert(
+        new PurchaseOrderEntity(PurchaseOrderDataBuilder({})),
+      )
     }
 
     const output = await sut.execute({})
@@ -38,13 +40,19 @@ describe('ListPurchaseOrdersUseCase', () => {
     const otherSupplierId = 'a87ff679-a2f3-471d-b9a4-c0a5e98d9e1a'
 
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({ supplierId: targetSupplierId })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({ supplierId: targetSupplierId }),
+      ),
     )
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({ supplierId: targetSupplierId })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({ supplierId: targetSupplierId }),
+      ),
     )
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({ supplierId: otherSupplierId })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({ supplierId: otherSupplierId }),
+      ),
     )
 
     const output = await sut.execute({ filter: targetSupplierId })
@@ -55,19 +63,43 @@ describe('ListPurchaseOrdersUseCase', () => {
 
   it('should sort orders by totalCost ascending', async () => {
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({
-        items: [{ productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', quantity: 10, unitCost: 5000 }],
-      })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({
+          items: [
+            {
+              productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+              quantity: 10,
+              unitCost: 5000,
+            },
+          ],
+        }),
+      ),
     )
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({
-        items: [{ productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', quantity: 1, unitCost: 1000 }],
-      })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({
+          items: [
+            {
+              productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+              quantity: 1,
+              unitCost: 1000,
+            },
+          ],
+        }),
+      ),
     )
     await repository.insert(
-      new PurchaseOrderEntity(PurchaseOrderDataBuilder({
-        items: [{ productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', quantity: 5, unitCost: 3000 }],
-      })),
+      new PurchaseOrderEntity(
+        PurchaseOrderDataBuilder({
+          items: [
+            {
+              productId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+              quantity: 5,
+              unitCost: 3000,
+            },
+          ],
+        }),
+      ),
     )
 
     const output = await sut.execute({ sort: 'totalCost', sortDir: 'asc' })
@@ -79,7 +111,9 @@ describe('ListPurchaseOrdersUseCase', () => {
 
   it('should paginate orders correctly', async () => {
     for (let i = 0; i < 5; i++) {
-      await repository.insert(new PurchaseOrderEntity(PurchaseOrderDataBuilder({})))
+      await repository.insert(
+        new PurchaseOrderEntity(PurchaseOrderDataBuilder({})),
+      )
     }
 
     const page1 = await sut.execute({ page: 1, perPage: 2 })
