@@ -5,10 +5,10 @@ import {
   SearchResult,
 } from '@/shared/domain/repositories/repository-contracts'
 import {
+  PurchaseOrderEntity,
   PurchaseOrderItem,
   PurchaseOrderStatus,
 } from '@/purchase-orders/domain/entities/purchase-order.entity'
-import { PurchaseOrderEntity } from '@/purchase-orders/domain/entities/purchase-order.entity'
 
 /**
  * ListPurchaseOrdersUseCase
