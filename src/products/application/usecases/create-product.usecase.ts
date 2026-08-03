@@ -35,6 +35,7 @@ export namespace CreateProductUseCase {
   export interface Output {
     id: string
     name: string
+    description: string
     sku: string
     price: number
     costPrice: number
@@ -42,6 +43,7 @@ export namespace CreateProductUseCase {
     supplierId: string
     isActive: boolean
     createdAt: Date
+    updatedAt: Date
   }
 
   export class UseCase implements UseCaseInterface<Input, Output> {
@@ -69,6 +71,7 @@ export namespace CreateProductUseCase {
       return {
         id: entity.id,
         name: entity.name,
+        description: entity.description,
         sku: entity.sku,
         price: entity.price,
         costPrice: entity.costPrice,
@@ -76,6 +79,7 @@ export namespace CreateProductUseCase {
         supplierId: entity.supplierId,
         isActive: entity.isActive,
         createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
       }
     }
   }

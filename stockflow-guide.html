@@ -2702,10 +2702,84 @@ describe('CreateProductUseCase', () =&gt; {
   <p>O curso registra os use cases como providers no módulo NestJS, cria DTOs de request, implementa o controller com todas as rotas, e escreve testes unitários para cada método do controller. O NestJS fica na camada mais externa — é um detalhe de infraestrutura.</p>
 </div>
 
-<h3>Passo 1 — DTO de criação</h3>
+<h3>Passo 1 — ZodValidationPipe (shared)</h3>
+
+<p class="file-path">src/shared/infrastructure/pipes/zod-validation.pipe.ts</p>
+<pre><code>import { PipeTransform, BadRequestException } from '@nestjs/common'
+import { ZodSchema } from 'zod'
+
+export class ZodValidationPipe implements PipeTransform {
+  constructor(private schema: ZodSchema) {}
+
+  transform(value: unknown) {
+    const result = this.schema.safeParse(value)
+
+    if (!result.success) {
+      const errors = result.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      }))
+      throw new BadRequestException({ message: 'Validation failed', errors })
+    }
+
+    return result.data
+  }
+}
+</code></pre>
+
+<h3>Passo 2 — DTOs com Zod</h3>
 
 <p class="file-path">src/products/infrastructure/dto/create-product.dto.ts</p>
-<pre><code>export class CreateProductDto {
+<pre><code>import { z } from 'zod'
+
+export const createProductSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().min(1, 'Description is required'),
+  sku: z.string().min(1, 'SKU is required'),
+  price: z.number().positive('Price must be positive'),
+  costPrice: z.number().positive('Cost price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  supplierId: z.string().uuid('Supplier ID must be a valid UUID'),
+})
+
+export type CreateProductDto = z.infer&lt;typeof createProductSchema&gt;
+</code></pre>
+
+<p class="file-path">src/products/infrastructure/dto/update-product.dto.ts</p>
+<pre><code>import { z } from 'zod'
+
+export const updateProductSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  price: z.number().positive(),
+  costPrice: z.number().positive(),
+  category: z.string().min(1),
+})
+
+export type UpdateProductDto = z.infer&lt;typeof updateProductSchema&gt;
+</code></pre>
+
+<p class="file-path">src/products/infrastructure/dto/list-products.dto.ts</p>
+<pre><code>import { z } from 'zod'
+
+export const listProductsSchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  perPage: z.coerce.number().int().positive().optional(),
+  sort: z.string().optional().nullable(),
+  sortDir: z.enum(['asc', 'desc']).optional().nullable(),
+  filter: z.string().optional().nullable(),
+})
+
+export type ListProductsDto = z.infer&lt;typeof listProductsSchema&gt;
+</code></pre>
+
+<h3>Passo 3 — Presenter</h3>
+
+<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
+<pre><code>import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
+
+export class ProductPresenter {
+  id: string
   name: string
   description: string
   sku: string
@@ -2713,25 +2787,48 @@ describe('CreateProductUseCase', () =&gt; {
   costPrice: number
   category: string
   supplierId: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+
+  constructor(output: ListProductsUseCase.ProductOutput) {
+    Object.assign(this, output)
+  }
+}
+
+export class ProductCollectionPresenter {
+  items: ProductPresenter[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+
+  constructor(output: ListProductsUseCase.Output) {
+    this.items = output.items.map((item) => new ProductPresenter(item))
+    this.total = output.total
+    this.currentPage = output.currentPage
+    this.perPage = output.perPage
+    this.lastPage = output.lastPage
+  }
 }
 </code></pre>
 
-<h3>Passo 2 — Controller</h3>
+<h3>Passo 4 — Controller</h3>
 
 <p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
 <pre><code>import {
   Controller, Get, Post, Put, Delete,
-  Param, Body, Query, HttpCode,
-  Inject,
+  Param, Body, Query, HttpCode, Inject,
 } from '@nestjs/common'
 import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
 import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
 import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
 import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
 import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
-import { CreateProductDto } from '../dto/create-product.dto'
-import { UpdateProductDto } from '../dto/update-product.dto'
-import { ListProductsDto } from '../dto/list-products.dto'
+import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
+import { createProductSchema, CreateProductDto } from '../dto/create-product.dto'
+import { updateProductSchema, UpdateProductDto } from '../dto/update-product.dto'
+import { listProductsSchema, ListProductsDto } from '../dto/list-products.dto'
 import { ProductPresenter, ProductCollectionPresenter } from '../presenters/product.presenter'
 
 @Controller('products')
@@ -2752,7 +2849,9 @@ export class ProductsController {
   private deleteUseCase: DeleteProductUseCase.UseCase
 
   @Post()
-  async create(@Body() dto: CreateProductDto) {
+  async create(
+    @Body(new ZodValidationPipe(createProductSchema)) dto: CreateProductDto,
+  ) {
     const output = await this.createUseCase.execute(dto)
     return new ProductPresenter(output)
   }
@@ -2764,13 +2863,18 @@ export class ProductsController {
   }
 
   @Get()
-  async search(@Query() params: ListProductsDto) {
+  async search(
+    @Query(new ZodValidationPipe(listProductsSchema)) params: ListProductsDto,
+  ) {
     const output = await this.listUseCase.execute(params)
     return new ProductCollectionPresenter(output)
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateProductSchema)) dto: UpdateProductDto,
+  ) {
     const output = await this.updateUseCase.execute({ id, ...dto })
     return new ProductPresenter(output)
   }
@@ -2783,7 +2887,7 @@ export class ProductsController {
 }
 </code></pre>
 
-<h3>Passo 3 — Module (registrar providers)</h3>
+<h3>Passo 5 — Module (registrar todos os providers)</h3>
 
 <p class="file-path">src/products/infrastructure/products.module.ts</p>
 <pre><code>import { Module } from '@nestjs/common'
@@ -2791,28 +2895,46 @@ import { ProductsController } from './controllers/products.controller'
 import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
 import { CreateProductUseCase } from '../application/usecases/create-product.usecase'
+import { GetProductUseCase } from '../application/usecases/get-product.usecase'
+import { ListProductsUseCase } from '../application/usecases/list-products.usecase'
+import { UpdateProductUseCase } from '../application/usecases/update-product.usecase'
+import { DeleteProductUseCase } from '../application/usecases/delete-product.usecase'
+import { ProductRepository } from '../domain/repositories/product.repository'
 
 @Module({
   controllers: [ProductsController],
   providers: [
     PrismaService,
-    // Bind da interface ao repositório concreto
     {
       provide: 'ProductRepository',
-      useFactory: (prisma: PrismaService) =&gt; {
-        return new ProductPrismaRepository(prisma)
-      },
+      useFactory: (prisma: PrismaService) => new ProductPrismaRepository(prisma),
       inject: [PrismaService],
     },
-    // Bind do use case
     {
       provide: CreateProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =&gt; {
-        return new CreateProductUseCase.UseCase(repo)
-      },
+      useFactory: (repo: ProductRepository) => new CreateProductUseCase.UseCase(repo),
       inject: ['ProductRepository'],
     },
-    // ... registrar os demais use cases
+    {
+      provide: GetProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository) => new GetProductUseCase.UseCase(repo),
+      inject: ['ProductRepository'],
+    },
+    {
+      provide: ListProductsUseCase.UseCase,
+      useFactory: (repo: ProductRepository) => new ListProductsUseCase.UseCase(repo),
+      inject: ['ProductRepository'],
+    },
+    {
+      provide: UpdateProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository) => new UpdateProductUseCase.UseCase(repo),
+      inject: ['ProductRepository'],
+    },
+    {
+      provide: DeleteProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository) => new DeleteProductUseCase.UseCase(repo),
+      inject: ['ProductRepository'],
+    },
   ],
 })
 export class ProductsModule {}

@@ -1,5 +1,5 @@
 import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { SupplierEntity } from '../entities/supplier.entity'
+import { SupplierEntity } from '@/suppliers/domain/entities/supplier.entity'
 
 export interface SupplierRepository extends SearchableRepositoryInterface<SupplierEntity> {
   findByName(name: string): Promise<SupplierEntity[]>

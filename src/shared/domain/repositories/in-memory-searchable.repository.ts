@@ -1,4 +1,4 @@
-import { Entity } from '../entities/entity'
+import { Entity } from '@/shared/domain/entities/entity'
 import {
   SearchableRepositoryInterface,
   SearchParams,

@@ -1,5 +1,5 @@
 import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
-import { StockEntity } from '../entities/stock.entity'
+import { StockEntity } from '@/stock/domain/entities/stock.entity'
 
 export interface StockRepository extends SearchableRepositoryInterface<StockEntity> {
   findByProductId(productId: string): Promise<StockEntity[]>
