@@ -10,18 +10,24 @@ import {
   HttpCode,
   Inject,
 } from '@nestjs/common'
-import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
-import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
-import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
-import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
-import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
+import {
+  CreateProductUseCase,
+  GetProductUseCase,
+  ListProductsUseCase,
+  UpdateProductUseCase,
+  DeleteProductUseCase,
+} from '@/products/application/usecases'
 import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
-import { createProductSchema } from '@/products/infrastructure/dto/create-product.dto'
-import type { CreateProductDto } from '@/products/infrastructure/dto/create-product.dto'
-import { updateProductSchema } from '@/products/infrastructure/dto/update-product.dto'
-import type { UpdateProductDto } from '@/products/infrastructure/dto/update-product.dto'
-import { listProductsSchema } from '@/products/infrastructure/dto/list-products.dto'
-import type { ListProductsDto } from '@/products/infrastructure/dto/list-products.dto'
+import {
+  createProductSchema,
+  updateProductSchema,
+  listProductsSchema,
+} from '@/products/infrastructure/dto'
+import type {
+  CreateProductDto,
+  UpdateProductDto,
+  ListProductsDto,
+} from '@/products/infrastructure/dto'
 import {
   ProductPresenter,
   ProductCollectionPresenter,

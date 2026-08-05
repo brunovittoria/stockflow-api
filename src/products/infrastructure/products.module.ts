@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common'
 import { ProductsController } from './controllers/products.controller'
 import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
-import { CreateProductUseCase } from '@/products/application/usecases/create-product.usecase'
-import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
-import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
-import { UpdateProductUseCase } from '@/products/application/usecases/update-product.usecase'
-import { DeleteProductUseCase } from '@/products/application/usecases/delete-product.usecase'
+import {
+  CreateProductUseCase,
+  GetProductUseCase,
+  ListProductsUseCase,
+  UpdateProductUseCase,
+  DeleteProductUseCase,
+} from '@/products/application/usecases'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 
 @Module({
