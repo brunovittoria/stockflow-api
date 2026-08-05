@@ -2940,6 +2940,47 @@ import { ProductRepository } from '../domain/repositories/product.repository'
 export class ProductsModule {}
 </code></pre>
 
+<div class="challenge-card">
+  <div class="label">🏋️ Controllers, DTOs e Modules para você implementar</div>
+  <p>Após implementar a camada NestJS de <code>Products</code>, replique o mesmo padrão para os três módulos restantes. O fluxo é sempre o mesmo: DTOs com Zod → Controller com <code>ZodValidationPipe</code> → Module registrando todos os use cases.</p>
+
+  <table>
+    <tr><th>Módulo</th><th>DTOs necessários</th><th>Rotas do Controller</th></tr>
+    <tr>
+      <td>Suppliers</td>
+      <td><code>create-supplier.dto.ts</code>, <code>update-supplier.dto.ts</code>, <code>list-suppliers.dto.ts</code></td>
+      <td>POST /, GET /:id, GET /, PUT /:id, DELETE /:id</td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>update-stock.dto.ts</code>, <code>list-stock.dto.ts</code></td>
+      <td>GET /:id, PUT /:id, GET /critical</td>
+    </tr>
+    <tr>
+      <td>PurchaseOrders</td>
+      <td><code>create-purchase-order.dto.ts</code>, <code>list-purchase-orders.dto.ts</code></td>
+      <td>POST /, GET /:id, GET /, PATCH /:id/cancel, PATCH /:id/receive</td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Criar <code>ZodValidationPipe</code> — já está em <code>@/shared/infrastructure/pipes/zod-validation.pipe.ts</code> ✅ (reutilize)</li>
+    <li>Criar os DTOs com schema Zod + <code>export type Dto = z.infer&lt;typeof schema&gt;</code></li>
+    <li>Criar o Presenter (ex: <code>SupplierPresenter</code>, <code>SupplierCollectionPresenter</code>)</li>
+    <li>Criar o Controller com <code>@Inject()</code> para cada use case + <code>ZodValidationPipe</code> em cada rota</li>
+    <li>Criar o Module registrando todos os use cases via <code>useFactory</code> + <code>inject: ['XxxRepository']</code></li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>Importe tipos de DTO com <code>import type { ... }</code> para compatibilidade com <code>emitDecoratorMetadata</code></li>
+    <li>Adicione <code>!</code> nos campos <code>@Inject()</code> (ex: <code>private createUseCase!: CreateSupplierUseCase.UseCase</code>)</li>
+    <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
+    <li>O Presenter define seu próprio type local (não depende do type de um use case específico)</li>
+  </ul>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 8 ══════════════════════════════ -->
 <h2 id="sec8">Seção 8 — Prisma ORM</h2>
 
