@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ProductsController } from './controllers/products.controller'
 import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
+import { StockPrismaRepository } from '@/stock/infrastructure/database/prisma/stock-prisma.repository'
 import {
   CreateProductUseCase,
   GetProductUseCase,
@@ -10,6 +11,7 @@ import {
   DeleteProductUseCase,
 } from '@/products/application/usecases'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 
 @Module({
   controllers: [ProductsController],
@@ -22,10 +24,18 @@ import { ProductRepository } from '@/products/domain/repositories/product.reposi
       inject: [PrismaService],
     },
     {
+      provide: 'StockRepository',
+      useFactory: (prisma: PrismaService) => new StockPrismaRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      // CreateProduct agora depende de ambos os repositórios para criar o estoque inicial
       provide: CreateProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =>
-        new CreateProductUseCase.UseCase(repo),
-      inject: ['ProductRepository'],
+      useFactory: (
+        productRepo: ProductRepository,
+        stockRepo: StockRepository,
+      ) => new CreateProductUseCase.UseCase(productRepo, stockRepo),
+      inject: ['ProductRepository', 'StockRepository'],
     },
     {
       provide: GetProductUseCase.UseCase,

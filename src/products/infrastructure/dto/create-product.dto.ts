@@ -8,6 +8,8 @@ export const createProductSchema = z.object({
   costPrice: z.number().positive('Cost price must be positive'),
   category: z.string().min(1, 'Category is required'),
   supplierId: z.string().uuid('Supplier ID must be a valid UUID'),
+  location: z.string().min(1, 'Location is required'),
+  minQuantity: z.number().int().min(0, 'Min quantity cannot be negative'),
 })
 
 export type CreateProductDto = z.infer<typeof createProductSchema>
