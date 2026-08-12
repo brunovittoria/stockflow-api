@@ -629,7 +629,7 @@
   <div class="section-label">Features</div>
   <a href="#sec12">Seção 12 — Presenters</a>
   <a href="#sec14">Seção 14 — Auth com JWT</a>
-  <a href="#sec15">Seção 15 — Swagger</a>
+  <a href="#sec15">Seção 15 — Swagger + Postman</a>
 
   <div class="section-label">Deploy</div>
   <a href="#sec16">Seção 16 — CI/CD + AWS</a>
@@ -1029,7 +1029,7 @@
   <div class="checklist-group">
     <div class="checklist-group-header">
       <span class="checklist-group-title">
-        Seções 15 e 16 — Swagger e Deploy
+        Seções 15 e 16 — Swagger + Postman e Deploy
         <span class="checklist-group-badge" id="badge-sec15">0/4</span>
       </span>
       <div class="checklist-mini-bar">
@@ -1039,7 +1039,7 @@
     <div class="checklist-items">
       <label class="checklist-item" id="item-s15-1">
         <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Configurar Swagger e documentar todos os endpoints</span>
+        <span class="checklist-item-label">Configurar Swagger, documentar todos os endpoints e criar collections no Postman</span>
       </label>
       <label class="checklist-item" id="item-s15-2">
         <input type="checkbox" data-group="sec15" onchange="updateProgress(this)">
@@ -1105,6 +1105,7 @@
   <tr><td>Jest</td><td>Testes unitários, integração e e2e</td></tr>
   <tr><td>JWT</td><td>Autenticação</td></tr>
   <tr><td>Swagger</td><td>Documentação da API</td></tr>
+  <tr><td>Postman</td><td>Collections para teste manual das rotas</td></tr>
   <tr><td>GitHub Actions</td><td>CI/CD</td></tr>
   <tr><td>AWS (EC2 + RDS)</td><td>Deploy em produção</td></tr>
 </table>
@@ -3596,7 +3597,7 @@ export class ProductsController {
 </code></pre>
 
 <!-- ══════════════════════════════ SEÇÃO 15 ══════════════════════════════ -->
-<h2 id="sec15">Seção 15 — Swagger</h2>
+<h2 id="sec15">Seção 15 — Swagger + Postman</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
@@ -3723,6 +3724,138 @@ async create(
   return new ProductPresenter(output)
 }
 </code></pre>
+
+<hr>
+
+<h3>Postman — Collections</h3>
+
+<div class="concept-card">
+  <div class="label">📬 O que é uma Collection no Postman</div>
+  <p>Uma collection é um conjunto de requisições HTTP salvas e organizadas por módulo. Ela permite testar todas as rotas da API manualmente sem precisar digitar URLs, headers ou bodies toda vez. É como um catálogo executável da API.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">💡 Como importar no Postman</div>
+  <p>No Postman, clique em <strong>Import</strong> → <strong>Raw text</strong> e cole o JSON abaixo. Ou salve como <code>stockflow.postman_collection.json</code> e importe o arquivo.</p>
+  <p>Configure uma variável de ambiente <code>base_url</code> com o valor <code>http://localhost:3000</code> para que todas as requisições funcionem automaticamente.</p>
+</div>
+
+<h4>Produtos</h4>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
+  <tr><td><code>POST</code></td><td><code>/products</code></td><td>Criar produto (inicializa estoque automaticamente)</td></tr>
+  <tr><td><code>GET</code></td><td><code>/products/:id</code></td><td>Buscar produto por ID</td></tr>
+  <tr><td><code>GET</code></td><td><code>/products?page=1&perPage=10&sort=name&sortDir=asc&filter=</code></td><td>Listar produtos com paginação e filtro</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/products/:id</code></td><td>Atualizar produto (SKU e supplierId são imutáveis)</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>Remover produto</td></tr>
+</table>
+
+<p class="file-path">Body — POST /products</p>
+<pre><code>{
+  "name": "Whey Protein 1kg",
+  "description": "Whey concentrado sabor chocolate",
+  "sku": "WHY-CH-1KG",
+  "price": 15990,
+  "costPrice": 8000,
+  "category": "Suplementos",
+  "supplierId": "&lt;uuid-do-fornecedor&gt;",
+  "location": "A1",
+  "minQuantity": 10
+}
+</code></pre>
+
+<p class="file-path">Body — PUT /products/:id</p>
+<pre><code>{
+  "name": "Whey Protein 1kg Atualizado",
+  "description": "Nova descrição",
+  "price": 17990,
+  "costPrice": 8500,
+  "category": "Suplementos"
+}
+</code></pre>
+
+<h4>Fornecedores</h4>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
+  <tr><td><code>POST</code></td><td><code>/suppliers</code></td><td>Criar fornecedor</td></tr>
+  <tr><td><code>GET</code></td><td><code>/suppliers/:id</code></td><td>Buscar fornecedor por ID</td></tr>
+  <tr><td><code>GET</code></td><td><code>/suppliers?page=1&perPage=10</code></td><td>Listar fornecedores</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/suppliers/:id</code></td><td>Atualizar fornecedor (CNPJ é imutável)</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>Remover fornecedor</td></tr>
+</table>
+
+<p class="file-path">Body — POST /suppliers</p>
+<pre><code>{
+  "name": "Distribuidora ABC",
+  "cnpj": "12345678000195",
+  "email": "contato@abc.com",
+  "phone": "11999998888"
+}
+</code></pre>
+
+<h4>Estoque</h4>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
+  <tr><td><code>GET</code></td><td><code>/stocks/critical</code></td><td>Listar estoques críticos (quantity &lt; minQuantity)</td></tr>
+  <tr><td><code>GET</code></td><td><code>/stocks/:id</code></td><td>Buscar estoque por ID</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/stocks/:id</code></td><td>Atualizar estoque (productId é imutável)</td></tr>
+</table>
+
+<div class="concept-card">
+  <div class="label">⚠️ Stock não tem POST</div>
+  <p>O estoque é criado automaticamente ao criar um produto (<code>POST /products</code>). Não existe rota <code>POST /stocks</code> — o estoque nasce com <code>quantity = 0</code> e cresce via <code>receive-delivery</code>.</p>
+</div>
+
+<p class="file-path">Body — PUT /stocks/:id</p>
+<pre><code>{
+  "quantity": 50,
+  "minQuantity": 10,
+  "location": "B3",
+  "isActive": true
+}
+</code></pre>
+
+<h4>Pedidos de Compra</h4>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders</code></td><td>Criar pedido (status inicial: DRAFT)</td></tr>
+  <tr><td><code>GET</code></td><td><code>/purchase-orders/:id</code></td><td>Buscar pedido por ID</td></tr>
+  <tr><td><code>GET</code></td><td><code>/purchase-orders?page=1&perPage=10</code></td><td>Listar pedidos com paginação</td></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/receive-delivery</code></td><td>Confirmar recebimento (requer status SENT)</td></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/cancel</code></td><td>Cancelar pedido (requer status DRAFT ou SENT)</td></tr>
+</table>
+
+<p class="file-path">Body — POST /purchase-orders</p>
+<pre><code>{
+  "supplierId": "&lt;uuid-do-fornecedor&gt;",
+  "items": [
+    {
+      "productId": "&lt;uuid-do-produto&gt;",
+      "quantity": 100,
+      "unitCost": 8000
+    },
+    {
+      "productId": "&lt;uuid-do-produto-2&gt;",
+      "quantity": 50,
+      "unitCost": 5000
+    }
+  ]
+}
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">🔄 Fluxo de status de um pedido</div>
+  <p>Um pedido passa pelos seguintes estados. As rotas abaixo representam as transições possíveis:</p>
+  <pre style="background:#1e1e2e;color:#cdd6f4;padding:1rem;border-radius:8px;font-size:0.85rem;">DRAFT ──→ SENT ──→ DELIVERED
+  │          │
+  └──────────┴──→ CANCELLED</pre>
+  <ul>
+    <li><strong>DRAFT → SENT</strong>: transição manual (fora do escopo desta API, ex: integração com fornecedor)</li>
+    <li><strong>SENT → DELIVERED</strong>: via <code>POST /purchase-orders/:id/receive-delivery</code></li>
+    <li><strong>DRAFT ou SENT → CANCELLED</strong>: via <code>POST /purchase-orders/:id/cancel</code></li>
+    <li><strong>DELIVERED e CANCELLED</strong>: são estados finais — não podem ser cancelados</li>
+  </ul>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 16 ══════════════════════════════ -->
 <h2 id="sec16">Seção 16 — CI/CD e Deploy na AWS</h2>
