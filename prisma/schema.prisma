@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  sku         String   @unique
+  price       Int                
+  costPrice   Int      @map("cost_price")
+  category    String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  supplierId  String   @map("supplier_id")
+
+  stock       Stock?
+  orderItems  PurchaseOrderItem[]
+
+  @@map("products")
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  cnpj      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model Stock {
+  id          String   @id @default(uuid())
+  quantity    Int      @default(0)
+  minQuantity Int      @default(10) @map("min_quantity")
+  location    String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String   @unique @map("product_id")
+
+  @@map("stocks")
+}
+
+model PurchaseOrder {
+  id        String              @id @default(uuid())
+  status    String              @default("DRAFT") 
+  totalCost Int                 @map("total_cost")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  supplier   Supplier           @relation(fields: [supplierId], references: [id])
+  supplierId String             @map("supplier_id")
+  items      PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  quantity        Int
+  unitCost        Int           @map("unit_cost")
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String        @map("purchase_order_id")
+
+  product         Product       @relation(fields: [productId], references: [id])
+  productId       String        @map("product_id")
+
+  @@map("purchase_order_items")
+}

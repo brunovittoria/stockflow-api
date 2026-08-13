@@ -58,3 +58,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # notes
 notes.txt
+/generated/prisma
+
+# AI editor skills/config (not relevant to the project)
+.claude/
+.windsurf/
+.cursor/

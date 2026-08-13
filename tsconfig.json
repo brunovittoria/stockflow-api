@@ -26,5 +26,5 @@
     "noFallthroughCasesInSwitch": false,
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma.config.ts", "prisma/seed.ts"]
 }

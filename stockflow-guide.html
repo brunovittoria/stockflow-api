@@ -618,7 +618,7 @@
 
   <div class="section-label">Infraestrutura</div>
   <a href="#sec7">Seção 7 — Camada NestJS</a>
-  <a href="#sec8">Seção 8 — Prisma ORM</a>
+  <a href="#sec8">Seção 8 — Prisma ORM + DB</a>
   <a href="#sec9">Seção 9 — Repositório Prisma</a>
 
   <div class="section-label">Testes</div>
@@ -876,8 +876,8 @@
   <div class="checklist-group">
     <div class="checklist-group-header">
       <span class="checklist-group-title">
-        Seção 8 — Prisma ORM
-        <span class="checklist-group-badge" id="badge-sec8">0/4</span>
+        Seção 8 — Prisma ORM + DB
+        <span class="checklist-group-badge" id="badge-sec8">0/6</span>
       </span>
       <div class="checklist-mini-bar">
         <div class="checklist-mini-bar-fill" id="bar-sec8" style="width:0%"></div>
@@ -899,6 +899,14 @@
       <label class="checklist-item" id="item-s8-4">
         <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
         <span class="checklist-item-label">Criar e configurar o <code>PrismaService</code> (módulo shared)</span>
+      </label>
+      <label class="checklist-item" id="item-s8-5">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Conectar ao banco no DBeaver e verificar as tabelas</span>
+      </label>
+      <label class="checklist-item" id="item-s8-6">
+        <input type="checkbox" data-group="sec8" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar o <code>prisma/seed.ts</code> e popular o banco com dados de exemplo</span>
       </label>
     </div>
   </div>
@@ -2983,7 +2991,7 @@ export class ProductsModule {}
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 8 ══════════════════════════════ -->
-<h2 id="sec8">Seção 8 — Prisma ORM</h2>
+<h2 id="sec8">Seção 8 — Prisma ORM + DB</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
@@ -3000,16 +3008,30 @@ services:
     image: postgres:15-alpine
     container_name: stockflow-db
     environment:
-      POSTGRES_USER: stockflow
-      POSTGRES_PASSWORD: stockflow123
-      POSTGRES_DB: stockflow_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
 
 volumes:
   pgdata:
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">⚠️ Credenciais no .env, não no docker-compose.yml</div>
+  <p>O Docker Compose lê automaticamente o arquivo <code>.env</code> da raiz do projeto. As variáveis <code>${POSTGRES_USER}</code> etc. são substituídas em tempo de execução — o arquivo <code>docker-compose.yml</code> não contém nenhuma senha e pode ir para o Git com segurança.</p>
+</div>
+
+<p class="file-path">.env</p>
+<pre><code>POSTGRES_USER=stockflow
+POSTGRES_PASSWORD=stockflow123
+POSTGRES_DB=stockflow_db
+POSTGRES_PORT=5432
+
+DATABASE_URL="postgresql://stockflow:stockflow123@localhost:5432/stockflow_db?schema=public"
 </code></pre>
 
 <pre><code># Subir o banco
@@ -3126,6 +3148,153 @@ model PurchaseOrderItem {
 <pre><code># Rodar migration
 npx prisma migrate dev --name init
 </code></pre>
+
+<h3>Passo 3 — Acessar o banco no DBeaver</h3>
+
+<div class="concept-card">
+  <div class="label">🛢️ O que é o DBeaver</div>
+  <p>DBeaver é um cliente de banco de dados visual — permite navegar pelas tabelas, ver os dados, rodar queries SQL e verificar se as migrations criaram a estrutura correta. É gratuito e suporta PostgreSQL, MySQL, SQLite e muitos outros.</p>
+  <p>Download: <strong>dbeaver.io/download</strong> → versão <strong>Community Edition</strong></p>
+</div>
+
+<h4>Configurando a conexão</h4>
+
+<p>Após instalar e abrir o DBeaver, crie uma nova conexão:</p>
+
+<ol>
+  <li>Clique em <strong>Nova Conexão</strong> (ícone de tomada) → selecione <strong>PostgreSQL</strong></li>
+  <li>Preencha os campos com os valores do seu <code>.env</code>:</li>
+</ol>
+
+<table>
+  <tr><th>Campo</th><th>Valor</th></tr>
+  <tr><td>Host</td><td><code>localhost</code></td></tr>
+  <tr><td>Port</td><td><code>5432</code></td></tr>
+  <tr><td>Database</td><td><code>stockflow_db</code></td></tr>
+  <tr><td>Username</td><td><code>stockflow</code></td></tr>
+  <tr><td>Password</td><td><code>stockflow123</code></td></tr>
+</table>
+
+<ol start="3">
+  <li>Clique em <strong>Test Connection</strong> — se aparecer "Connected", está funcionando</li>
+  <li>Clique em <strong>Finish</strong></li>
+</ol>
+
+<div class="concept-card">
+  <div class="label">💡 O que verificar após a migration</div>
+  <p>Após rodar <code>npx prisma migrate dev --name init</code>, expanda a conexão no DBeaver e navegue até <strong>stockflow_db → Schemas → public → Tables</strong>. Você deve ver as tabelas criadas pelo Prisma:</p>
+  <ul>
+    <li><code>products</code></li>
+    <li><code>suppliers</code></li>
+    <li><code>stocks</code></li>
+    <li><code>purchase_orders</code></li>
+    <li><code>purchase_order_items</code></li>
+    <li><code>_prisma_migrations</code> (tabela interna do Prisma para controlar quais migrations já rodaram)</li>
+  </ul>
+</div>
+
+<div class="concept-card">
+  <div class="label">⚠️ Banco precisa estar rodando</div>
+  <p>O DBeaver só consegue conectar se o container Docker estiver ativo. Antes de abrir o DBeaver, certifique-se de que <code>docker compose up -d</code> foi executado e que o container <code>stockflow-db</code> está rodando.</p>
+  <p>Para verificar: <code>docker ps</code> — o container <code>stockflow-db</code> deve aparecer com status <strong>Up</strong>.</p>
+</div>
+
+<h3>Passo 4 — Seeds</h3>
+
+<div class="concept-card">
+  <div class="label">🌱 O que é uma seed</div>
+  <p>Seed é um script que popula o banco com dados iniciais de exemplo. Útil para desenvolvimento e testes manuais — sem seed você teria que inserir dados na mão toda vez que resetar o banco.</p>
+  <p>O Prisma executa a seed com <code>npx prisma db seed</code> e sabe qual arquivo rodar pela configuração no <code>prisma.config.ts</code>.</p>
+</div>
+
+<pre><code># Instalar tsx (necessário para rodar TypeScript diretamente)
+pnpm add -D tsx
+</code></pre>
+
+<p class="file-path">prisma.config.ts — adicionar seed ao bloco migrations</p>
+<pre><code>import 'dotenv/config'
+import { defineConfig, env } from 'prisma/config'
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: {
+    path: 'prisma/migrations',
+    seed: 'tsx prisma/seed.ts',  // ← indica qual arquivo rodar
+  },
+  datasource: {
+    url: env('DATABASE_URL'),
+  },
+})
+</code></pre>
+
+<p class="file-path">prisma/seed.ts</p>
+<pre><code>import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('🌱 Seeding database...')
+
+  // Fornecedores
+  const supplierA = await prisma.supplier.upsert({
+    where: { cnpj: '12345678000195' },
+    update: {},
+    create: {
+      name: 'Distribuidora Fitness ABC',
+      cnpj: '12345678000195',
+      email: 'contato@fitabc.com',
+      phone: '11999998888',
+    },
+  })
+
+  // Produtos com estoque inicial (quantity = 0)
+  const whey = await prisma.product.upsert({
+    where: { sku: 'WHY-CH-1KG' },
+    update: {},
+    create: {
+      name: 'Whey Protein 1kg Chocolate',
+      description: 'Whey concentrado sabor chocolate',
+      sku: 'WHY-CH-1KG',
+      price: 15990,
+      costPrice: 8000,
+      category: 'Suplementos',
+      supplierId: supplierA.id,
+      stock: {
+        create: { quantity: 0, minQuantity: 10, location: 'A1' },
+      },
+    },
+  })
+
+  // Pedido de compra em DRAFT
+  await prisma.purchaseOrder.create({
+    data: {
+      supplierId: supplierA.id,
+      status: 'DRAFT',
+      totalCost: 100 * 8000,
+      items: {
+        create: [{ productId: whey.id, quantity: 100, unitCost: 8000 }],
+      },
+    },
+  })
+
+  console.log('🎉 Seed concluído!')
+}
+
+main()
+  .catch((e) => { console.error(e); process.exit(1) })
+  .finally(() => prisma.$disconnect())
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 upsert vs create</div>
+  <p>O seed usa <code>upsert</code> (update + insert) para fornecedores e produtos — se o registro já existir (ex: ao rodar o seed pela segunda vez), ele não recria. Para o pedido de compra usamos <code>create</code> porque cada execução pode gerar um pedido novo.</p>
+</div>
+
+<pre><code># Rodar a seed
+npx prisma db seed
+</code></pre>
+
+<p>Após rodar, abra o DBeaver, clique com o botão direito na tabela <strong>suppliers</strong> → <strong>Refresh</strong> e verá os dados inseridos.</p>
 
 <!-- ══════════════════════════════ SEÇÃO 9 ══════════════════════════════ -->
 <h2 id="sec9">Seção 9 — Repositório Prisma</h2>
@@ -4073,7 +4242,7 @@ jobs:
     sec5:  { total: 4 },
     sec6:  { total: 5 },
     sec7:  { total: 4 },
-    sec8:  { total: 4 },
+    sec8:  { total: 6 },
     sec9:  { total: 3 },
     sec10: { total: 3 },
     sec12: { total: 3 },
