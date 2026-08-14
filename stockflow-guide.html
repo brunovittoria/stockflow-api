@@ -3461,6 +3461,48 @@ export class ProductPrismaRepository implements ProductRepository {
 }
 </code></pre>
 
+<div class="challenge-card">
+  <div class="label">🏋️ ModelMapper e Repositórios Prisma para você implementar</div>
+  <p>Após implementar o <code>ProductPrismaRepository</code>, replique o mesmo padrão para os três módulos restantes. O fluxo é sempre o mesmo: <code>ModelMapper</code> traduzindo Prisma ↔ Entidade → <code>PrismaRepository</code> implementando o contrato do domínio.</p>
+
+  <table>
+    <tr><th>Módulo</th><th>Arquivos a criar</th><th>Métodos específicos além do CRUD</th></tr>
+    <tr>
+      <td>Suppliers</td>
+      <td><code>supplier-model.mapper.ts</code><br><code>supplier-prisma.repository.ts</code></td>
+      <td><code>findByCnpj</code>, <code>findByName</code></td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>stock-model.mapper.ts</code><br><code>stock-prisma.repository.ts</code></td>
+      <td><code>findByProductId</code>, <code>findBelowMinQuantity</code>, <code>findByLocation</code></td>
+    </tr>
+    <tr>
+      <td>PurchaseOrders</td>
+      <td><code>purchase-order-model.mapper.ts</code><br><code>purchase-order-prisma.repository.ts</code></td>
+      <td><code>findBySupplierId</code>, <code>findByStatus</code></td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Criar o <code>ModelMapper</code> com método estático <code>toEntity(model)</code> — instancia a entidade passando o <code>model.id</code> como segundo argumento</li>
+    <li>Criar o <code>PrismaRepository</code> implementando a interface do domínio (ex: <code>implements SupplierRepository</code>)</li>
+    <li>Implementar <code>insert</code>, <code>findById</code>, <code>update</code>, <code>delete</code>, <code>search</code> e todos os <code>findBy*</code> específicos do contrato</li>
+    <li>No <code>insert</code>, sempre passar o <code>id: entity.id</code> explicitamente — o banco não gera IDs, a entidade já gerou</li>
+    <li>No <code>search</code>, usar <code>Promise.all([findMany, count])</code> para buscar itens e total em paralelo</li>
+    <li>Registrar o repositório no <code>XxxModule</code> trocando o <code>InMemoryRepository</code> pelo novo <code>PrismaRepository</code></li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>O <code>PurchaseOrderPrismaRepository</code> precisa incluir <code>items</code> nas queries — use <code>include: { items: true }</code> no <code>findById</code> e <code>findMany</code></li>
+    <li>No mapper de <code>PurchaseOrder</code>, os <code>items</code> vêm do Prisma como <code>PurchaseOrderItem[]</code> — mapeie cada item para o formato da entidade <code>{ productId, quantity, unitCost }</code></li>
+    <li>No <code>StockPrismaRepository</code>, o método <code>findBelowMinQuantity</code> usa um filtro Prisma com campo calculado — use <code>prisma.$queryRaw</code> ou compare campos diretamente: <code>where: { quantity: { lt: prisma.stock.fields.minQuantity } }</code> não funciona; o mais simples é buscar todos e filtrar em memória, ou usar <code>prisma.$queryRaw</code></li>
+    <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
+  </ul>
+</div>
+
 <!-- ══════════════════════════════ SEÇÕES 10-11 ══════════════════════════════ -->
 <h2 id="sec10">Seções 10 e 11 — Testes de Integração com Prisma</h2>
 
