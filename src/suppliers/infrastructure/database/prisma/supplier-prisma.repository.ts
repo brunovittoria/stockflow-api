@@ -40,17 +40,17 @@ export class SupplierPrismaRepository implements SupplierRepository {
 
   async findByName(name: string): Promise<SupplierEntity[]> {
     const models = await this.prisma.supplier.findMany({
-      where: { name },
+      where: { name: { contains: name, mode: 'insensitive' } },
     })
 
     return models.map((model) => SupplierModelMapper.toEntity(model))
   }
 
   async findByCnpj(cnpj: string): Promise<SupplierEntity[]> {
-    const models = await this.prisma.supplier.findMany({
+    const model = await this.prisma.supplier.findUnique({
       where: { cnpj },
     })
-    return models.map((model) => SupplierModelMapper.toEntity(model))
+    return model ? [SupplierModelMapper.toEntity(model)] : []
   }
 
   async findByEmail(email: string): Promise<SupplierEntity[]> {
@@ -110,9 +110,7 @@ export class SupplierPrismaRepository implements SupplierRepository {
         name: entity.name,
         email: entity.email,
         phone: entity.phone,
-        cnpj: entity.cnpj,
         isActive: entity.isActive,
-        createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
       },
     })
