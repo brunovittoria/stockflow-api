@@ -3508,28 +3508,127 @@ export class ProductPrismaRepository implements ProductRepository {
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso cria testes de integração que usam o banco real (PostgreSQL via Docker) para validar que os repositórios Prisma e os use cases funcionam corretamente com persistência real. Cada teste limpa o banco antes de rodar.</p>
+  <p>O curso cria testes de integração que usam o banco real (PostgreSQL via Docker) para validar que os repositórios Prisma funcionam corretamente com persistência real. Cada teste limpa o banco antes de rodar.</p>
 </div>
 
-<h3>Setup de teste com banco real</h3>
+<div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Atenção — nunca rode os testes contra o banco de desenvolvimento</div>
+  <p>O <code>cleanDatabase()</code> apaga <strong>todas as tabelas</strong> antes de cada teste. Se rodar contra o banco de dev (<code>stockflow_db</code>), você perde todos os seus dados de seed. A solução é um banco separado exclusivo para testes.</p>
+</div>
+
+<h3>Passo 1 — Criar o arquivo <code>.env.test</code></h3>
+
+<p>Crie na raiz do projeto um arquivo <code>.env.test</code> apontando para um banco separado:</p>
+
+<p class="file-path">.env.test</p>
+<pre><code>DATABASE_URL="postgresql://stockflow:stockflow123@localhost:5432/stockflow_test_db?schema=public"
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Como funciona</div>
+  <p>O <code>setup-prisma-tests.ts</code> chama <code>config({ path: '.env.test', override: true })</code> no início do arquivo. Isso garante que qualquer <code>DATABASE_URL</code> já definida no ambiente seja substituída pela URL do banco de teste — independente de onde os testes são executados.</p>
+</div>
+
+<h3>Passo 2 — Criar o banco de teste no Docker</h3>
+
+<p>Com o container do Docker rodando (<code>docker compose up -d</code>), crie o banco de teste:</p>
+
+<pre><code>docker exec -it stockflow-db psql -U stockflow -d stockflow_db -c "CREATE DATABASE stockflow_test_db;"
+</code></pre>
+
+<p>Você só precisa fazer isso uma vez. O banco persiste enquanto o container existir.</p>
+
+<h3>Passo 3 — Rodar as migrations no banco de teste</h3>
+
+<p>O banco de teste precisa ter as mesmas tabelas que o banco de desenvolvimento. O script <code>migrate:test</code> usa o <code>dotenv-cli</code> para injetar o <code>.env.test</code> diretamente no processo do Prisma — sem que o <code>prisma.config.ts</code> interfira:</p>
+
+<pre><code>pnpm migrate:test
+</code></pre>
+
+<p class="file-path">package.json (trecho)</p>
+<pre><code>"migrate:test": "DOTENV_FILE=.env.test npx prisma db push"
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Por que usar dotenv-cli?</div>
+  <p>A engine do Prisma CLI carrega o <code>prisma.config.ts</code> com seu próprio mecanismo, onde qualquer <code>import 'dotenv/config'</code> sobrescreve variáveis passadas externamente. A solução é fazer o <strong>próprio <code>prisma.config.ts</code> decidir qual <code>.env</code> carregar</strong> com base em <code>DOTENV_FILE</code>. Por padrão carrega <code>.env</code>; quando <code>DOTENV_FILE=.env.test</code> é setado antes do comando, o Prisma conecta ao banco de teste. O <code>--skip-generate</code> evita regenerar o client desnecessariamente.</p>
+</div>
+
+<p>Repita este comando sempre que criar novas migrations.</p>
+
+<h3>Passo 4 — Setup do Prisma para testes</h3>
+
+<p>O arquivo de setup instancia o Prisma com o adapter correto (Prisma 7) e exporta o utilitário <code>cleanDatabase</code>:</p>
 
 <p class="file-path">src/shared/infrastructure/database/prisma/testing/setup-prisma-tests.ts</p>
-<pre><code>import { PrismaClient } from '@prisma/client'
+<pre><code>import { config } from 'dotenv'
+import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 
-const prisma = new PrismaClient()
+// Load .env.test so integration tests always use the test database
+config({ path: '.env.test', override: true })
 
-// Limpar todas as tabelas antes dos testes
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+})
+
+const prisma = new PrismaClient({ adapter })
+
+// Order respects FK constraints: items → orders → stocks → products → suppliers
 export async function cleanDatabase() {
   await prisma.purchaseOrderItem.deleteMany()
   await prisma.purchaseOrder.deleteMany()
   await prisma.stock.deleteMany()
   await prisma.product.deleteMany()
   await prisma.supplier.deleteMany()
-  await prisma.user.deleteMany()
 }
 
 export { prisma }
 </code></pre>
+
+<h3>Passo 5 — Script para rodar os testes de integração</h3>
+
+<p>Adicione o script no <code>package.json</code>:</p>
+
+<p class="file-path">package.json (trecho)</p>
+<pre><code>"test:integration": "jest --testPathPattern=prisma.repository.spec --runInBand"
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Por que <code>--runInBand</code>?</div>
+  <p>Por padrão o Jest executa suítes em paralelo (workers). Nos testes de integração isso causaria conflito: dois testes rodando ao mesmo tempo no mesmo banco, um limpando os dados que o outro acabou de inserir. O <code>--runInBand</code> força execução serial — um spec termina antes do próximo começar.</p>
+</div>
+
+<p>Para rodar:</p>
+<pre><code>pnpm test:integration
+</code></pre>
+
+<h3>Passo 6 — Visualizar o banco de teste no DBeaver</h3>
+
+<p>Após rodar os testes, você pode inspecionar o banco de teste no DBeaver para confirmar que as tabelas foram criadas e entender o estado do banco entre execuções.</p>
+
+<p>No DBeaver, clique com o botão direito em <strong>Database Navigator → New Connection</strong> e preencha:</p>
+
+<table>
+  <tr><th>Campo</th><th>Valor</th></tr>
+  <tr><td>Host</td><td><code>localhost</code></td></tr>
+  <tr><td>Port</td><td><code>5432</code></td></tr>
+  <tr><td>Database</td><td><code>stockflow_test_db</code></td></tr>
+  <tr><td>Username</td><td><code>stockflow</code> (ou o valor do seu <code>POSTGRES_USER</code>)</td></tr>
+  <tr><td>Password</td><td>o valor do seu <code>POSTGRES_PASSWORD</code></td></tr>
+</table>
+
+<div class="concept-card">
+  <div class="label">💡 O que você vai ver no DBeaver após os testes</div>
+  <p>O banco de teste tem as mesmas tabelas que o banco de desenvolvimento (<code>pnpm migrate:test</code> cria a estrutura). A diferença é que o <code>cleanDatabase()</code> apaga todos os registros antes de cada teste — então ao inspecionar <strong>depois</strong> que os testes terminam, as tabelas estarão vazias. Isso é esperado e correto.</p>
+</div>
+
+<div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Lembre-se de executar <code>pnpm migrate:test</code> novamente após novas migrations</div>
+  <p>Sempre que criar uma nova migration no banco de desenvolvimento, rode <code>pnpm migrate:test</code> para manter o banco de teste em sincronia com o schema.</p>
+</div>
+
+<h3>Exemplo de teste de integração</h3>
 
 <h3>Teste de integração do repositório</h3>
 
@@ -3583,6 +3682,48 @@ describe('ProductPrismaRepository integration tests', () =&gt; {
   })
 })
 </code></pre>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Testes de integração para você implementar</div>
+  <p>Após implementar e entender o teste de integração do <code>ProductPrismaRepository</code>, replique o mesmo padrão para os três módulos restantes. O fluxo é sempre o mesmo: limpar o banco no <code>beforeEach</code> → criar dependências necessárias (FKs) → executar o método do repositório → verificar o resultado direto no banco.</p>
+
+  <table>
+    <tr><th>Repositório</th><th>Arquivo do teste</th><th>Cuidados especiais</th></tr>
+    <tr>
+      <td>Supplier</td>
+      <td><code>supplier-prisma.repository.spec.ts</code></td>
+      <td>Sem dependências de FK — é a raiz. Testar <code>findByCnpj</code> e <code>findByName</code>.</td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>stock-prisma.repository.spec.ts</code></td>
+      <td>Requer supplier + product criados antes. Testar <code>findBelowMinQuantity</code> inserindo stocks com <code>quantity &lt; minQuantity</code>.</td>
+    </tr>
+    <tr>
+      <td>PurchaseOrder</td>
+      <td><code>purchase-order-prisma.repository.spec.ts</code></td>
+      <td>Requer supplier + product criados antes. Lembre que <code>items</code> são criados de forma aninhada — verifique com <code>include: { items: true }</code> no <code>findUnique</code>.</td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Importar <code>cleanDatabase</code> e <code>prisma</code> de <code>setup-prisma-tests.ts</code></li>
+    <li>Chamar <code>cleanDatabase()</code> no <code>beforeEach</code> — nunca no <code>afterEach</code></li>
+    <li>Chamar <code>prisma.$disconnect()</code> no <code>afterAll</code></li>
+    <li>Para módulos com FK (Stock, PurchaseOrder), criar as dependências direto no Prisma dentro do teste — sem usar o repositório da dependência</li>
+    <li>Cobrir pelo menos: <code>insert</code>, <code>findById</code>, <code>update</code> e os <code>findBy*</code> específicos do contrato</li>
+    <li>Para <code>findById</code> com ID inexistente, verificar que lança <code>NotFoundError</code></li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>O Docker precisa estar rodando — sem banco real, todos os testes de integração falham</li>
+    <li>Use <code>jest --testPathPattern=prisma.repository.spec</code> para rodar só os testes de integração</li>
+    <li>O <code>setup-prisma-tests.ts</code> precisa usar o <code>PrismaPg</code> adapter (Prisma 7) — assim como o <code>PrismaService</code></li>
+    <li>A ordem do <code>cleanDatabase</code> importa: delete <code>purchaseOrderItem</code> → <code>purchaseOrder</code> → <code>stock</code> → <code>product</code> → <code>supplier</code> (respeitando FKs)</li>
+  </ul>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 12 ══════════════════════════════ -->
 <h2 id="sec12">Seção 12 — Presenters</h2>

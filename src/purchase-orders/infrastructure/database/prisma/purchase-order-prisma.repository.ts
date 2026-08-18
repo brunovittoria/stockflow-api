@@ -102,9 +102,8 @@ export class PurchaseOrderPrismaRepository implements PurchaseOrderRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.purchaseOrder.delete({
-      where: { id },
-    })
+    await this.prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } })
+    await this.prisma.purchaseOrder.delete({ where: { id } })
   }
 
   async search(
