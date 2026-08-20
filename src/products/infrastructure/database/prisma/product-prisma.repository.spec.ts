@@ -35,12 +35,18 @@ describe('ProductPrismaRepository integration tests', () => {
       })
 
       const entity = new ProductEntity(
-        ProductDataBuilder({ supplierId: supplier.id, price: 5000, costPrice: 2000 }),
+        ProductDataBuilder({
+          supplierId: supplier.id,
+          price: 5000,
+          costPrice: 2000,
+        }),
       )
 
       await repository.insert(entity)
 
-      const found = await prisma.product.findUnique({ where: { id: entity.id } })
+      const found = await prisma.product.findUnique({
+        where: { id: entity.id },
+      })
 
       expect(found).toBeDefined()
       expect(found!.name).toBe(entity.name)
@@ -60,7 +66,11 @@ describe('ProductPrismaRepository integration tests', () => {
       })
 
       const entity = new ProductEntity(
-        ProductDataBuilder({ supplierId: supplier.id, price: 5000, costPrice: 2000 }),
+        ProductDataBuilder({
+          supplierId: supplier.id,
+          price: 5000,
+          costPrice: 2000,
+        }),
       )
       await repository.insert(entity)
 
