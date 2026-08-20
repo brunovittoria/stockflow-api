@@ -985,15 +985,15 @@
     <div class="checklist-items">
       <label class="checklist-item" id="item-s12-1">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Criar presenters para formatar o output das respostas</span>
+        <span class="checklist-item-label">Criar presenters de Product (item + coleção) e replicar para os demais módulos</span>
       </label>
       <label class="checklist-item" id="item-s12-2">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Configurar ambiente de testes E2E com banco real</span>
+        <span class="checklist-item-label">Criar interceptor WrapperData, filters 404/409 e applyGlobalConfig</span>
       </label>
       <label class="checklist-item" id="item-s12-3">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Escrever testes E2E para os endpoints de Product</span>
+        <span class="checklist-item-label">Escrever testes E2E de Product e replicar para os demais módulos</span>
       </label>
     </div>
   </div>
@@ -1069,6 +1069,13 @@
 <h2 id="intro">Introdução</h2>
 
 <p>Este documento é um guia passo a passo para construir a <strong>StockFlow API</strong> — um sistema de gerenciamento de loja virtual que controla produtos, estoque, fornecedores e pedidos de compra. O projeto aplica os mesmos conceitos do curso de NestJS com Clean Architecture, mas em um domínio diferente para fixar o aprendizado.</p>
+
+<div class="concept-card">
+  <div class="label">📝 Como este documento foi criado</div>
+  <p>O conteúdo da StockFlow não foi inventado do zero. Ele foi extraído do curso de NestJS na Udemy, aula por aula, e depois reorganizado para um domínio de loja virtual.</p>
+  <p>A extração foi feita com o <strong>plugin do Cloud Code no Chrome</strong>: em cada ação do curso (criar entidade, montar use case, ligar Prisma, escrever teste, etc.), o plugin gerava um resumo do que estava sendo feito naquela aula. Esses resumos viraram o mapa das seções — o que o curso ensina, em que ordem, e o que cada etapa produz.</p>
+  <p>Com essa base, o material foi separado por camada (domínio, aplicação, infraestrutura, testes, auth, docs, deploy) e traduzido para a StockFlow: o <code>User</code> do curso vira <code>Product</code>, <code>Supplier</code>, <code>Stock</code> e <code>PurchaseOrder</code>. Cada seção deste guia segue o mesmo fluxo da aula original, com o card <em>O que o curso ensina</em> e o desafio correspondente no domínio da loja.</p>
+</div>
 
 <h3>O que você vai construir</h3>
 
@@ -3730,53 +3737,333 @@ describe('ProductPrismaRepository integration tests', () =&gt; {
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso cria classes <code>Presenter</code> para formatar a resposta ao cliente. O <code>UserPresenter</code> seleciona quais campos retornar, o <code>PaginationPresenter</code> formata metadados de paginação, e o <code>CollectionPresenter</code> junta ambos para listagens.</p>
+  <p>O curso cria classes <code>Presenter</code> para formatar a resposta HTTP. O <code>UserPresenter</code> escolhe quais campos o cliente recebe, o <code>PaginationPresenter</code> formata metadados de paginação, e o <code>CollectionPresenter</code> junta os dois para listagens.</p>
 </div>
 
-<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
-<pre><code>import { Transform } from 'class-transformer'
+<div class="concept-card">
+  <div class="label">💡 Por que o presenter existe</div>
+  <p>O use case devolve um objeto de domínio (output). O controller <strong>não</strong> devolve esse objeto cru. Ele passa o output para um presenter, que monta exatamente o JSON da API.</p>
+  <p>Isso permite esconder campos internos, formatar valores (centavos → reais, Date → ISO) e mudar a resposta sem tocar no use case.</p>
+</div>
 
-export class ProductPresenter {
+<pre><code>Cliente HTTP
+    ↑ JSON
+Controller  →  new ProductPresenter(output)
+    ↑ output
+Use Case    →  entidade / dados de negócio
+    ↑
+Repository  →  banco
+</code></pre>
+
+<h3>Passo 1 — Tipos locais (sem acoplar a um use case)</h3>
+
+<p>O presenter define o próprio contrato de entrada. Qualquer use case que devolver esses campos pode ser usado — sem importar <code>CreateProductUseCase.Output</code>.</p>
+
+<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
+<pre><code>export type ProductOutput = {
   id: string
   name: string
+  description: string
   sku: string
-  category: string
-
-  @Transform(({ value }) =&gt; value / 100) // centavos → reais
   price: number
-
-  @Transform(({ value }) =&gt; value / 100)
   costPrice: number
-
-  isActive: boolean
+  category: string
   supplierId: string
-
-  @Transform(({ value }) =&gt; value.toISOString())
+  isActive: boolean
   createdAt: Date
+  updatedAt: Date
+}
 
-  constructor(output: any) {
+export type ProductCollectionOutput = {
+  items: ProductOutput[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+}
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Type local vs Output do use case</div>
+  <p>Se o presenter importasse <code>CreateProductUseCase.Output</code>, um GET e um PUT ficariam presos ao create. Com um type local, create / get / update compartilham o mesmo presenter enquanto o shape for compatível.</p>
+</div>
+
+<h3>Passo 2 — Presenter de um item</h3>
+
+<p>É uma <strong>classe</strong>, não um type: o NestJS serializa instâncias de classe como JSON automaticamente. Os campos declarados aqui são exatamente o que o cliente recebe. Para esconder <code>costPrice</code>, basta removê-lo daqui — sem mudar o use case.</p>
+
+<pre><code>export class ProductPresenter {
+  id: string
+  name: string
+  description: string
+  sku: string
+  price: number
+  costPrice: number
+  category: string
+  supplierId: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+
+  constructor(output: ProductOutput) {
     this.id = output.id
     this.name = output.name
+    this.description = output.description
     this.sku = output.sku
     this.price = output.price
     this.costPrice = output.costPrice
     this.category = output.category
-    this.isActive = output.isActive
     this.supplierId = output.supplierId
+    this.isActive = output.isActive
     this.createdAt = output.createdAt
+    this.updatedAt = output.updatedAt
   }
 }
 </code></pre>
+
+<h3>Passo 3 — Presenter de listagem</h3>
+
+<p>Converte cada item em <code>ProductPresenter</code> e inclui os metadados de paginação.</p>
+
+<pre><code>export class ProductCollectionPresenter {
+  items: ProductPresenter[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+
+  constructor(output: ProductCollectionOutput) {
+    this.items = output.items.map((item) =&gt; new ProductPresenter(item))
+    this.total = output.total
+    this.currentPage = output.currentPage
+    this.perPage = output.perPage
+    this.lastPage = output.lastPage
+  }
+}
+</code></pre>
+
+<h3>Passo 4 — Usar no controller</h3>
+
+<p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
+<pre><code>@Get(':id')
+async findOne(@Param('id') id: string) {
+  const output = await this.getUseCase.execute({ id })
+  return new ProductPresenter(output)
+}
+
+@Get()
+async search(
+  @Query(new ZodValidationPipe(listProductsSchema)) query: ListProductsDto,
+) {
+  const output = await this.listUseCase.execute(query)
+  return new ProductCollectionPresenter(output)
+}
+</code></pre>
+
+<table>
+  <tr><th>Rota</th><th>Presenter</th></tr>
+  <tr><td>POST /products, GET /:id, PUT /:id</td><td><code>ProductPresenter</code></td></tr>
+  <tr><td>GET /products (lista paginada)</td><td><code>ProductCollectionPresenter</code></td></tr>
+  <tr><td>DELETE /products/:id</td><td>sem body — status 204</td></tr>
+</table>
+
+<h3>Casos especiais na StockFlow</h3>
+
+<ul>
+  <li><strong>Stock crítico não é paginado.</strong> Em <code>StockCollectionOutput</code>, <code>currentPage</code>, <code>perPage</code> e <code>lastPage</code> são opcionais — <code>ListCriticalStockUseCase</code> devolve só <code>items</code> + <code>total</code>.</li>
+  <li><strong>Receive delivery tem output próprio.</strong> Não devolve o pedido completo: só <code>id</code>, <code>status</code> e <code>updatedStockItems</code>. Por isso existe <code>ReceiveDeliveryPresenter</code> em arquivo separado, não reutiliza o <code>PurchaseOrderPresenter</code>.</li>
+</ul>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Presenters para você implementar</div>
+  <p>Após implementar o <code>ProductPresenter</code> e o <code>ProductCollectionPresenter</code>, replique o mesmo padrão nos outros módulos. O fluxo é sempre o mesmo: type local de output → classe do item → classe da coleção → usar no controller.</p>
+
+  <table>
+    <tr><th>Módulo</th><th>Arquivos</th><th>O que o presenter precisa cobrir</th></tr>
+    <tr>
+      <td>Suppliers</td>
+      <td><code>supplier.presenter.ts</code></td>
+      <td><code>SupplierPresenter</code> + <code>SupplierCollectionPresenter</code>. Campos: id, name, cnpj, email, phone, isActive, createdAt, updatedAt.</td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>stock.presenter.ts</code></td>
+      <td><code>StockPresenter</code> + <code>StockCollectionPresenter</code>. Paginação opcional — a lista crítica não tem página.</td>
+    </tr>
+    <tr>
+      <td>PurchaseOrders</td>
+      <td><code>purchase-order.presenter.ts</code><br><code>receive-delivery.presenter.ts</code></td>
+      <td>Presenter do pedido (com <code>items</code> e <code>status</code>) + presenter dedicado do receive-delivery.</td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Criar types locais (<code>XxxOutput</code> e <code>XxxCollectionOutput</code>) — não importar o Output de um use case específico</li>
+    <li>Criar a classe <code>XxxPresenter</code> com construtor que copia os campos</li>
+    <li>Criar a classe <code>XxxCollectionPresenter</code> que mapeia <code>items</code> para <code>XxxPresenter</code></li>
+    <li>No controller, toda rota que devolve body usa um presenter — nunca o output cru do use case</li>
+    <li>DELETE com 204 não precisa de presenter</li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>Presenter é classe, não type/interface — o NestJS serializa a instância</li>
+    <li>Se o use case devolve um shape diferente (ex: receive-delivery), crie um presenter separado em vez de forçar o presenter do pedido</li>
+    <li>No Stock, deixe os campos de paginação opcionais (<code>?</code>) para a lista crítica funcionar no mesmo <code>StockCollectionPresenter</code></li>
+    <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
+  </ul>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 13 ══════════════════════════════ -->
 <h2 id="sec13">Seção 13 — Testes End-to-End (E2E)</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso implementa testes e2e usando Supertest — simulam requests HTTP reais contra a aplicação NestJS completa. Inclui interceptors (<code>WrapperData</code>), exception filters (<code>ConflictErrorFilter</code>, <code>NotFoundErrorFilter</code>), e <code>ValidationPipe</code> para validação automática de DTOs.</p>
+  <p>O curso implementa testes e2e com Supertest — requests HTTP reais contra a aplicação NestJS completa. Antes disso, configura interceptor (<code>WrapperData</code>), exception filters (<code>ConflictErrorFilter</code>, <code>NotFoundErrorFilter</code>) e o <code>applyGlobalConfig</code> para a app de teste se comportar igual à de produção.</p>
 </div>
 
-<h3>Teste E2E de criação de produto</h3>
+<div class="concept-card">
+  <div class="label">💡 E2E vs integração vs unitário</div>
+  <p>Os três testam camadas diferentes. Confundir isso gera testes frágeis ou que não pegam o bug certo.</p>
+</div>
+
+<table>
+  <tr><th>Tipo</th><th>O que sobe</th><th>O que valida</th><th>Exemplo</th></tr>
+  <tr>
+    <td>Unitário</td>
+    <td>Nada de HTTP, nada de banco. Repositório in-memory.</td>
+    <td>Regra de negócio isolada.</td>
+    <td><code>CreateProductUseCase</code> lança <code>ConflictError</code> se o SKU já existe.</td>
+  </tr>
+  <tr>
+    <td>Integração</td>
+    <td>Banco real. Sem HTTP.</td>
+    <td>Prisma persiste e lê certo.</td>
+    <td><code>ProductPrismaRepository.insert</code> grava a linha na tabela.</td>
+  </tr>
+  <tr>
+    <td>E2E</td>
+    <td>App NestJS + HTTP + banco real.</td>
+    <td>Rota, pipe, use case, presenter, filter — o caminho inteiro.</td>
+    <td><code>POST /products</code> devolve 201 e <code>body.data.sku</code>.</td>
+  </tr>
+</table>
+
+<p>E2E usa o <strong>mesmo banco de teste</strong> da seção 10/11 (<code>stockflow_test_db</code> + <code>cleanDatabase()</code>). Docker precisa estar no ar e <code>pnpm migrate:test</code> já ter rodado.</p>
+
+<h3>Passo 1 — Interceptor <code>WrapperData</code></h3>
+
+<p>O curso envolve toda resposta de sucesso em <code>{ data: ... }</code>. Sem isso, o teste espera <code>res.body.data.id</code> e recebe <code>res.body.id</code>.</p>
+
+<p class="file-path">src/shared/infrastructure/interceptors/wrapper-data.interceptor.ts</p>
+<pre><code>import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
+import { Observable, map } from 'rxjs'
+
+@Injectable()
+export class WrapperDataInterceptor implements NestInterceptor {
+  intercept(_context: ExecutionContext, next: CallHandler): Observable&lt;unknown&gt; {
+    return next.handle().pipe(
+      map((body) =&gt; {
+        if (!body || typeof body !== 'object') return body
+        if ('accessToken' in body) return body // login não vai dentro de data
+        return { data: body }
+      }),
+    )
+  }
+}
+</code></pre>
+
+<h3>Passo 2 — Exception filters</h3>
+
+<p>Erros de domínio (<code>NotFoundError</code>, <code>ConflictError</code>) não são HTTP por padrão. Sem filter, o Nest devolve 500. Os filters traduzem:</p>
+
+<table>
+  <tr><th>Erro de domínio</th><th>HTTP</th><th>Quando acontece</th></tr>
+  <tr><td><code>NotFoundError</code></td><td>404</td><td>GET /products/:id com UUID inexistente</td></tr>
+  <tr><td><code>ConflictError</code></td><td>409</td><td>POST /products com SKU que já existe</td></tr>
+  <tr><td><code>BadRequestException</code> (Zod)</td><td>400</td><td>Body inválido — o <code>ZodValidationPipe</code> já lança isso</td></tr>
+</table>
+
+<p class="file-path">src/shared/infrastructure/exception-filters/not-found-error.filter.ts</p>
+<pre><code>import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common'
+import { Response } from 'express'
+import { NotFoundError } from '@/shared/domain/errors'
+
+@Catch(NotFoundError)
+export class NotFoundErrorFilter implements ExceptionFilter {
+  catch(exception: NotFoundError, host: ArgumentsHost) {
+    const response = host.switchToHttp().getResponse&lt;Response&gt;()
+    response.status(404).json({
+      statusCode: 404,
+      error: 'Not Found',
+      message: exception.message,
+    })
+  }
+}
+</code></pre>
+
+<p>O <code>ConflictErrorFilter</code> é o mesmo padrão com status <code>409</code> e <code>@Catch(ConflictError)</code>.</p>
+
+<div class="concept-card">
+  <div class="label">💡 Curso vs StockFlow na validação</div>
+  <p>O curso usa <code>ValidationPipe</code> do Nest (class-validator) e costuma esperar <strong>422</strong>. A StockFlow valida com Zod via <code>ZodValidationPipe</code>, que lança <code>BadRequestException</code> → <strong>400</strong>. Nos testes E2E, assert 400 para body inválido — não 422.</p>
+</div>
+
+<h3>Passo 3 — <code>applyGlobalConfig</code></h3>
+
+<p>Pipes, filters e interceptors precisam estar na app de produção <em>e</em> na app do teste. Se o teste não aplicar a mesma config, o E2E passa um comportamento que o servidor real não tem.</p>
+
+<p class="file-path">src/global-config.ts</p>
+<pre><code>import { INestApplication } from '@nestjs/common'
+import { WrapperDataInterceptor } from '@/shared/infrastructure/interceptors/wrapper-data.interceptor'
+import { NotFoundErrorFilter } from '@/shared/infrastructure/exception-filters/not-found-error.filter'
+import { ConflictErrorFilter } from '@/shared/infrastructure/exception-filters/conflict-error.filter'
+
+export function applyGlobalConfig(app: INestApplication) {
+  app.useGlobalInterceptors(new WrapperDataInterceptor())
+  app.useGlobalFilters(new NotFoundErrorFilter(), new ConflictErrorFilter())
+}
+</code></pre>
+
+<p>Chame em <code>main.ts</code> <strong>e</strong> no <code>beforeAll</code> do E2E:</p>
+
+<pre><code>app = module.createNestApplication()
+applyGlobalConfig(app)
+await app.init()
+</code></pre>
+
+<h3>Passo 4 — Config do Jest E2E</h3>
+
+<p>O <code>test/jest-e2e.json</code> gerado pelo Nest não entende o alias <code>@/</code>. Sem o mapper, o import de <code>@/app.module</code> quebra.</p>
+
+<p class="file-path">test/jest-e2e.json</p>
+<pre><code>{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@/(.*)$": "&lt;rootDir&gt;/../src/$1"
+  }
+}
+</code></pre>
+
+<p>No <code>package.json</code>:</p>
+<pre><code>"test:e2e": "jest --config ./test/jest-e2e.json --runInBand"
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Por que <code>--runInBand</code> de novo</div>
+  <p>E2E também usa o banco de teste e o <code>cleanDatabase()</code>. Rodar suítes em paralelo faz um teste apagar os dados do outro. Serial é obrigatório — igual aos testes de integração.</p>
+</div>
+
+<h3>Passo 5 — Teste E2E de Products</h3>
+
+<p>O teste sobe o <code>AppModule</code> inteiro, limpa o banco a cada caso e fala HTTP. Product depende de Supplier (FK) — crie o fornecedor pela própria API antes do produto.</p>
 
 <p class="file-path">test/products/products.e2e-spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
@@ -3784,10 +4071,23 @@ import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
 import { AppModule } from '@/app.module'
 import { cleanDatabase } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
-import { applyGlobalConfig } from '@/global-config'  // pipes, filters, interceptors
+import { applyGlobalConfig } from '@/global-config'
 
 describe('ProductsController e2e tests', () =&gt; {
   let app: INestApplication
+
+  const createSupplier = async () =&gt; {
+    const res = await request(app.getHttpServer())
+      .post('/suppliers')
+      .send({
+        name: 'Fornecedor A',
+        email: 'forn@test.com',
+        phone: '11999999999',
+        cnpj: '12345678000100',
+      })
+      .expect(201)
+    return res.body.data.id as string
+  }
 
   beforeAll(async () =&gt; {
     const module: TestingModule = await Test.createTestingModule({
@@ -3795,7 +4095,7 @@ describe('ProductsController e2e tests', () =&gt; {
     }).compile()
 
     app = module.createNestApplication()
-    applyGlobalConfig(app)  // aplica os mesmos pipes/filters/interceptors de produção
+    applyGlobalConfig(app)
     await app.init()
   })
 
@@ -3809,16 +4109,7 @@ describe('ProductsController e2e tests', () =&gt; {
 
   describe('POST /products', () =&gt; {
     it('should create a product', async () =&gt; {
-      // Primeiro criar um supplier
-      const supplierRes = await request(app.getHttpServer())
-        .post('/suppliers')
-        .send({
-          name: 'Fornecedor A',
-          email: 'forn@test.com',
-          phone: '11999999999',
-          cnpj: '12345678000100',
-        })
-        .expect(201)
+      const supplierId = await createSupplier()
 
       const res = await request(app.getHttpServer())
         .post('/products')
@@ -3829,7 +4120,9 @@ describe('ProductsController e2e tests', () =&gt; {
           price: 5990,
           costPrice: 2500,
           category: 'Vestuário',
-          supplierId: supplierRes.body.data.id,
+          supplierId,
+          location: 'A1',
+          minQuantity: 10,
         })
         .expect(201)
 
@@ -3837,19 +4130,115 @@ describe('ProductsController e2e tests', () =&gt; {
       expect(res.body.data.sku).toBe('CAM-PT-M')
     })
 
-    it('should return 422 when sku is invalid', async () =&gt; {
+    it('should return 400 when body is invalid', async () =&gt; {
       await request(app.getHttpServer())
         .post('/products')
         .send({ sku: 'lowercase invalid' })
-        .expect(422)
+        .expect(400)
     })
 
     it('should return 409 when sku already exists', async () =&gt; {
-      // ... criar primeiro, tentar criar de novo com mesmo SKU
+      const supplierId = await createSupplier()
+      const payload = {
+        name: 'Camiseta Preta',
+        description: 'Algodão',
+        sku: 'CAM-PT-M',
+        price: 5990,
+        costPrice: 2500,
+        category: 'Vestuário',
+        supplierId,
+        location: 'A1',
+        minQuantity: 10,
+      }
+
+      await request(app.getHttpServer()).post('/products').send(payload).expect(201)
+      await request(app.getHttpServer()).post('/products').send(payload).expect(409)
+    })
+  })
+
+  describe('GET /products/:id', () =&gt; {
+    it('should return 404 when product does not exist', async () =&gt; {
+      await request(app.getHttpServer())
+        .get('/products/00000000-0000-0000-0000-000000000000')
+        .expect(404)
+    })
+  })
+
+  describe('DELETE /products/:id', () =&gt; {
+    it('should return 204', async () =&gt; {
+      const supplierId = await createSupplier()
+      const created = await request(app.getHttpServer())
+        .post('/products')
+        .send({
+          name: 'Camiseta Preta',
+          description: 'Algodão',
+          sku: 'CAM-PT-M',
+          price: 5990,
+          costPrice: 2500,
+          category: 'Vestuário',
+          supplierId,
+          location: 'A1',
+          minQuantity: 10,
+        })
+        .expect(201)
+
+      await request(app.getHttpServer())
+        .delete(`/products/${created.body.data.id}`)
+        .expect(204)
     })
   })
 })
 </code></pre>
+
+<p>Para rodar:</p>
+<pre><code>pnpm test:e2e
+</code></pre>
+
+<div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Depois da seção 14 (JWT) esses testes quebram</div>
+  <p>Quando as rotas ganharem <code>@UseGuards(AuthGuard)</code>, o E2E precisa autenticar antes: criar usuário, fazer login, e enviar <code>Authorization: Bearer &lt;token&gt;</code> em cada request. Sem o header, todas as rotas devolvem 401.</p>
+</div>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Testes E2E para você implementar</div>
+  <p>Após o E2E de Products, replique o mesmo setup para os outros módulos. O fluxo é: helper para criar dependências via HTTP → request na rota → assert de status + <code>body.data</code>.</p>
+
+  <table>
+    <tr><th>Módulo</th><th>Arquivo</th><th>O que cobrir</th></tr>
+    <tr>
+      <td>Suppliers</td>
+      <td><code>test/suppliers/suppliers.e2e-spec.ts</code></td>
+      <td>POST 201, GET /:id, GET lista, PUT, DELETE 204, 400 body inválido, 409 CNPJ duplicado, 404 id inexistente.</td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>test/stock/stock.e2e-spec.ts</code></td>
+      <td>Sem POST — stock nasce com o produto. GET /:id, PUT, GET /critical (produto com quantity &lt; minQuantity). 404 id inexistente.</td>
+    </tr>
+    <tr>
+      <td>PurchaseOrders</td>
+      <td><code>test/purchase-orders/purchase-orders.e2e-spec.ts</code></td>
+      <td>POST 201 (precisa supplier + product), GET, lista, POST /:id/cancel, POST /:id/receive-delivery (pedido precisa estar SENT), 409 em transição inválida.</td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Importar <code>cleanDatabase</code> e chamar no <code>beforeEach</code></li>
+    <li>Aplicar <code>applyGlobalConfig(app)</code> antes do <code>app.init()</code></li>
+    <li>Criar FKs pela API (supplier antes de product; product antes de purchase order)</li>
+    <li>Assert em <code>res.body.data</code> — o interceptor envolve a resposta</li>
+    <li>Cobrir pelo menos: sucesso, validação 400, not found 404 e conflito 409 quando fizer sentido</li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>POST /products exige <code>location</code> e <code>minQuantity</code> — o use case cria o stock junto</li>
+    <li>GET /stocks/critical precisa de um produto cujo estoque esteja abaixo do mínimo (atualize o stock via PUT depois de criar o produto)</li>
+    <li>Receive delivery só funciona com status SENT — o teste precisa criar o pedido e enviá-lo antes</li>
+    <li>Use <code>pnpm test:e2e</code> com <code>--runInBand</code> e o banco <code>stockflow_test_db</code></li>
+  </ul>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 14 ══════════════════════════════ -->
 <h2 id="sec14">Seção 14 — Autenticação com JWT</h2>
