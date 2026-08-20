@@ -159,6 +159,55 @@
     p { margin-bottom: 16px; }
 
     /* ── Code ── */
+    .code-block {
+      position: relative;
+      margin: 16px 0 24px;
+    }
+
+    .code-block pre {
+      margin: 0;
+      padding-right: 88px;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      z-index: 2;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: rgba(108, 92, 231, 0.12);
+    }
+
+    .copy-btn.copied {
+      color: var(--green);
+      border-color: rgba(0, 184, 148, 0.4);
+      background: rgba(0, 184, 148, 0.1);
+    }
+
+    .copy-btn svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
     pre {
       background: var(--bg-code);
       border: 1px solid var(--border);
@@ -364,6 +413,7 @@
       .main { margin-left: 0; }
       body { background: white; color: #1a1a2e; }
       pre { border: 1px solid #ddd; }
+      .copy-btn { display: none; }
     }
 
     /* ── Progress / Checklist ── */
@@ -624,10 +674,10 @@
   <div class="section-label">Testes</div>
   <a href="#sec10">Seção 10 — Refatoração de Testes</a>
   <a href="#sec11">Seção 11 — Integração com Prisma</a>
-  <a href="#sec13">Seção 13 — Testes E2E</a>
+  <a href="#sec12">Seção 12 — Testes E2E</a>
 
   <div class="section-label">Features</div>
-  <a href="#sec12">Seção 12 — Presenters</a>
+  <a href="#sec13">Seção 13 — Presenters</a>
   <a href="#sec14">Seção 14 — Auth com JWT</a>
   <a href="#sec15">Seção 15 — Swagger + Postman</a>
 
@@ -975,7 +1025,7 @@
   <div class="checklist-group">
     <div class="checklist-group-header">
       <span class="checklist-group-title">
-        Seções 12 e 13 — Presenters e Testes E2E
+        Seções 12 e 13 — Testes E2E e Presenters
         <span class="checklist-group-badge" id="badge-sec12">0/3</span>
       </span>
       <div class="checklist-mini-bar">
@@ -985,15 +1035,15 @@
     <div class="checklist-items">
       <label class="checklist-item" id="item-s12-1">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Criar presenters de Product (item + coleção) e replicar para os demais módulos</span>
+        <span class="checklist-item-label">Criar interceptor WrapperData, filters 404/409 e applyGlobalConfig</span>
       </label>
       <label class="checklist-item" id="item-s12-2">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Criar interceptor WrapperData, filters 404/409 e applyGlobalConfig</span>
+        <span class="checklist-item-label">Escrever testes E2E de Product e replicar para os demais módulos</span>
       </label>
       <label class="checklist-item" id="item-s12-3">
         <input type="checkbox" data-group="sec12" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Escrever testes E2E de Product e replicar para os demais módulos</span>
+        <span class="checklist-item-label">Criar presenters de Product (item + coleção) e replicar para os demais módulos</span>
       </label>
     </div>
   </div>
@@ -3733,190 +3783,7 @@ describe('ProductPrismaRepository integration tests', () =&gt; {
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 12 ══════════════════════════════ -->
-<h2 id="sec12">Seção 12 — Presenters</h2>
-
-<div class="concept-card">
-  <div class="label">📚 O que o curso ensina</div>
-  <p>O curso cria classes <code>Presenter</code> para formatar a resposta HTTP. O <code>UserPresenter</code> escolhe quais campos o cliente recebe, o <code>PaginationPresenter</code> formata metadados de paginação, e o <code>CollectionPresenter</code> junta os dois para listagens.</p>
-</div>
-
-<div class="concept-card">
-  <div class="label">💡 Por que o presenter existe</div>
-  <p>O use case devolve um objeto de domínio (output). O controller <strong>não</strong> devolve esse objeto cru. Ele passa o output para um presenter, que monta exatamente o JSON da API.</p>
-  <p>Isso permite esconder campos internos, formatar valores (centavos → reais, Date → ISO) e mudar a resposta sem tocar no use case.</p>
-</div>
-
-<pre><code>Cliente HTTP
-    ↑ JSON
-Controller  →  new ProductPresenter(output)
-    ↑ output
-Use Case    →  entidade / dados de negócio
-    ↑
-Repository  →  banco
-</code></pre>
-
-<h3>Passo 1 — Tipos locais (sem acoplar a um use case)</h3>
-
-<p>O presenter define o próprio contrato de entrada. Qualquer use case que devolver esses campos pode ser usado — sem importar <code>CreateProductUseCase.Output</code>.</p>
-
-<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
-<pre><code>export type ProductOutput = {
-  id: string
-  name: string
-  description: string
-  sku: string
-  price: number
-  costPrice: number
-  category: string
-  supplierId: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-export type ProductCollectionOutput = {
-  items: ProductOutput[]
-  total: number
-  currentPage: number
-  perPage: number
-  lastPage: number
-}
-</code></pre>
-
-<div class="concept-card">
-  <div class="label">💡 Type local vs Output do use case</div>
-  <p>Se o presenter importasse <code>CreateProductUseCase.Output</code>, um GET e um PUT ficariam presos ao create. Com um type local, create / get / update compartilham o mesmo presenter enquanto o shape for compatível.</p>
-</div>
-
-<h3>Passo 2 — Presenter de um item</h3>
-
-<p>É uma <strong>classe</strong>, não um type: o NestJS serializa instâncias de classe como JSON automaticamente. Os campos declarados aqui são exatamente o que o cliente recebe. Para esconder <code>costPrice</code>, basta removê-lo daqui — sem mudar o use case.</p>
-
-<pre><code>export class ProductPresenter {
-  id: string
-  name: string
-  description: string
-  sku: string
-  price: number
-  costPrice: number
-  category: string
-  supplierId: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-
-  constructor(output: ProductOutput) {
-    this.id = output.id
-    this.name = output.name
-    this.description = output.description
-    this.sku = output.sku
-    this.price = output.price
-    this.costPrice = output.costPrice
-    this.category = output.category
-    this.supplierId = output.supplierId
-    this.isActive = output.isActive
-    this.createdAt = output.createdAt
-    this.updatedAt = output.updatedAt
-  }
-}
-</code></pre>
-
-<h3>Passo 3 — Presenter de listagem</h3>
-
-<p>Converte cada item em <code>ProductPresenter</code> e inclui os metadados de paginação.</p>
-
-<pre><code>export class ProductCollectionPresenter {
-  items: ProductPresenter[]
-  total: number
-  currentPage: number
-  perPage: number
-  lastPage: number
-
-  constructor(output: ProductCollectionOutput) {
-    this.items = output.items.map((item) =&gt; new ProductPresenter(item))
-    this.total = output.total
-    this.currentPage = output.currentPage
-    this.perPage = output.perPage
-    this.lastPage = output.lastPage
-  }
-}
-</code></pre>
-
-<h3>Passo 4 — Usar no controller</h3>
-
-<p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
-<pre><code>@Get(':id')
-async findOne(@Param('id') id: string) {
-  const output = await this.getUseCase.execute({ id })
-  return new ProductPresenter(output)
-}
-
-@Get()
-async search(
-  @Query(new ZodValidationPipe(listProductsSchema)) query: ListProductsDto,
-) {
-  const output = await this.listUseCase.execute(query)
-  return new ProductCollectionPresenter(output)
-}
-</code></pre>
-
-<table>
-  <tr><th>Rota</th><th>Presenter</th></tr>
-  <tr><td>POST /products, GET /:id, PUT /:id</td><td><code>ProductPresenter</code></td></tr>
-  <tr><td>GET /products (lista paginada)</td><td><code>ProductCollectionPresenter</code></td></tr>
-  <tr><td>DELETE /products/:id</td><td>sem body — status 204</td></tr>
-</table>
-
-<h3>Casos especiais na StockFlow</h3>
-
-<ul>
-  <li><strong>Stock crítico não é paginado.</strong> Em <code>StockCollectionOutput</code>, <code>currentPage</code>, <code>perPage</code> e <code>lastPage</code> são opcionais — <code>ListCriticalStockUseCase</code> devolve só <code>items</code> + <code>total</code>.</li>
-  <li><strong>Receive delivery tem output próprio.</strong> Não devolve o pedido completo: só <code>id</code>, <code>status</code> e <code>updatedStockItems</code>. Por isso existe <code>ReceiveDeliveryPresenter</code> em arquivo separado, não reutiliza o <code>PurchaseOrderPresenter</code>.</li>
-</ul>
-
-<div class="challenge-card">
-  <div class="label">🏋️ Presenters para você implementar</div>
-  <p>Após implementar o <code>ProductPresenter</code> e o <code>ProductCollectionPresenter</code>, replique o mesmo padrão nos outros módulos. O fluxo é sempre o mesmo: type local de output → classe do item → classe da coleção → usar no controller.</p>
-
-  <table>
-    <tr><th>Módulo</th><th>Arquivos</th><th>O que o presenter precisa cobrir</th></tr>
-    <tr>
-      <td>Suppliers</td>
-      <td><code>supplier.presenter.ts</code></td>
-      <td><code>SupplierPresenter</code> + <code>SupplierCollectionPresenter</code>. Campos: id, name, cnpj, email, phone, isActive, createdAt, updatedAt.</td>
-    </tr>
-    <tr>
-      <td>Stock</td>
-      <td><code>stock.presenter.ts</code></td>
-      <td><code>StockPresenter</code> + <code>StockCollectionPresenter</code>. Paginação opcional — a lista crítica não tem página.</td>
-    </tr>
-    <tr>
-      <td>PurchaseOrders</td>
-      <td><code>purchase-order.presenter.ts</code><br><code>receive-delivery.presenter.ts</code></td>
-      <td>Presenter do pedido (com <code>items</code> e <code>status</code>) + presenter dedicado do receive-delivery.</td>
-    </tr>
-  </table>
-
-  <h4>Checklist por módulo</h4>
-  <ul>
-    <li>Criar types locais (<code>XxxOutput</code> e <code>XxxCollectionOutput</code>) — não importar o Output de um use case específico</li>
-    <li>Criar a classe <code>XxxPresenter</code> com construtor que copia os campos</li>
-    <li>Criar a classe <code>XxxCollectionPresenter</code> que mapeia <code>items</code> para <code>XxxPresenter</code></li>
-    <li>No controller, toda rota que devolve body usa um presenter — nunca o output cru do use case</li>
-    <li>DELETE com 204 não precisa de presenter</li>
-  </ul>
-
-  <h4>Observações importantes</h4>
-  <ul>
-    <li>Presenter é classe, não type/interface — o NestJS serializa a instância</li>
-    <li>Se o use case devolve um shape diferente (ex: receive-delivery), crie um presenter separado em vez de forçar o presenter do pedido</li>
-    <li>No Stock, deixe os campos de paginação opcionais (<code>?</code>) para a lista crítica funcionar no mesmo <code>StockCollectionPresenter</code></li>
-    <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
-  </ul>
-</div>
-
-<!-- ══════════════════════════════ SEÇÃO 13 ══════════════════════════════ -->
-<h2 id="sec13">Seção 13 — Testes End-to-End (E2E)</h2>
+<h2 id="sec12">Seção 12 — Testes End-to-End (E2E)</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
@@ -4237,6 +4104,189 @@ describe('ProductsController e2e tests', () =&gt; {
     <li>GET /stocks/critical precisa de um produto cujo estoque esteja abaixo do mínimo (atualize o stock via PUT depois de criar o produto)</li>
     <li>Receive delivery só funciona com status SENT — o teste precisa criar o pedido e enviá-lo antes</li>
     <li>Use <code>pnpm test:e2e</code> com <code>--runInBand</code> e o banco <code>stockflow_test_db</code></li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════ SEÇÃO 13 ══════════════════════════════ -->
+<h2 id="sec13">Seção 13 — Presenters</h2>
+
+<div class="concept-card">
+  <div class="label">📚 O que o curso ensina</div>
+  <p>O curso cria classes <code>Presenter</code> para formatar a resposta HTTP. O <code>UserPresenter</code> escolhe quais campos o cliente recebe, o <code>PaginationPresenter</code> formata metadados de paginação, e o <code>CollectionPresenter</code> junta os dois para listagens.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">💡 Por que o presenter existe</div>
+  <p>O use case devolve um objeto de domínio (output). O controller <strong>não</strong> devolve esse objeto cru. Ele passa o output para um presenter, que monta exatamente o JSON da API.</p>
+  <p>Isso permite esconder campos internos, formatar valores (centavos → reais, Date → ISO) e mudar a resposta sem tocar no use case.</p>
+</div>
+
+<pre><code>Cliente HTTP
+    ↑ JSON
+Controller  →  new ProductPresenter(output)
+    ↑ output
+Use Case    →  entidade / dados de negócio
+    ↑
+Repository  →  banco
+</code></pre>
+
+<h3>Passo 1 — Tipos locais (sem acoplar a um use case)</h3>
+
+<p>O presenter define o próprio contrato de entrada. Qualquer use case que devolver esses campos pode ser usado — sem importar <code>CreateProductUseCase.Output</code>.</p>
+
+<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
+<pre><code>export type ProductOutput = {
+  id: string
+  name: string
+  description: string
+  sku: string
+  price: number
+  costPrice: number
+  category: string
+  supplierId: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type ProductCollectionOutput = {
+  items: ProductOutput[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+}
+</code></pre>
+
+<div class="concept-card">
+  <div class="label">💡 Type local vs Output do use case</div>
+  <p>Se o presenter importasse <code>CreateProductUseCase.Output</code>, um GET e um PUT ficariam presos ao create. Com um type local, create / get / update compartilham o mesmo presenter enquanto o shape for compatível.</p>
+</div>
+
+<h3>Passo 2 — Presenter de um item</h3>
+
+<p>É uma <strong>classe</strong>, não um type: o NestJS serializa instâncias de classe como JSON automaticamente. Os campos declarados aqui são exatamente o que o cliente recebe. Para esconder <code>costPrice</code>, basta removê-lo daqui — sem mudar o use case.</p>
+
+<pre><code>export class ProductPresenter {
+  id: string
+  name: string
+  description: string
+  sku: string
+  price: number
+  costPrice: number
+  category: string
+  supplierId: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+
+  constructor(output: ProductOutput) {
+    this.id = output.id
+    this.name = output.name
+    this.description = output.description
+    this.sku = output.sku
+    this.price = output.price
+    this.costPrice = output.costPrice
+    this.category = output.category
+    this.supplierId = output.supplierId
+    this.isActive = output.isActive
+    this.createdAt = output.createdAt
+    this.updatedAt = output.updatedAt
+  }
+}
+</code></pre>
+
+<h3>Passo 3 — Presenter de listagem</h3>
+
+<p>Converte cada item em <code>ProductPresenter</code> e inclui os metadados de paginação.</p>
+
+<pre><code>export class ProductCollectionPresenter {
+  items: ProductPresenter[]
+  total: number
+  currentPage: number
+  perPage: number
+  lastPage: number
+
+  constructor(output: ProductCollectionOutput) {
+    this.items = output.items.map((item) =&gt; new ProductPresenter(item))
+    this.total = output.total
+    this.currentPage = output.currentPage
+    this.perPage = output.perPage
+    this.lastPage = output.lastPage
+  }
+}
+</code></pre>
+
+<h3>Passo 4 — Usar no controller</h3>
+
+<p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
+<pre><code>@Get(':id')
+async findOne(@Param('id') id: string) {
+  const output = await this.getUseCase.execute({ id })
+  return new ProductPresenter(output)
+}
+
+@Get()
+async search(
+  @Query(new ZodValidationPipe(listProductsSchema)) query: ListProductsDto,
+) {
+  const output = await this.listUseCase.execute(query)
+  return new ProductCollectionPresenter(output)
+}
+</code></pre>
+
+<table>
+  <tr><th>Rota</th><th>Presenter</th></tr>
+  <tr><td>POST /products, GET /:id, PUT /:id</td><td><code>ProductPresenter</code></td></tr>
+  <tr><td>GET /products (lista paginada)</td><td><code>ProductCollectionPresenter</code></td></tr>
+  <tr><td>DELETE /products/:id</td><td>sem body — status 204</td></tr>
+</table>
+
+<h3>Casos especiais na StockFlow</h3>
+
+<ul>
+  <li><strong>Stock crítico não é paginado.</strong> Em <code>StockCollectionOutput</code>, <code>currentPage</code>, <code>perPage</code> e <code>lastPage</code> são opcionais — <code>ListCriticalStockUseCase</code> devolve só <code>items</code> + <code>total</code>.</li>
+  <li><strong>Receive delivery tem output próprio.</strong> Não devolve o pedido completo: só <code>id</code>, <code>status</code> e <code>updatedStockItems</code>. Por isso existe <code>ReceiveDeliveryPresenter</code> em arquivo separado, não reutiliza o <code>PurchaseOrderPresenter</code>.</li>
+</ul>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Presenters para você implementar</div>
+  <p>Após implementar o <code>ProductPresenter</code> e o <code>ProductCollectionPresenter</code>, replique o mesmo padrão nos outros módulos. O fluxo é sempre o mesmo: type local de output → classe do item → classe da coleção → usar no controller.</p>
+
+  <table>
+    <tr><th>Módulo</th><th>Arquivos</th><th>O que o presenter precisa cobrir</th></tr>
+    <tr>
+      <td>Suppliers</td>
+      <td><code>supplier.presenter.ts</code></td>
+      <td><code>SupplierPresenter</code> + <code>SupplierCollectionPresenter</code>. Campos: id, name, cnpj, email, phone, isActive, createdAt, updatedAt.</td>
+    </tr>
+    <tr>
+      <td>Stock</td>
+      <td><code>stock.presenter.ts</code></td>
+      <td><code>StockPresenter</code> + <code>StockCollectionPresenter</code>. Paginação opcional — a lista crítica não tem página.</td>
+    </tr>
+    <tr>
+      <td>PurchaseOrders</td>
+      <td><code>purchase-order.presenter.ts</code><br><code>receive-delivery.presenter.ts</code></td>
+      <td>Presenter do pedido (com <code>items</code> e <code>status</code>) + presenter dedicado do receive-delivery.</td>
+    </tr>
+  </table>
+
+  <h4>Checklist por módulo</h4>
+  <ul>
+    <li>Criar types locais (<code>XxxOutput</code> e <code>XxxCollectionOutput</code>) — não importar o Output de um use case específico</li>
+    <li>Criar a classe <code>XxxPresenter</code> com construtor que copia os campos</li>
+    <li>Criar a classe <code>XxxCollectionPresenter</code> que mapeia <code>items</code> para <code>XxxPresenter</code></li>
+    <li>No controller, toda rota que devolve body usa um presenter — nunca o output cru do use case</li>
+    <li>DELETE com 204 não precisa de presenter</li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>Presenter é classe, não type/interface — o NestJS serializa a instância</li>
+    <li>Se o use case devolve um shape diferente (ex: receive-delivery), crie um presenter separado em vez de forçar o presenter do pedido</li>
+    <li>No Stock, deixe os campos de paginação opcionais (<code>?</code>) para a lista crítica funcionar no mesmo <code>StockCollectionPresenter</code></li>
+    <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
   </ul>
 </div>
 
@@ -4786,8 +4836,8 @@ jobs:
   <tr><td>☐</td><td>Docker Compose + Prisma Schema + Migrations</td><td>8</td></tr>
   <tr><td>☐</td><td>Repositórios Prisma + ModelMappers</td><td>9</td></tr>
   <tr><td>☐</td><td>Testes de integração com banco real</td><td>10-11</td></tr>
-  <tr><td>☐</td><td>Presenters (Product, Supplier, Pagination, Collection)</td><td>12</td></tr>
-  <tr><td>☐</td><td>Testes E2E completos</td><td>13</td></tr>
+  <tr><td>☐</td><td>Testes E2E completos</td><td>12</td></tr>
+  <tr><td>☐</td><td>Presenters (Product, Supplier, Pagination, Collection)</td><td>13</td></tr>
   <tr><td>☐</td><td>Auth Module + JWT + AuthGuard</td><td>14</td></tr>
   <tr><td>☐</td><td>Swagger completo</td><td>15</td></tr>
   <tr><td>☐</td><td>GitHub Actions CI</td><td>16</td></tr>
@@ -4914,6 +4964,46 @@ jobs:
   sectionIds.forEach(id => {
     const el = document.getElementById(id)
     if (el) observer.observe(el)
+  })
+
+  // ── Copy buttons on every code snippet ──
+  const copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+  const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+
+  document.querySelectorAll('pre').forEach(pre => {
+    if (pre.parentElement.classList.contains('code-block')) return
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'code-block'
+    pre.parentNode.insertBefore(wrapper, pre)
+    wrapper.appendChild(pre)
+
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'copy-btn'
+    btn.setAttribute('aria-label', 'Copiar código')
+    btn.innerHTML = copyIcon + ' Copiar'
+    wrapper.appendChild(btn)
+
+    btn.addEventListener('click', async () => {
+      const text = (pre.querySelector('code') || pre).textContent
+      try {
+        await navigator.clipboard.writeText(text)
+      } catch {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        ta.remove()
+      }
+      btn.classList.add('copied')
+      btn.innerHTML = checkIcon + ' Copiado'
+      setTimeout(() => {
+        btn.classList.remove('copied')
+        btn.innerHTML = copyIcon + ' Copiar'
+      }, 1800)
+    })
   })
 </script>
 
