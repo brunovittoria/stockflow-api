@@ -678,7 +678,7 @@
 
   <div class="section-label">Features</div>
   <a href="#sec13">Seção 13 — Presenters</a>
-  <a href="#sec14">Seção 14 — Auth com JWT</a>
+  <a href="#sec14">Seção 14 — Auth com Auth0</a>
   <a href="#sec15">Seção 15 — Swagger + Postman</a>
 
   <div class="section-label">Deploy</div>
@@ -1054,7 +1054,7 @@
   <div class="checklist-group">
     <div class="checklist-group-header">
       <span class="checklist-group-title">
-        Seção 14 — Autenticação com JWT
+        Seção 14 — Autenticação com Auth0
         <span class="checklist-group-badge" id="badge-sec14">0/4</span>
       </span>
       <div class="checklist-mini-bar">
@@ -1064,19 +1064,19 @@
     <div class="checklist-items">
       <label class="checklist-item" id="item-s14-1">
         <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Criar <code>AuthModule</code> com geração e validação de JWT</span>
+        <span class="checklist-item-label">Criar tenant, API (audience) e Application M2M no Auth0</span>
       </label>
       <label class="checklist-item" id="item-s14-2">
         <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Implementar <code>JwtStrategy</code> e <code>AuthGuard</code></span>
+        <span class="checklist-item-label">Implementar <code>JwtStrategy</code> (JWKS) e <code>AuthModule</code></span>
       </label>
       <label class="checklist-item" id="item-s14-3">
         <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Proteger rotas com <code>@UseGuards(AuthGuard)</code></span>
+        <span class="checklist-item-label">Proteger rotas com <code>@UseGuards(AuthGuard('jwt'))</code></span>
       </label>
       <label class="checklist-item" id="item-s14-4">
         <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
-        <span class="checklist-item-label">Testar fluxo de autenticação (login → token → rota protegida)</span>
+        <span class="checklist-item-label">Testar no Postman (OAuth 2.0) e E2E (token + 401 sem token)</span>
       </label>
     </div>
   </div>
@@ -1168,7 +1168,7 @@
   <tr><td>PostgreSQL</td><td>Banco de dados relacional</td></tr>
   <tr><td>Docker</td><td>Ambiente de desenvolvimento</td></tr>
   <tr><td>Jest</td><td>Testes unitários, integração e e2e</td></tr>
-  <tr><td>JWT</td><td>Autenticação</td></tr>
+  <tr><td>Auth0</td><td>Autenticação (login, MFA, recuperação de senha)</td></tr>
   <tr><td>Swagger</td><td>Documentação da API</td></tr>
   <tr><td>Postman</td><td>Collections para teste manual das rotas</td></tr>
   <tr><td>GitHub Actions</td><td>CI/CD</td></tr>
@@ -4062,8 +4062,8 @@ describe('ProductsController e2e tests', () =&gt; {
 </code></pre>
 
 <div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
-  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Depois da seção 14 (JWT) esses testes quebram</div>
-  <p>Quando as rotas ganharem <code>@UseGuards(AuthGuard)</code>, o E2E precisa autenticar antes: criar usuário, fazer login, e enviar <code>Authorization: Bearer &lt;token&gt;</code> em cada request. Sem o header, todas as rotas devolvem 401.</p>
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Depois da seção 14 (Auth0) esses testes quebram</div>
+  <p>Quando as rotas ganharem <code>@UseGuards(AuthGuard('jwt'))</code>, o E2E precisa enviar um access token do Auth0 (<code>Authorization: Bearer</code>). Sem o header, todas as rotas protegidas devolvem 401. Não existe mais <code>POST /login</code> local.</p>
 </div>
 
 <div class="challenge-card">
@@ -4291,101 +4291,297 @@ async search(
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 14 ══════════════════════════════ -->
-<h2 id="sec14">Seção 14 — Autenticação com JWT</h2>
+<h2 id="sec14">Seção 14 — Autenticação com Auth0</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso implementa um módulo de autenticação completo: <code>AuthModule</code>, <code>AuthService</code> (gera e valida JWT), <code>AuthGuard</code> (protege rotas), e testes para cada parte. O <code>AuthGuard</code> é aplicado nas rotas que precisam de autenticação.</p>
+  <p>O curso gera e valida JWT na própria API (<code>AuthService</code> + bcrypt + <code>POST /login</code>). Na StockFlow isso sai: MFA, recuperação de senha e login social são trabalho demais para um POC — e fáceis de errar. Quem assume identidade é o <strong>Auth0</strong> (Authorization Server). O NestJS é só o <strong>resource server</strong>: valida o access token. Fonte: <a href="https://auth0.com/docs/get-started/apis" target="_blank" rel="noopener">Auth0 APIs</a>.</p>
 </div>
 
 <div class="mapping-card">
-  <div class="label">🔗 Na StockFlow API</div>
-  <p>O módulo <code>User</code> na StockFlow é simples — apenas admin da loja. Foque na autenticação como gateway para proteger as rotas de produtos, fornecedores, estoque e pedidos.</p>
+  <div class="label">🔗 Por que Auth0 (e não JWT caseiro nem Clerk)</div>
+  <p>A StockFlow é uma <strong>API</strong> testada no Postman e no Swagger. O Auth0 registra isso como API (audience) e emite JWT RS256. O Clerk brilha em Next.js; aqui o backend só precisa validar Bearer via JWKS, como no <a href="https://auth0.com/docs/quickstart/backend/nodejs" target="_blank" rel="noopener">backend quickstart</a> e no <a href="https://auth0.com/blog/developing-a-secure-api-with-nestjs-adding-authorization/" target="_blank" rel="noopener">guia NestJS da Auth0</a>.</p>
 </div>
 
-<h3>AuthModule</h3>
+<div class="concept-card">
+  <div class="label">💡 Dois fluxos — não misture</div>
+  <p>A API valida o token do mesmo jeito nos dois casos. O que muda é <em>quem pede</em> o token. Docs: <a href="https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-credentials-flow" target="_blank" rel="noopener">Client Credentials</a> e <a href="https://auth0.com/docs/authenticate/login/auth0-universal-login" target="_blank" rel="noopener">Universal Login</a>.</p>
+  <table>
+    <tr><th></th><th>Machine to Machine</th><th>Usuário (admin)</th></tr>
+    <tr><td>Quando</td><td>Postman, E2E, scripts</td><td>Login humano (futuro front)</td></tr>
+    <tr><td>Application</td><td><strong>Machine to Machine</strong></td><td><strong>Regular Web Application</strong> (ou SPA)</td></tr>
+    <tr><td>Grant</td><td><code>client_credentials</code></td><td>Authorization Code → Universal Login</td></tr>
+    <tr><td>MFA / “esqueci a senha”</td><td>Não existem — não há usuário</td><td>Sim, no Auth0 hospedado</td></tr>
+    <tr><td><code>sub</code> do token</td><td><code>{client_id}@clients</code></td><td>id do usuário no Auth0</td></tr>
+  </table>
+  <p>Neste POC o caminho principal é <strong>M2M</strong>. MFA e reset de senha só entram se você criar também uma Regular Web App e logar pelo Universal Login.</p>
+</div>
 
-<p class="file-path">src/auth/auth.module.ts</p>
-<pre><code>import { Module } from '@nestjs/common'
-import { JwtModule } from '@nestjs/jwt'
-import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
+<pre><code>Postman / E2E  →  POST https://{AUTH0_DOMAIN}/oauth/token
+                    grant_type=client_credentials + audience
+                 ←  access token (JWT RS256)
+
+GET /products
+  Header: Authorization: Bearer eyJ...
+       →  JwtStrategy lê a chave pública em
+          https://{AUTH0_DOMAIN}/.well-known/jwks.json
+       →  valida assinatura, issuer e audience
+       →  401 ou segue para o controller
+</code></pre>
+
+<h3>Passo 1 — Registrar a API e a Application M2M</h3>
+
+<p>Siga o dashboard em <a href="https://auth0.com/docs/get-started/auth0-overview/set-up-apis" target="_blank" rel="noopener">Register APIs</a>:</p>
+
+<ol>
+  <li>Conta em <a href="https://auth0.com/signup" target="_blank" rel="noopener">auth0.com</a> → crie um tenant.</li>
+  <li><strong>Applications → APIs → Create API</strong>
+    <ul>
+      <li>Name: <code>StockFlow API</code> (só um rótulo).</li>
+      <li>Identifier: <code>https://stockflow-api</code> — vira o claim <code>aud</code>. A Auth0 recomenda formato de URL; <strong>não precisa existir na internet</strong> e <strong>não dá para mudar depois</strong>. <code>https://stockflow-api</code> e <code>https://stockflow-api/</code> são identifiers diferentes.</li>
+      <li>JWT Profile: deixe <strong>Auth0</strong> (padrão).</li>
+      <li>Signing Algorithm: <code>RS256</code> (recomendado — o token é assinado com a chave privada do tenant).</li>
+    </ul>
+  </li>
+  <li><strong>Applications → Applications → Create Application</strong> → tipo <strong>Machine to Machine</strong>.
+    <ul>
+      <li>No wizard, escolha a API <code>StockFlow API</code> e autorize. Depois você também vê isso em <strong>APIs → StockFlow API → Machine to Machine Applications</strong>.</li>
+      <li>Copie <strong>Domain</strong>, <strong>Client ID</strong> e <strong>Client Secret</strong> em Settings. O Domain é o do tenant (ex.: <code>dev-xxxxx.us.auth0.com</code>), sem <code>https://</code>.</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="concept-card">
+  <div class="label">💡 MFA e reset de senha (opcional neste POC)</div>
+  <p>Não se “ativa reset” em Authentication → Database. Connection Database já tem reset: no Universal Login o usuário clica em <em>Don't remember your password?</em> (<a href="https://auth0.com/docs/authenticate/database-connections/password-change" target="_blank" rel="noopener">Change Users' Passwords</a>).</p>
+  <p>MFA: <strong>Security → Multi-factor Auth</strong>. Ative um fator independente (OTP é o mais simples) e mude a policy de <strong>Never</strong> (padrão) para <strong>Always</strong> — senão o MFA não dispara. Docs: <a href="https://auth0.com/docs/secure/multi-factor-authentication/enable-mfa" target="_blank" rel="noopener">Enable MFA</a>.</p>
+  <p>Isso só vale para login de usuário. Token M2M <strong>não passa</strong> por MFA nem por tela de senha.</p>
+</div>
+
+<h3>Passo 2 — Variáveis de ambiente</h3>
+
+<p>O <a href="https://auth0.com/docs/quickstart/backend/nodejs" target="_blank" rel="noopener">quickstart de API Node</a> usa só Domain + Audience. Derive o issuer e o JWKS no código — assim os dois não divergem. Tire <code>JWT_SECRET</code> / <code>JWT_EXPIRES_IN</code> do schema Zod do <code>EnvConfigModule</code>.</p>
+
+<p class="file-path">.env / .env.example</p>
+<pre><code># Auth0 — Domain do tenant (Applications → sua app → Settings)
+AUTH0_DOMAIN=dev-xxxxx.us.auth0.com
+AUTH0_AUDIENCE=https://stockflow-api
+</code></pre>
+
+<p class="file-path">.env.test <em>(não commitar o secret)</em></p>
+<pre><code>AUTH0_DOMAIN=dev-xxxxx.us.auth0.com
+AUTH0_AUDIENCE=https://stockflow-api
+AUTH0_CLIENT_ID=...
+AUTH0_CLIENT_SECRET=...
+</code></pre>
+
+<p>Expanda o <code>EnvConfigService</code>:</p>
+
+<pre><code>getAuth0Domain(): string {
+  return this.configService.getOrThrow&lt;string&gt;('AUTH0_DOMAIN')
+}
+
+getAuth0Audience(): string {
+  return this.configService.getOrThrow&lt;string&gt;('AUTH0_AUDIENCE')
+}
+</code></pre>
+
+<p>O claim <code>iss</code> do token é <code>https://{AUTH0_DOMAIN}/</code> (com barra no final). O JWKS público é <code>https://{AUTH0_DOMAIN}/.well-known/jwks.json</code> — <a href="https://auth0.com/docs/secure/tokens/json-web-tokens/validate-json-web-tokens" target="_blank" rel="noopener">Validate JSON Web Tokens</a>.</p>
+
+<h3>Passo 3 — Instalar dependências</h3>
+
+<pre><code>pnpm add passport @nestjs/passport passport-jwt jwks-rsa
+pnpm add -D @types/passport-jwt
+</code></pre>
+
+<p>Não instale <code>@nestjs/jwt</code> nem <code>bcrypt</code> para login. O Express quickstart atual usa <code>express-oauth2-jwt-bearer</code>; no NestJS a Auth0 documenta Passport + <code>jwks-rsa</code>. Os dois fazem a mesma validação: assinatura RS256, <code>iss</code> e <code>aud</code>.</p>
+
+<div class="concept-card">
+  <div class="label">💡 O que é JWKS</div>
+  <p>JSON Web Key Set: endpoint público com as chaves que validam a assinatura. Você <strong>não</strong> guarda o secret de assinatura no <code>.env</code>. Se o Auth0 rotacionar a chave, o <code>jwks-rsa</code> busca de novo (com cache).</p>
+</div>
+
+<h3>Passo 4 — <code>JwtStrategy</code></h3>
+
+<p>Extrai o Bearer, busca a chave no JWKS e checa <code>audience</code> + <code>issuer</code>. Se qualquer check falhar, a API deve responder <strong>401</strong> (<a href="https://auth0.com/docs/secure/tokens/access-tokens/validate-access-tokens" target="_blank" rel="noopener">Validate Access Tokens</a>).</p>
+
+<p class="file-path">src/auth/infrastructure/jwt.strategy.ts</p>
+<pre><code>import { Injectable } from '@nestjs/common'
+import { PassportStrategy } from '@nestjs/passport'
+import { ExtractJwt, Strategy } from 'passport-jwt'
+import { passportJwtSecret } from 'jwks-rsa'
 import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
-import { AuthService } from './auth.service'
-import { AuthGuard } from './auth.guard'
+
+export type Auth0JwtPayload = {
+  sub: string
+  aud?: string | string[]
+  iss?: string
+  scope?: string
+}
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(envConfig: EnvConfigService) {
+    const domain = envConfig.getAuth0Domain()
+    const issuer = `https://${domain}/`
+
+    super({
+      secretOrKeyProvider: passportJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 5,
+        jwksUri: `https://${domain}/.well-known/jwks.json`,
+      }),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      audience: envConfig.getAuth0Audience(),
+      issuer,
+      algorithms: ['RS256'],
+    })
+  }
+
+  validate(payload: Auth0JwtPayload): Auth0JwtPayload {
+    return payload
+  }
+}
+</code></pre>
+
+<p><code>validate</code> só roda depois que a assinatura passou. O retorno vira <code>request.user</code>. Em token de <strong>usuário</strong>, <code>sub</code> é o id no Auth0. Em token <strong>M2M</strong>, <code>sub</code> é <code>{client_id}@clients</code> — não é um admin humano.</p>
+<p>Escopos (<code>scope</code>) são o próximo passo oficial se a API tiver permissões por endpoint. Neste POC um token válido para a audience já libera as rotas.</p>
+
+<h3>Passo 5 — <code>AuthModule</code></h3>
+
+<p class="file-path">src/auth/infrastructure/auth.module.ts</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { PassportModule } from '@nestjs/passport'
+import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
+import { JwtStrategy } from './jwt.strategy'
 
 @Module({
   imports: [
     EnvConfigModule,
-    JwtModule.registerAsync({
-      imports: [EnvConfigModule],
-      useFactory: (envConfig: EnvConfigService) =&gt; ({
-        global: true,
-        secret: envConfig.getJwtSecret(),
-        signOptions: { expiresIn: envConfig.getJwtExpiresIn() },
-      }),
-      inject: [EnvConfigService],
-    }),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  providers: [AuthService, AuthGuard],
-  exports: [AuthService, AuthGuard],
+  providers: [JwtStrategy],
+  exports: [PassportModule],
 })
 export class AuthModule {}
 </code></pre>
 
-<h3>AuthGuard</h3>
+<p>Importe no <code>AppModule</code>:</p>
 
-<p class="file-path">src/auth/auth.guard.ts</p>
-<pre><code>import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
-import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
-
-@Injectable()
-export class AuthGuard implements CanActivate {
-  constructor(
-    private jwtService: JwtService,
-    private envConfig: EnvConfigService,
-  ) {}
-
-  async canActivate(context: ExecutionContext): Promise&lt;boolean&gt; {
-    const request = context.switchToHttp().getRequest()
-    const token = this.extractToken(request)
-
-    if (!token) {
-      throw new UnauthorizedException('Token not provided')
-    }
-
-    try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.envConfig.getJwtSecret(),
-      })
-      request['user'] = payload
-    } catch {
-      throw new UnauthorizedException('Invalid token')
-    }
-
-    return true
-  }
-
-  private extractToken(request: any): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? []
-    return type === 'Bearer' ? token : undefined
-  }
-}
+<pre><code>imports: [
+  AuthModule,
+  ProductsModule,
+  SuppliersModule,
+  StockModule,
+  PurchaseOrderModule,
+]
 </code></pre>
 
-<h3>Proteger rotas</h3>
+<h3>Passo 6 — Proteger as rotas</h3>
 
-<p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar arquivo existente</p>
-<pre><code>// No controller, aplicar o guard
-import { UseGuards } from '@nestjs/common'
-import { AuthGuard } from '@/auth/auth.guard'
+<p>O guard vem pronto do Passport: <code>AuthGuard('jwt')</code>. Não precisa do <code>AuthGuard</code> manual com <code>JwtService.verifyAsync</code>.</p>
+
+<p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
+<pre><code>import { UseGuards } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 
 @Controller('products')
-@UseGuards(AuthGuard)  // Todas as rotas de produtos exigem autenticação
+@UseGuards(AuthGuard('jwt'))
 export class ProductsController {
   // ...
 }
 </code></pre>
+
+<p>Repita em Suppliers, Stock e PurchaseOrders. Deixe <code>GET /</code> do <code>AppController</code> sem guard.</p>
+
+<table>
+  <tr><th>Request</th><th>Resultado</th></tr>
+  <tr><td>Sem <code>Authorization</code></td><td>401</td></tr>
+  <tr><td>Bearer de outro tenant / audience errada / algoritmo <code>none</code></td><td>401</td></tr>
+  <tr><td>Bearer emitido pelo seu tenant com <code>aud</code> = Identifier da API</td><td>controller executa</td></tr>
+</table>
+
+<h3>Passo 7 — Postman</h3>
+
+<p>Na collection, aba <strong>Authorization</strong> → tipo <strong>OAuth 2.0</strong>. Para o POC use <strong>Client Credentials</strong> (<a href="https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-credentials-flow/call-your-api-using-the-client-credentials-flow" target="_blank" rel="noopener">Call Your API Using the Client Credentials Flow</a>):</p>
+
+<table>
+  <tr><th>Campo</th><th>Valor</th></tr>
+  <tr><td>Grant type</td><td>Client Credentials</td></tr>
+  <tr><td>Access Token URL</td><td><code>https://{{AUTH0_DOMAIN}}/oauth/token</code></td></tr>
+  <tr><td>Client ID / Secret</td><td>da Application Machine to Machine</td></tr>
+  <tr><td>Audience</td><td>o Identifier da API (<code>https://stockflow-api</code>)</td></tr>
+</table>
+
+<p>O Postman coloca <code>Authorization: Bearer …</code> sozinho. A Auth0 devolve <code>access_token</code>, <code>token_type</code> (<code>Bearer</code>) e <code>expires_in</code>.</p>
+
+<p>Authorization Code (login de usuário) pede outra Application, <strong>Regular Web Application</strong>, com Allowed Callback URLs <code>https://oauth.pstmn.io/v1/callback</code>, Auth URL <code>https://{{AUTH0_DOMAIN}}/authorize</code> e o mesmo Audience. Sem isso o grant de usuário falha — a app M2M não serve para Universal Login.</p>
+
+<h3>Passo 8 — Ajustar os testes E2E</h3>
+
+<p>Não chame <code>POST /login</code> local. Peça o token no endpoint oficial, com <code>application/x-www-form-urlencoded</code> (não JSON):</p>
+
+<pre><code>const getAccessToken = async (): Promise&lt;string&gt; =&gt; {
+  const res = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: process.env.AUTH0_CLIENT_ID ?? '',
+      client_secret: process.env.AUTH0_CLIENT_SECRET ?? '',
+      audience: process.env.AUTH0_AUDIENCE ?? '',
+    }),
+  })
+  const json = (await res.json()) as { access_token?: string; error?: string }
+
+  if (!res.ok || !json.access_token) {
+    throw new Error(`Auth0 token failed: ${json.error ?? res.status}`)
+  }
+
+  return json.access_token
+}
+
+const auth = (token: string) =&gt; ({ Authorization: `Bearer ${token}` })
+
+const token = await getAccessToken()
+await request(server).get('/products').set(auth(token)).expect(200)
+await request(server).get('/products').expect(401)
+</code></pre>
+
+<p><code>AUTH0_CLIENT_ID</code> e <code>AUTH0_CLIENT_SECRET</code> só no <code>.env.test</code> — nunca commitar o secret. Sem Auth0 no CI, mocke o <code>AuthGuard</code> no testing module.</p>
+
+<div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⚠️ Modelo User no Prisma</div>
+  <p>A tabela <code>users</code> com <code>passwordHash</code> deixa de ser a fonte de login. Senha e MFA ficam no Auth0, no fluxo de usuário. Se quiser ligar o admin ao domínio depois, grave só <code>auth0Id</code> (<code>sub</code> de um token de usuário) — não a senha, e não o <code>sub</code> de um token M2M.</p>
+</div>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Auth0 para você implementar</div>
+  <p>A API vira resource server. Quem emite o token é o Auth0; o Nest só valida JWT (assinatura + issuer + audience).</p>
+
+  <h4>Checklist</h4>
+  <ul>
+    <li>Criar tenant + API (Identifier = audience, RS256) + Application Machine to Machine autorizada nessa API</li>
+    <li>Adicionar <code>AUTH0_DOMAIN</code> e <code>AUTH0_AUDIENCE</code> no <code>.env</code> e no <code>EnvConfigService</code>; remover <code>JWT_SECRET</code> do schema Zod</li>
+    <li>Instalar <code>passport</code>, <code>@nestjs/passport</code>, <code>passport-jwt</code>, <code>jwks-rsa</code></li>
+    <li>Criar <code>JwtStrategy</code> com JWKS em <code>https://{domain}/.well-known/jwks.json</code>, issuer <code>https://{domain}/</code>, audience e <code>RS256</code></li>
+    <li>Criar <code>AuthModule</code> e importar no <code>AppModule</code></li>
+    <li>Proteger Products, Suppliers, Stock e PurchaseOrders com <code>@UseGuards(AuthGuard('jwt'))</code></li>
+    <li>Configurar OAuth 2.0 Client Credentials no Postman e um request 401 sem token</li>
+    <li>Atualizar E2E: token via <code>/oauth/token</code> form-urlencoded (ou mock do guard no CI)</li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>Não implemente <code>POST /login</code> nem bcrypt neste POC</li>
+    <li><code>AUTH0_DOMAIN</code> sem protocolo; issuer no código com <code>https://</code> e barra no final</li>
+    <li>Audience do token tem que ser exatamente o Identifier da API</li>
+    <li>MFA / reset de senha não fazem parte do fluxo M2M</li>
+    <li>O interceptor <code>WrapperData</code> continua igual — Auth0 não devolve <code>accessToken</code> pela sua API</li>
+    <li>Use sempre <code>@/</code> nos imports</li>
+  </ul>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 15 ══════════════════════════════ -->
 <h2 id="sec15">Seção 15 — Swagger + Postman</h2>
@@ -4838,7 +5034,7 @@ jobs:
   <tr><td>☐</td><td>Testes de integração com banco real</td><td>10-11</td></tr>
   <tr><td>☐</td><td>Testes E2E completos</td><td>12</td></tr>
   <tr><td>☐</td><td>Presenters (Product, Supplier, Pagination, Collection)</td><td>13</td></tr>
-  <tr><td>☐</td><td>Auth Module + JWT + AuthGuard</td><td>14</td></tr>
+  <tr><td>☐</td><td>Auth0 (JWKS + AuthGuard) nas rotas</td><td>14</td></tr>
   <tr><td>☐</td><td>Swagger completo</td><td>15</td></tr>
   <tr><td>☐</td><td>GitHub Actions CI</td><td>16</td></tr>
   <tr><td>☐</td><td>Deploy AWS (EC2 + RDS)</td><td>16</td></tr>

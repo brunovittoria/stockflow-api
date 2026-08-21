@@ -8,6 +8,7 @@ import {
   prisma,
 } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
 import { applyGlobalConfig } from '@/global-config'
+import { authedRequest, getAccessToken } from '../helpers/auth'
 
 type SupplierResponse = {
   data: {
@@ -21,6 +22,7 @@ type SupplierResponse = {
 describe('SuppliersController e2e tests', () => {
   let app: INestApplication<App>
   let server: App
+  let api: ReturnType<typeof authedRequest>
 
   const supplierPayload = (
     overrides: Partial<{
@@ -40,7 +42,7 @@ describe('SuppliersController e2e tests', () => {
   const createSupplier = async (
     overrides: Parameters<typeof supplierPayload>[0] = {},
   ): Promise<SupplierResponse> => {
-    const res: Response = await request(server)
+    const res: Response = await api
       .post('/suppliers')
       .send(supplierPayload(overrides))
       .expect(201)
@@ -57,6 +59,8 @@ describe('SuppliersController e2e tests', () => {
     applyGlobalConfig(app)
     await app.init()
     server = app.getHttpServer()
+    const token = await getAccessToken()
+    api = authedRequest(server, token)
   })
 
   beforeEach(async () => {
@@ -78,7 +82,7 @@ describe('SuppliersController e2e tests', () => {
     })
 
     it('should return 400 when body is invalid', async () => {
-      await request(server)
+      await api
         .post('/suppliers')
         .send({ name: 'A', cnpj: '123', email: 'not-an-email' })
         .expect(400)
@@ -87,7 +91,7 @@ describe('SuppliersController e2e tests', () => {
     it('should return 409 when cnpj already exists', async () => {
       await createSupplier()
 
-      await request(server)
+      await api
         .post('/suppliers')
         .send(
           supplierPayload({ email: 'outro@test.com', phone: '11988888888' }),
@@ -100,7 +104,7 @@ describe('SuppliersController e2e tests', () => {
     it('should return the supplier', async () => {
       const created = await createSupplier()
 
-      const res = await request(server)
+      const res = await api
         .get(`/suppliers/${created.data.id}`)
         .expect(200)
 
@@ -110,7 +114,7 @@ describe('SuppliersController e2e tests', () => {
     })
 
     it('should return 404 when supplier does not exist', async () => {
-      await request(server)
+      await api
         .get('/suppliers/00000000-0000-0000-0000-000000000000')
         .expect(404)
     })
@@ -126,7 +130,7 @@ describe('SuppliersController e2e tests', () => {
         cnpj: '12345678000101',
       })
 
-      const res = await request(server).get('/suppliers').expect(200)
+      const res = await api.get('/suppliers').expect(200)
       const body = res.body as { data: { items: unknown[]; total: number } }
 
       expect(body.data.total).toBe(2)
@@ -138,7 +142,7 @@ describe('SuppliersController e2e tests', () => {
     it('should update the supplier', async () => {
       const created = await createSupplier()
 
-      const res = await request(server)
+      const res = await api
         .put(`/suppliers/${created.data.id}`)
         .send({
           name: 'Fornecedor Atualizado',
@@ -158,8 +162,14 @@ describe('SuppliersController e2e tests', () => {
     it('should return 204 and then 404 on a subsequent GET', async () => {
       const created = await createSupplier()
 
-      await request(server).delete(`/suppliers/${created.data.id}`).expect(204)
-      await request(server).get(`/suppliers/${created.data.id}`).expect(404)
+      await api.delete(`/suppliers/${created.data.id}`).expect(204)
+      await api.get(`/suppliers/${created.data.id}`).expect(404)
+    })
+  })
+
+  describe('GET /suppliers without token', () => {
+    it('should return 401', async () => {
+      await request(server).get('/suppliers').expect(401)
     })
   })
 })

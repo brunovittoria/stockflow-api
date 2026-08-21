@@ -9,7 +9,9 @@ import {
   Query,
   HttpCode,
   Inject,
+  UseGuards,
 } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 import {
   CreateSupplierUseCase,
   GetSupplierUseCase,
@@ -34,6 +36,7 @@ import {
 } from '@/suppliers/infrastructure/presenters/supplier.presenter'
 
 @Controller('suppliers')
+@UseGuards(AuthGuard('jwt'))
 export class SuppliersController {
   @Inject(CreateSupplierUseCase.UseCase)
   private createUseCase!: CreateSupplierUseCase.UseCase

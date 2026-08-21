@@ -9,8 +9,8 @@ const envSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   DATABASE_URL: z.string().url(),
-  JWT_SECRET: z.string().min(32),
-  JWT_EXPIRES_IN: z.string().default('15m'),
+  AUTH0_DOMAIN: z.string().min(1),
+  AUTH0_AUDIENCE: z.string().url(),
 })
 
 export type EnvVars = z.infer<typeof envSchema>

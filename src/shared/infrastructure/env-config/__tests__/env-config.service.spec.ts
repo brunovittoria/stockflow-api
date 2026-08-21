@@ -21,7 +21,11 @@ describe('EnvConfigService', () => {
     expect(sut.getPort()).toBe(3000)
   })
 
-  it('should return the jwt secret', () => {
-    expect(sut.getJwtSecret()).toBeDefined()
+  it('should return the Auth0 domain', () => {
+    expect(sut.getAuth0Domain()).toBeDefined()
+  })
+
+  it('should return the Auth0 audience', () => {
+    expect(sut.getAuth0Audience()).toBe('https://stockflow-api')
   })
 })

@@ -6,7 +6,9 @@ import {
   Body,
   Query,
   Inject,
+  UseGuards,
 } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 import {
   CreatePurchaseOrderUseCase,
   GetPurchaseOrderUseCase,
@@ -30,6 +32,7 @@ import {
 import { ReceiveDeliveryPresenter } from '@/purchase-orders/infrastructure/presenters/receive-delivery.presenter'
 
 @Controller('purchase-orders')
+@UseGuards(AuthGuard('jwt'))
 export class PurchaseOrderController {
   @Inject(CreatePurchaseOrderUseCase.UseCase)
   private createUseCase!: CreatePurchaseOrderUseCase.UseCase

@@ -18,11 +18,11 @@ export class EnvConfigService implements EnvConfig {
     return this.configService.getOrThrow<string>('DATABASE_URL')
   }
 
-  getJwtSecret(): string {
-    return this.configService.getOrThrow<string>('JWT_SECRET')
+  getAuth0Domain(): string {
+    return this.configService.getOrThrow<string>('AUTH0_DOMAIN')
   }
 
-  getJwtExpiresIn(): string {
-    return this.configService.getOrThrow<string>('JWT_EXPIRES_IN')
+  getAuth0Audience(): string {
+    return this.configService.getOrThrow<string>('AUTH0_AUDIENCE')
   }
 }

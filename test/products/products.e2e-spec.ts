@@ -8,6 +8,7 @@ import {
   prisma,
 } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
 import { applyGlobalConfig } from '@/global-config'
+import { authedRequest, getAccessToken } from '../helpers/auth'
 
 type ProductResponse = {
   data: {
@@ -20,6 +21,7 @@ type ProductResponse = {
 describe('ProductsController e2e tests', () => {
   let app: INestApplication<App>
   let server: App
+  let api: ReturnType<typeof authedRequest>
 
   const productPayload = (supplierId: string, sku = 'CAM-PT-M') => ({
     name: 'Camiseta Preta',
@@ -34,7 +36,7 @@ describe('ProductsController e2e tests', () => {
   })
 
   const createSupplier = async (): Promise<string> => {
-    const res = await request(server)
+    const res = await api
       .post('/suppliers')
       .send({
         name: 'Fornecedor A',
@@ -51,7 +53,7 @@ describe('ProductsController e2e tests', () => {
     supplierId: string,
     sku = 'CAM-PT-M',
   ): Promise<ProductResponse> => {
-    const res: Response = await request(server)
+    const res: Response = await api
       .post('/products')
       .send(productPayload(supplierId, sku))
       .expect(201)
@@ -68,6 +70,8 @@ describe('ProductsController e2e tests', () => {
     applyGlobalConfig(app)
     await app.init()
     server = app.getHttpServer()
+    const token = await getAccessToken()
+    api = authedRequest(server, token)
   })
 
   beforeEach(async () => {
@@ -90,7 +94,7 @@ describe('ProductsController e2e tests', () => {
     })
 
     it('should return 400 when body is invalid', async () => {
-      await request(server)
+      await api
         .post('/products')
         .send({ sku: 'lowercase invalid' })
         .expect(400)
@@ -100,7 +104,7 @@ describe('ProductsController e2e tests', () => {
       const supplierId = await createSupplier()
       await createProduct(supplierId)
 
-      await request(server)
+      await api
         .post('/products')
         .send(productPayload(supplierId))
         .expect(409)
@@ -112,7 +116,7 @@ describe('ProductsController e2e tests', () => {
       const supplierId = await createSupplier()
       const created = await createProduct(supplierId)
 
-      const res = await request(server)
+      const res = await api
         .get(`/products/${created.data.id}`)
         .expect(200)
 
@@ -122,7 +126,7 @@ describe('ProductsController e2e tests', () => {
     })
 
     it('should return 404 when product does not exist', async () => {
-      await request(server)
+      await api
         .get('/products/00000000-0000-0000-0000-000000000000')
         .expect(404)
     })
@@ -133,8 +137,14 @@ describe('ProductsController e2e tests', () => {
       const supplierId = await createSupplier()
       const created = await createProduct(supplierId)
 
-      await request(server).delete(`/products/${created.data.id}`).expect(204)
-      await request(server).get(`/products/${created.data.id}`).expect(404)
+      await api.delete(`/products/${created.data.id}`).expect(204)
+      await api.get(`/products/${created.data.id}`).expect(404)
+    })
+  })
+
+  describe('GET /products without token', () => {
+    it('should return 401', async () => {
+      await request(server).get('/products').expect(401)
     })
   })
 })

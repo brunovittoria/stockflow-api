@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication } from '@nestjs/common'
-import request, { type Response } from 'supertest'
+import { type Response } from 'supertest'
 import { App } from 'supertest/types'
 import { AppModule } from '@/app.module'
 import {
@@ -8,6 +8,7 @@ import {
   prisma,
 } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
 import { applyGlobalConfig } from '@/global-config'
+import { authedRequest, getAccessToken } from '../helpers/auth'
 
 type StockResponse = {
   data: {
@@ -29,12 +30,13 @@ type StockCollectionResponse = {
 describe('StocksController e2e tests', () => {
   let app: INestApplication<App>
   let server: App
+  let api: ReturnType<typeof authedRequest>
 
   const createSupplierAndProduct = async (): Promise<{
     supplierId: string
     productId: string
   }> => {
-    const supplierRes: Response = await request(server)
+    const supplierRes: Response = await api
       .post('/suppliers')
       .send({
         name: 'Fornecedor A',
@@ -46,7 +48,7 @@ describe('StocksController e2e tests', () => {
 
     const supplierId = (supplierRes.body as { data: { id: string } }).data.id
 
-    const productRes: Response = await request(server)
+    const productRes: Response = await api
       .post('/products')
       .send({
         name: 'Whey Protein 1kg',
@@ -68,7 +70,7 @@ describe('StocksController e2e tests', () => {
   }
 
   const getCriticalStock = async (): Promise<StockResponse['data']> => {
-    const res = await request(server).get('/stocks/critical').expect(200)
+    const res = await api.get('/stocks/critical').expect(200)
     const body = res.body as StockCollectionResponse
     expect(body.data.items.length).toBeGreaterThan(0)
     return body.data.items[0]
@@ -83,6 +85,8 @@ describe('StocksController e2e tests', () => {
     applyGlobalConfig(app)
     await app.init()
     server = app.getHttpServer()
+    const token = await getAccessToken()
+    api = authedRequest(server, token)
   })
 
   beforeEach(async () => {
@@ -96,7 +100,7 @@ describe('StocksController e2e tests', () => {
 
   describe('GET /stocks/critical', () => {
     it('should return an empty list when there is no critical stock', async () => {
-      const res = await request(server).get('/stocks/critical').expect(200)
+      const res = await api.get('/stocks/critical').expect(200)
       const body = res.body as StockCollectionResponse
 
       expect(body.data.total).toBe(0)
@@ -118,7 +122,7 @@ describe('StocksController e2e tests', () => {
       await createSupplierAndProduct()
       const created = await getCriticalStock()
 
-      const res = await request(server).get(`/stocks/${created.id}`).expect(200)
+      const res = await api.get(`/stocks/${created.id}`).expect(200)
 
       const body = res.body as StockResponse
       expect(body.data.id).toBe(created.id)
@@ -126,7 +130,7 @@ describe('StocksController e2e tests', () => {
     })
 
     it('should return 404 when stock does not exist', async () => {
-      await request(server)
+      await api
         .get('/stocks/00000000-0000-0000-0000-000000000000')
         .expect(404)
     })
@@ -137,7 +141,7 @@ describe('StocksController e2e tests', () => {
       await createSupplierAndProduct()
       const created = await getCriticalStock()
 
-      const res = await request(server)
+      const res = await api
         .put(`/stocks/${created.id}`)
         .send({
           quantity: 50,
@@ -151,7 +155,7 @@ describe('StocksController e2e tests', () => {
       expect(body.data.quantity).toBe(50)
       expect(body.data.location).toBe('B2')
 
-      const critical = await request(server).get('/stocks/critical').expect(200)
+      const critical = await api.get('/stocks/critical').expect(200)
       expect((critical.body as StockCollectionResponse).data.total).toBe(0)
     })
 
@@ -159,7 +163,7 @@ describe('StocksController e2e tests', () => {
       await createSupplierAndProduct()
       const created = await getCriticalStock()
 
-      await request(server)
+      await api
         .put(`/stocks/${created.id}`)
         .send({ quantity: -1 })
         .expect(400)

@@ -1,4 +1,13 @@
-import { Controller, Get, Put, Param, Body, Inject } from '@nestjs/common'
+import {
+  Controller,
+  Get,
+  Put,
+  Param,
+  Body,
+  Inject,
+  UseGuards,
+} from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 import {
   GetStockUseCase,
   UpdateStockUseCase,
@@ -13,6 +22,7 @@ import {
 } from '@/stock/infrastructure/presenters/stock.presenter'
 
 @Controller('stocks')
+@UseGuards(AuthGuard('jwt'))
 export class StocksController {
   @Inject(GetStockUseCase.UseCase)
   private getUseCase!: GetStockUseCase.UseCase

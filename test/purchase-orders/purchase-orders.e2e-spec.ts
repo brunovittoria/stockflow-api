@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication } from '@nestjs/common'
-import request, { type Response } from 'supertest'
+import { type Response } from 'supertest'
 import { App } from 'supertest/types'
 import { AppModule } from '@/app.module'
 import {
@@ -8,6 +8,7 @@ import {
   prisma,
 } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
 import { applyGlobalConfig } from '@/global-config'
+import { authedRequest, getAccessToken } from '../helpers/auth'
 
 type PurchaseOrderResponse = {
   data: {
@@ -22,12 +23,13 @@ type PurchaseOrderResponse = {
 describe('PurchaseOrderController e2e tests', () => {
   let app: INestApplication<App>
   let server: App
+  let api: ReturnType<typeof authedRequest>
 
   const createSupplierAndProduct = async (): Promise<{
     supplierId: string
     productId: string
   }> => {
-    const supplierRes: Response = await request(server)
+    const supplierRes: Response = await api
       .post('/suppliers')
       .send({
         name: 'Fornecedor A',
@@ -39,7 +41,7 @@ describe('PurchaseOrderController e2e tests', () => {
 
     const supplierId = (supplierRes.body as { data: { id: string } }).data.id
 
-    const productRes: Response = await request(server)
+    const productRes: Response = await api
       .post('/products')
       .send({
         name: 'Whey Protein 1kg',
@@ -69,7 +71,7 @@ describe('PurchaseOrderController e2e tests', () => {
     supplierId: string,
     productId: string,
   ): Promise<PurchaseOrderResponse> => {
-    const res: Response = await request(server)
+    const res: Response = await api
       .post('/purchase-orders')
       .send(orderPayload(supplierId, productId))
       .expect(201)
@@ -86,6 +88,8 @@ describe('PurchaseOrderController e2e tests', () => {
     applyGlobalConfig(app)
     await app.init()
     server = app.getHttpServer()
+    const token = await getAccessToken()
+    api = authedRequest(server, token)
   })
 
   beforeEach(async () => {
@@ -112,7 +116,7 @@ describe('PurchaseOrderController e2e tests', () => {
     it('should return 400 when items are empty', async () => {
       const { supplierId } = await createSupplierAndProduct()
 
-      await request(server)
+      await api
         .post('/purchase-orders')
         .send({ supplierId, items: [] })
         .expect(400)
@@ -124,7 +128,7 @@ describe('PurchaseOrderController e2e tests', () => {
       const { supplierId, productId } = await createSupplierAndProduct()
       const created = await createOrder(supplierId, productId)
 
-      const res = await request(server)
+      const res = await api
         .get(`/purchase-orders/${created.data.id}`)
         .expect(200)
 
@@ -134,7 +138,7 @@ describe('PurchaseOrderController e2e tests', () => {
     })
 
     it('should return 404 when order does not exist', async () => {
-      await request(server)
+      await api
         .get('/purchase-orders/00000000-0000-0000-0000-000000000000')
         .expect(404)
     })
@@ -145,7 +149,7 @@ describe('PurchaseOrderController e2e tests', () => {
       const { supplierId, productId } = await createSupplierAndProduct()
       await createOrder(supplierId, productId)
 
-      const res = await request(server).get('/purchase-orders').expect(200)
+      const res = await api.get('/purchase-orders').expect(200)
       const body = res.body as { data: { items: unknown[]; total: number } }
 
       expect(body.data.total).toBe(1)
@@ -158,7 +162,7 @@ describe('PurchaseOrderController e2e tests', () => {
       const { supplierId, productId } = await createSupplierAndProduct()
       const created = await createOrder(supplierId, productId)
 
-      const res = await request(server)
+      const res = await api
         .post(`/purchase-orders/${created.data.id}/cancel`)
         .expect(201)
 
@@ -172,7 +176,7 @@ describe('PurchaseOrderController e2e tests', () => {
       const { supplierId, productId } = await createSupplierAndProduct()
       const created = await createOrder(supplierId, productId)
 
-      await request(server)
+      await api
         .post(`/purchase-orders/${created.data.id}/receive-delivery`)
         .expect(409)
     })
@@ -187,7 +191,7 @@ describe('PurchaseOrderController e2e tests', () => {
         data: { status: 'SENT' },
       })
 
-      const res = await request(server)
+      const res = await api
         .post(`/purchase-orders/${created.data.id}/receive-delivery`)
         .expect(201)
 
