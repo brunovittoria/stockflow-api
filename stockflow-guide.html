@@ -4588,47 +4588,32 @@ await request(server).get('/products').expect(401)
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso configura o Swagger com o pacote <code>@nestjs/swagger</code> e adiciona decorators em DTOs, Presenters e Controllers para gerar a documentação automaticamente. Isso permite testar a API pelo browser.</p>
+  <p>O curso liga o Swagger (<code>@nestjs/swagger</code>) e testa as rotas no Postman. Aqui é o mesmo: o Swagger vira a documentação em <code>/docs</code>; o Postman vira o catálogo executável. A autenticação já está na <a href="#sec14">Seção 14</a> — esta seção só documenta e testa.</p>
 </div>
 
-<h3>Setup</h3>
+<div class="concept-card">
+  <div class="label">💡 Dois papéis — não misture</div>
+  <p><strong>Swagger</strong> descreve a API (o que cada rota espera e devolve). <strong>Postman</strong> dispara as rotas de verdade, com token Auth0. Os dois usam o mesmo JWT. O pipe Zod já existe — não recrie.</p>
+</div>
 
+<!-- ── SWAGGER ── -->
+<h3>Parte 1 — Swagger</h3>
+
+<p>Com a API no ar, abra <code>http://localhost:3000/docs</code>. Sem <code>addBearerAuth</code>, o botão <strong>Authorize</strong> não aparece e as rotas protegidas falham com 401 no browser.</p>
+
+<h4>Passo 1 — Instalar</h4>
 <pre><code>pnpm add @nestjs/swagger
 </code></pre>
 
-<div class="concept-card">
-  <div class="label">💡 Zod + Swagger juntos</div>
-  <p><code>@ApiProperty</code> é para documentação (Swagger). Zod é para validação. Os dois coexistem: o DTO usa decorators do Swagger para gerar os docs, e um <code>ZodValidationPipe</code> customizado roda o schema Zod antes do controller processar.</p>
-</div>
+<h4>Passo 2 — Ligar no bootstrap</h4>
 
-<p class="file-path">src/shared/infrastructure/pipes/zod-validation.pipe.ts</p>
-<pre><code>import { PipeTransform, BadRequestException } from '@nestjs/common'
-import { ZodSchema } from 'zod'
-
-export class ZodValidationPipe implements PipeTransform {
-  constructor(private schema: ZodSchema) {}
-
-  transform(value: unknown) {
-    const result = this.schema.safeParse(value)
-
-    if (!result.success) {
-      const errors = result.error.issues.map(issue =&gt; ({
-        field: issue.path.join('.'),
-        message: issue.message,
-      }))
-      throw new BadRequestException({ message: 'Validation failed', errors })
-    }
-
-    return result.data
-  }
-}
-</code></pre>
+<p>O <code>ZodValidationPipe</code> já está em <code>src/shared/infrastructure/pipes/</code>. Aqui só entra o Swagger no <code>main.ts</code>. Mantenha o <code>applyGlobalConfig</code> e o <code>PORT</code> do env.</p>
 
 <p class="file-path">src/main.ts</p>
 <pre><code>import { NestFactory } from '@nestjs/core'
-import { AppModule } from './app.module'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import { applyGlobalConfig } from './global-config'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { AppModule } from '@/app.module'
+import { applyGlobalConfig } from '@/global-config'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -4636,7 +4621,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('StockFlow API')
-    .setDescription('API de Gestão de Loja Virtual — Produtos, Estoque, Fornecedores e Pedidos')
+    .setDescription('Produtos, estoque, fornecedores e pedidos')
     .setVersion('1.0.0')
     .addBearerAuth()
     .build()
@@ -4644,97 +4629,247 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('docs', app, document)
 
-  await app.listen(3000)
-  console.log('API rodando em http://localhost:3000')
-  console.log('Docs em http://localhost:3000/docs')
+  await app.listen(process.env.PORT ?? 3000)
 }
 
-bootstrap()
+void bootstrap()
 </code></pre>
 
-<h3>Decorators nos DTOs</h3>
+<div class="concept-card">
+  <div class="label">💡 O que <code>addBearerAuth()</code> faz</div>
+  <p>Cria o esquema Bearer no OpenAPI. Em <code>/docs</code> aparece <strong>Authorize</strong>: cole o access token (sem a palavra <code>Bearer</code>) e o Swagger manda o header sozinho. O token é o mesmo do Postman (Client Credentials da Seção 14).</p>
+</div>
 
-<p class="file-path">src/products/infrastructure/dto/create-product.dto.ts</p>
+<h4>Passo 3 — Zod valida, <code>@ApiProperty</code> documenta</h4>
+
+<p>O schema Zod continua sendo a fonte da verdade no request. A classe com <code>@ApiProperty</code> só existe para o Swagger desenhar o body. Não apague o schema. Inclua <code>location</code> e <code>minQuantity</code> no POST de produto — o estoque nasce aí.</p>
+
+<p class="file-path">src/products/infrastructure/dto/create-product.dto.ts  ← editar</p>
 <pre><code>import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
-// Schema Zod — fonte da verdade para validação
 export const createProductSchema = z.object({
-  name: z.string().min(1).max(255),
-  description: z.string().max(1000).default(''),
-  sku: z.string().regex(/^[A-Z0-9\-]{3,20}$/),
-  price: z.number().int().positive(),
-  costPrice: z.number().int().positive(),
-  category: z.string().min(1),
-  supplierId: z.string().uuid(),
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().min(1, 'Description is required'),
+  sku: z.string().min(1, 'SKU is required'),
+  price: z.number().positive('Price must be positive'),
+  costPrice: z.number().positive('Cost price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  supplierId: z.string().uuid('Supplier ID must be a valid UUID'),
+  location: z.string().min(1, 'Location is required'),
+  minQuantity: z.number().int().min(0, 'Min quantity cannot be negative'),
 })
 
-// Tipo inferido do schema — zero duplicação
-export type CreateProductInput = z.infer&lt;typeof createProductSchema&gt;
+export type CreateProductDto = z.infer&lt;typeof createProductSchema&gt;
 
-// Classe DTO — apenas para Swagger gerar a documentação
-export class CreateProductDto {
-  @ApiProperty({ description: 'Nome do produto', example: 'Camiseta Preta M' })
+export class CreateProductBody {
+  @ApiProperty({ example: 'Whey Protein 1kg' })
   name: string
 
-  @ApiProperty({ description: 'Descrição', example: 'Camiseta 100% algodão' })
+  @ApiProperty({ example: 'Whey concentrado sabor chocolate' })
   description: string
 
-  @ApiProperty({ description: 'Código SKU (único, imutável)', example: 'CAM-PT-M' })
+  @ApiProperty({ example: 'WHY-CH-1KG' })
   sku: string
 
-  @ApiProperty({ description: 'Preço de venda em centavos', example: 5990 })
+  @ApiProperty({ example: 15990, description: 'Preço de venda em centavos' })
   price: number
 
-  @ApiProperty({ description: 'Preço de custo em centavos', example: 2500 })
+  @ApiProperty({ example: 8000, description: 'Preço de custo em centavos' })
   costPrice: number
 
-  @ApiProperty({ description: 'Categoria', example: 'Vestuário' })
+  @ApiProperty({ example: 'Suplementos' })
   category: string
 
-  @ApiProperty({ description: 'UUID do fornecedor' })
+  @ApiProperty({ example: '00000000-0000-0000-0000-000000000000' })
   supplierId: string
+
+  @ApiProperty({ example: 'A1', description: 'Local do estoque inicial' })
+  location: string
+
+  @ApiProperty({ example: 10, description: 'Quantidade mínima do estoque inicial' })
+  minQuantity: number
 }
 </code></pre>
 
-<p>No controller, aplique o <code>ZodValidationPipe</code> na rota:</p>
+<p>Repita o padrão nos outros DTOs de body (create/update de supplier, product, stock e purchase-order). Query de listagem (<code>page</code>, <code>perPage</code>, <code>sort</code>, <code>sortDir</code>, <code>filter</code>) pode ficar só no Zod — o Swagger já mostra os query params se você anotar o controller com <code>@ApiQuery</code>, mas não é obrigatório neste POC.</p>
 
-<p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar arquivo existente</p>
-<pre><code>import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
-import { createProductSchema } from '../dto/create-product.dto'
+<h4>Passo 4 — Tags e Bearer no controller</h4>
 
-@Post()
-async create(
-  @Body(new ZodValidationPipe(createProductSchema)) dto: CreateProductInput,
-) {
-  const output = await this.createUseCase.execute(dto)
-  return new ProductPresenter(output)
+<p>O pipe nas rotas já está. Falta o Swagger saber que o módulo existe e que precisa de token. <code>GET /</code> fica sem <code>@ApiBearerAuth</code>.</p>
+
+<p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar</p>
+<pre><code>import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+
+@ApiTags('products')
+@ApiBearerAuth()
+@Controller('products')
+@UseGuards(AuthGuard('jwt'))
+export class ProductsController {
+  // rotas iguais às de agora
 }
 </code></pre>
 
-<hr>
+<p>Faça o mesmo em suppliers, stocks e purchase-orders. No <code>AppController</code>, só <code>@ApiTags('health')</code>.</p>
 
-<h3>Postman — Collections</h3>
+<h4>Passo 5 — Presenter = o que o cliente vê</h4>
+
+<p>Sem <code>@ApiProperty</code> no presenter, o Swagger mostra a rota mas não o JSON de resposta. Anote os campos da classe (não o type <code>ProductOutput</code>).</p>
+
+<p class="file-path">src/products/infrastructure/presenters/product.presenter.ts  ← editar</p>
+<pre><code>import { ApiProperty } from '@nestjs/swagger'
+
+export class ProductPresenter {
+  @ApiProperty()
+  id: string
+  @ApiProperty()
+  name: string
+  // ...demais campos iguais aos de agora
+}
+</code></pre>
+
+<p>No <code>/docs</code>: <strong>Authorize</strong> → cole o JWT → teste <code>GET /products</code>. Sem token: 401. <code>GET /</code>: 200 mesmo sem Authorize.</p>
+
+<!-- ── POSTMAN ── -->
+<h3>Parte 2 — Postman</h3>
 
 <div class="concept-card">
-  <div class="label">📬 O que é uma Collection no Postman</div>
-  <p>Uma collection é um conjunto de requisições HTTP salvas e organizadas por módulo. Ela permite testar todas as rotas da API manualmente sem precisar digitar URLs, headers ou bodies toda vez. É como um catálogo executável da API.</p>
+  <div class="label">📬 Collection e Environment</div>
+  <p>A <strong>collection</strong> guarda as requests (URL, body, Auth). O <strong>environment</strong> guarda valores que mudam: URL local, Auth0, IDs criados. Sem environment selecionado, <code>{{base_url}}</code> fica vermelho e o Postman tenta resolver o host literal <code>{{base_url}}</code> — dá <code>ENOTFOUND</code>.</p>
 </div>
 
-<div class="concept-card">
-  <div class="label">💡 Como importar no Postman</div>
-  <p>No Postman, clique em <strong>Import</strong> → <strong>Raw text</strong> e cole o JSON abaixo. Ou salve como <code>stockflow.postman_collection.json</code> e importe o arquivo.</p>
-  <p>Configure uma variável de ambiente <code>base_url</code> com o valor <code>http://localhost:3000</code> para que todas as requisições funcionem automaticamente.</p>
-</div>
+<h4>Passo 1 — Environment <code>StockFlow Local</code></h4>
 
-<h4>Produtos</h4>
+<p>Environments → Create. Variáveis:</p>
+
 <table>
-  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
-  <tr><td><code>POST</code></td><td><code>/products</code></td><td>Criar produto (inicializa estoque automaticamente)</td></tr>
-  <tr><td><code>GET</code></td><td><code>/products/:id</code></td><td>Buscar produto por ID</td></tr>
-  <tr><td><code>GET</code></td><td><code>/products?page=1&perPage=10&sort=name&sortDir=asc&filter=</code></td><td>Listar produtos com paginação e filtro</td></tr>
-  <tr><td><code>PUT</code></td><td><code>/products/:id</code></td><td>Atualizar produto (SKU e supplierId são imutáveis)</td></tr>
-  <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>Remover produto</td></tr>
+  <tr><th>Chave</th><th>Valor</th><th>Tipo</th></tr>
+  <tr><td><code>base_url</code></td><td><code>http://localhost:3000</code></td><td>default</td></tr>
+  <tr><td><code>auth0_domain</code></td><td>Domain do tenant, sem <code>https://</code></td><td>default</td></tr>
+  <tr><td><code>auth0_audience</code></td><td><code>https://stockflow-api</code></td><td>default</td></tr>
+  <tr><td><code>auth0_client_id</code></td><td>Client ID da app M2M</td><td>default</td></tr>
+  <tr><td><code>auth0_client_secret</code></td><td>Client Secret da app M2M</td><td><strong>secret</strong></td></tr>
+  <tr><td><code>supplier_id</code></td><td>(vazio no início)</td><td>default</td></tr>
+  <tr><td><code>product_id</code></td><td>(vazio no início)</td><td>default</td></tr>
+  <tr><td><code>stock_id</code></td><td>(vazio no início)</td><td>default</td></tr>
+  <tr><td><code>order_id</code></td><td>(vazio no início)</td><td>default</td></tr>
+</table>
+
+<p>No canto superior direito do Postman, selecione <strong>StockFlow Local</strong>. O secret não vai para o git.</p>
+
+<p>URLs das requests: <code>{{base_url}}/products</code> — sem <code>http://</code> na frente da variável. <code>base_url</code> já traz o protocolo.</p>
+
+<h4>Passo 2 — Auth OAuth 2.0 na collection</h4>
+
+<p>Clique na collection <strong>StockFlow API</strong> (o nome raiz na sidebar), não num request. Aba <strong>Auth</strong> → tipo <strong>OAuth 2.0</strong>. O botão <strong>Get New Access Token</strong> fica no final desse painel.</p>
+
+<table>
+  <tr><th>Campo</th><th>Valor</th></tr>
+  <tr><td>Grant type</td><td>Client Credentials</td></tr>
+  <tr><td>Access Token URL</td><td><code>https://{{auth0_domain}}/oauth/token</code></td></tr>
+  <tr><td>Client ID / Secret</td><td><code>{{auth0_client_id}}</code> / <code>{{auth0_client_secret}}</code></td></tr>
+  <tr><td>Client Authentication</td><td>Send client credentials in body</td></tr>
+  <tr><td>Audience</td><td>só em <strong>um</strong> lugar: campo Audience <em>ou</em> Advanced → Token Request. Os dois juntos viram array e a Auth0 responde <code>Invalid audience</code>.</td></tr>
+</table>
+
+<p>Clique <strong>Get New Access Token</strong> → <strong>Use Token</strong>. O Postman manda <code>Authorization: Bearer …</code> nas requests que herdam a Auth da collection.</p>
+
+<div class="warning-card" style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <div class="label" style="color:#e74c3c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Onde o botão não aparece</div>
+  <p>O request <code>GET /products (sem token — 401)</code> está com Auth = <strong>No Auth</strong> de propósito. O botão não existe ali. Health (<code>GET /</code>) também é No Auth: é público.</p>
+</div>
+
+<h4>Passo 3 — Pastas</h4>
+
+<table>
+  <tr><th>Pasta</th><th>Auth</th><th>Para quê</th></tr>
+  <tr><td>Health</td><td>No Auth</td><td><code>GET /</code> — API no ar, sem JWT</td></tr>
+  <tr><td>Auth</td><td>No Auth</td><td><code>GET /products</code> sem Bearer. Tem que ser <strong>401</strong>. Só valida o <code>AuthGuard</code>.</td></tr>
+  <tr><td>Fornecedores</td><td>Herdar collection</td><td>CRUD <code>/suppliers</code></td></tr>
+  <tr><td>Produtos</td><td>Herdar collection</td><td>CRUD <code>/products</code></td></tr>
+  <tr><td>Estoque</td><td>Herdar collection</td><td>Não tem <code>POST /stocks</code></td></tr>
+  <tr><td>Pedidos de Compra</td><td>Herdar collection</td><td>CRUD + receive-delivery + cancel</td></tr>
+</table>
+
+<p>Nos POSTs, um test script grava o <code>id</code> da resposta em variável de environment:</p>
+<pre><code>const json = pm.response.json()
+const id = json &amp;&amp; json.data &amp;&amp; json.data.id
+if (id) pm.environment.set('supplier_id', id)
+</code></pre>
+<p>A API envolve o body em <code>{ data: ... }</code> (interceptor <code>WrapperData</code>). Sem <code>.data</code>, o ID não grava e o próximo GET <code>/:id</code> quebra.</p>
+
+<h4>Passo 4 — Antes de enviar qualquer request</h4>
+<ol>
+  <li>Docker Desktop aberto → <code>docker compose up -d</code> (Postgres na porta do <code>.env</code>).</li>
+  <li><code>pnpm start</code> — API em <code>http://localhost:3000</code>.</li>
+  <li>Environment <strong>StockFlow Local</strong> selecionado.</li>
+  <li>Token obtido na collection (Passo 2).</li>
+</ol>
+
+<p><code>ECONNREFUSED</code> no Prisma = Postgres desligado, não bug da rota. <code>ENOTFOUND {{base_url}}</code> = environment não selecionado.</p>
+
+<h4>Passo 5 — Ordem de teste</h4>
+<ol>
+  <li>Health → <code>GET /</code> → 200</li>
+  <li>Auth → <code>GET /products</code> sem token → 401</li>
+  <li>Fornecedores → <code>POST /suppliers</code> (grava <code>supplier_id</code>) → GET/PUT com <code>{{supplier_id}}</code></li>
+  <li>Produtos → <code>POST /products</code> (usa <code>supplier_id</code>, grava <code>product_id</code>, cria estoque com <code>quantity = 0</code>)</li>
+  <li>Estoque → <code>GET /stocks/critical</code> (grava <code>stock_id</code>) → GET/PUT</li>
+  <li>Pedidos → <code>POST /purchase-orders</code> (grava <code>order_id</code>) → GET. <code>cancel</code> funciona em <code>DRAFT</code>.</li>
+</ol>
+
+<p>Não comece pelo <code>GET /suppliers/:id</code>. Com <code>supplier_id</code> vazio a URL vira <code>/suppliers/</code> e o Nest cai na listagem.</p>
+
+<div class="concept-card">
+  <div class="label">⚠️ Stock não tem POST</div>
+  <p>O estoque nasce no <code>POST /products</code>, com <code>quantity = 0</code>. Sobe de verdade no <code>receive-delivery</code>. Não crie <code>POST /stocks</code>.</p>
+</div>
+
+<h4>Rotas e bodies</h4>
+
+<p>Listagens aceitam <code>page</code>, <code>perPage</code>, <code>sort</code>, <code>sortDir</code>, <code>filter</code>.</p>
+
+<h5>Health</h5>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Esperado</th></tr>
+  <tr><td><code>GET</code></td><td><code>/</code></td><td>200, sem token</td></tr>
+</table>
+
+<h5>Fornecedores</h5>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Nota</th></tr>
+  <tr><td><code>POST</code></td><td><code>/suppliers</code></td><td>CNPJ: 14 dígitos</td></tr>
+  <tr><td><code>GET</code></td><td><code>/suppliers/:id</code></td><td>usa <code>{{supplier_id}}</code></td></tr>
+  <tr><td><code>GET</code></td><td><code>/suppliers</code></td><td>lista paginada</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/suppliers/:id</code></td><td>CNPJ não vai no body</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>204. Falha se houver produto ligado</td></tr>
+</table>
+
+<p class="file-path">Body — POST /suppliers</p>
+<pre><code>{
+  "name": "Distribuidora ABC",
+  "cnpj": "12345678000195",
+  "email": "contato@abc.com",
+  "phone": "11999998888"
+}
+</code></pre>
+
+<p class="file-path">Body — PUT /suppliers/:id</p>
+<pre><code>{
+  "name": "Distribuidora ABC Atualizada",
+  "email": "novo@abc.com",
+  "phone": "11988887777"
+}
+</code></pre>
+
+<h5>Produtos</h5>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>Nota</th></tr>
+  <tr><td><code>POST</code></td><td><code>/products</code></td><td>cria estoque; <code>price</code> &gt; <code>costPrice</code></td></tr>
+  <tr><td><code>GET</code></td><td><code>/products/:id</code></td><td>usa <code>{{product_id}}</code></td></tr>
+  <tr><td><code>GET</code></td><td><code>/products</code></td><td>lista paginada</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/products/:id</code></td><td>SKU e <code>supplierId</code> não vão no body</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>204. Pode falhar por FK do estoque</td></tr>
 </table>
 
 <p class="file-path">Body — POST /products</p>
@@ -4745,7 +4880,7 @@ async create(
   "price": 15990,
   "costPrice": 8000,
   "category": "Suplementos",
-  "supplierId": "&lt;uuid-do-fornecedor&gt;",
+  "supplierId": "{{supplier_id}}",
   "location": "A1",
   "minQuantity": 10
 }
@@ -4761,37 +4896,13 @@ async create(
 }
 </code></pre>
 
-<h4>Fornecedores</h4>
+<h5>Estoque</h5>
 <table>
-  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
-  <tr><td><code>POST</code></td><td><code>/suppliers</code></td><td>Criar fornecedor</td></tr>
-  <tr><td><code>GET</code></td><td><code>/suppliers/:id</code></td><td>Buscar fornecedor por ID</td></tr>
-  <tr><td><code>GET</code></td><td><code>/suppliers?page=1&perPage=10</code></td><td>Listar fornecedores</td></tr>
-  <tr><td><code>PUT</code></td><td><code>/suppliers/:id</code></td><td>Atualizar fornecedor (CNPJ é imutável)</td></tr>
-  <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>Remover fornecedor</td></tr>
+  <tr><th>Método</th><th>Rota</th><th>Nota</th></tr>
+  <tr><td><code>GET</code></td><td><code>/stocks/critical</code></td><td><code>quantity &lt; minQuantity</code>. Produto recém-criado entra aqui</td></tr>
+  <tr><td><code>GET</code></td><td><code>/stocks/:id</code></td><td>usa <code>{{stock_id}}</code></td></tr>
+  <tr><td><code>PUT</code></td><td><code>/stocks/:id</code></td><td><code>productId</code> não vai no body</td></tr>
 </table>
-
-<p class="file-path">Body — POST /suppliers</p>
-<pre><code>{
-  "name": "Distribuidora ABC",
-  "cnpj": "12345678000195",
-  "email": "contato@abc.com",
-  "phone": "11999998888"
-}
-</code></pre>
-
-<h4>Estoque</h4>
-<table>
-  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
-  <tr><td><code>GET</code></td><td><code>/stocks/critical</code></td><td>Listar estoques críticos (quantity &lt; minQuantity)</td></tr>
-  <tr><td><code>GET</code></td><td><code>/stocks/:id</code></td><td>Buscar estoque por ID</td></tr>
-  <tr><td><code>PUT</code></td><td><code>/stocks/:id</code></td><td>Atualizar estoque (productId é imutável)</td></tr>
-</table>
-
-<div class="concept-card">
-  <div class="label">⚠️ Stock não tem POST</div>
-  <p>O estoque é criado automaticamente ao criar um produto (<code>POST /products</code>). Não existe rota <code>POST /stocks</code> — o estoque nasce com <code>quantity = 0</code> e cresce via <code>receive-delivery</code>.</p>
-</div>
 
 <p class="file-path">Body — PUT /stocks/:id</p>
 <pre><code>{
@@ -4802,45 +4913,73 @@ async create(
 }
 </code></pre>
 
-<h4>Pedidos de Compra</h4>
+<h5>Pedidos de Compra</h5>
 <table>
-  <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
-  <tr><td><code>POST</code></td><td><code>/purchase-orders</code></td><td>Criar pedido (status inicial: DRAFT)</td></tr>
-  <tr><td><code>GET</code></td><td><code>/purchase-orders/:id</code></td><td>Buscar pedido por ID</td></tr>
-  <tr><td><code>GET</code></td><td><code>/purchase-orders?page=1&perPage=10</code></td><td>Listar pedidos com paginação</td></tr>
-  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/receive-delivery</code></td><td>Confirmar recebimento (requer status SENT)</td></tr>
-  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/cancel</code></td><td>Cancelar pedido (requer status DRAFT ou SENT)</td></tr>
+  <tr><th>Método</th><th>Rota</th><th>Nota</th></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders</code></td><td>status inicial <code>DRAFT</code></td></tr>
+  <tr><td><code>GET</code></td><td><code>/purchase-orders/:id</code></td><td>usa <code>{{order_id}}</code></td></tr>
+  <tr><td><code>GET</code></td><td><code>/purchase-orders</code></td><td>lista paginada</td></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/receive-delivery</code></td><td>só com status <code>SENT</code></td></tr>
+  <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/cancel</code></td><td><code>DRAFT</code> ou <code>SENT</code></td></tr>
 </table>
 
 <p class="file-path">Body — POST /purchase-orders</p>
 <pre><code>{
-  "supplierId": "&lt;uuid-do-fornecedor&gt;",
+  "supplierId": "{{supplier_id}}",
   "items": [
     {
-      "productId": "&lt;uuid-do-produto&gt;",
+      "productId": "{{product_id}}",
       "quantity": 100,
       "unitCost": 8000
-    },
-    {
-      "productId": "&lt;uuid-do-produto-2&gt;",
-      "quantity": 50,
-      "unitCost": 5000
     }
   ]
 }
 </code></pre>
 
 <div class="concept-card">
-  <div class="label">🔄 Fluxo de status de um pedido</div>
-  <p>Um pedido passa pelos seguintes estados. As rotas abaixo representam as transições possíveis:</p>
+  <div class="label">🔄 Status do pedido</div>
   <pre style="background:#1e1e2e;color:#cdd6f4;padding:1rem;border-radius:8px;font-size:0.85rem;">DRAFT ──→ SENT ──→ DELIVERED
   │          │
   └──────────┴──→ CANCELLED</pre>
   <ul>
-    <li><strong>DRAFT → SENT</strong>: transição manual (fora do escopo desta API, ex: integração com fornecedor)</li>
-    <li><strong>SENT → DELIVERED</strong>: via <code>POST /purchase-orders/:id/receive-delivery</code></li>
-    <li><strong>DRAFT ou SENT → CANCELLED</strong>: via <code>POST /purchase-orders/:id/cancel</code></li>
-    <li><strong>DELIVERED e CANCELLED</strong>: são estados finais — não podem ser cancelados</li>
+    <li><strong>DRAFT → SENT</strong>: não tem rota nesta API (seria integração com o fornecedor). Sem isso, <code>receive-delivery</code> responde conflito.</li>
+    <li><strong>SENT → DELIVERED</strong>: <code>POST .../receive-delivery</code> — soma a quantidade no estoque.</li>
+    <li><strong>DRAFT ou SENT → CANCELLED</strong>: <code>POST .../cancel</code>.</li>
+    <li><strong>DELIVERED</strong> e <strong>CANCELLED</strong>: fim. Não cancela de novo.</li>
+  </ul>
+</div>
+
+<h4>Erros comuns</h4>
+<table>
+  <tr><th>Sintoma</th><th>Causa</th></tr>
+  <tr><td><code>ENOTFOUND {{base_url}}</code></td><td>Environment não selecionado</td></tr>
+  <tr><td><code>Invalid audience ... type 'object'</code></td><td>Audience duplicado (campo + parâmetro extra)</td></tr>
+  <tr><td><code>ECONNREFUSED</code> no Prisma</td><td>Postgres/Docker parado</td></tr>
+  <tr><td>401 com token</td><td>Token expirado ou audience diferente do Identifier da API</td></tr>
+  <tr><td>GET <code>/:id</code> 404 ou lista vazia</td><td>Rodou o GET antes do POST; variável de ID vazia</td></tr>
+  <tr><td>Conflito no receive-delivery</td><td>Pedido ainda está <code>DRAFT</code></td></tr>
+</table>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Swagger + Postman para você implementar</div>
+
+  <h4>Checklist</h4>
+  <ul>
+    <li>Instalar <code>@nestjs/swagger</code> e ligar <code>DocumentBuilder</code> + <code>addBearerAuth</code> + <code>/docs</code> no <code>main.ts</code></li>
+    <li>Classe com <code>@ApiProperty</code> nos bodies (sem apagar o Zod). POST de produto inclui <code>location</code> e <code>minQuantity</code></li>
+    <li><code>@ApiTags</code> + <code>@ApiBearerAuth</code> nos controllers protegidos; health sem Bearer</li>
+    <li><code>@ApiProperty</code> nos presenters</li>
+    <li>Environment <code>StockFlow Local</code> + collection com OAuth 2.0 Client Credentials</li>
+    <li>Pastas Health, Auth (401), Fornecedores, Produtos, Estoque, Pedidos</li>
+    <li>Testar na ordem: health → 401 → supplier → product → stock → order</li>
+  </ul>
+
+  <h4>Observações importantes</h4>
+  <ul>
+    <li>Não recrie o <code>ZodValidationPipe</code></li>
+    <li>Não existe <code>POST /stocks</code></li>
+    <li>Client secret só no environment, tipo secret</li>
+    <li>Use <code>@/</code> nos imports do <code>main.ts</code></li>
   </ul>
 </div>
 

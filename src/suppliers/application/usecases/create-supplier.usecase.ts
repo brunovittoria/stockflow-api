@@ -38,6 +38,7 @@ export namespace CreateSupplierUseCase {
     cnpj: string
     isActive: boolean
     createdAt: Date
+    updatedAt: Date
   }
 
   export class UseCase implements UseCaseInterface<Input, Output> {
@@ -64,6 +65,7 @@ export namespace CreateSupplierUseCase {
         cnpj: supplier.cnpj,
         isActive: supplier.isActive,
         createdAt: supplier.createdAt,
+        updatedAt: supplier.updatedAt,
       }
     }
   }

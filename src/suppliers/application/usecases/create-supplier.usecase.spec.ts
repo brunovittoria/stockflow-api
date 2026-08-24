@@ -24,6 +24,7 @@ describe('CreateSupplierUseCase', () => {
     expect(output.cnpj).toBe(input.cnpj)
     expect(output.isActive).toBe(true)
     expect(output.createdAt).toBeInstanceOf(Date)
+    expect(output.updatedAt).toBeInstanceOf(Date)
     expect(repository.items).toHaveLength(1)
   })
 
