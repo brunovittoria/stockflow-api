@@ -638,6 +638,66 @@
       border-radius: 999px;
       transition: width 0.4s ease;
     }
+
+    .mermaid-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 12px 8px;
+      margin: 20px 0 28px;
+      overflow: hidden;
+    }
+
+    .mermaid-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 4px 8px 12px;
+    }
+
+    .mermaid-reset {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .mermaid-reset:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+
+    .mermaid-wrap .mermaid {
+      height: 520px;
+      display: block;
+      overflow: hidden;
+    }
+
+    .mermaid-wrap.short .mermaid {
+      height: 380px;
+    }
+
+    .mermaid-wrap.tall .mermaid {
+      height: 720px;
+    }
+
+    .mermaid-wrap svg {
+      max-width: none !important;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    .mermaid-wrap svg:active {
+      cursor: grabbing;
+    }
   </style>
 </head>
 <body>
@@ -683,6 +743,9 @@
 
   <div class="section-label">Deploy</div>
   <a href="#sec16">Seção 16 — CI/CD + AWS</a>
+
+  <div class="section-label">Futuro</div>
+  <a href="#sec-bonus-ia">Bônus — IA no SaaS</a>
 
   <div class="section-label">Referência</div>
   <a href="#entities">Mapa de Entidades</a>
@@ -1392,7 +1455,69 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 <!-- ══════════════════════════════ ENTITIES MAP ══════════════════════════════ -->
 <h2 id="entities">Mapa Completo de Entidades</h2>
 
-<h3>Product</h3>
+<p>Antes dos campos de cada classe: o sistema inteiro em desenhos <strong>Mermaid</strong>. Fornecedor abastece produto; produto nasce com estoque zerado; pedido de compra traz mercadoria e o estoque sobe.</p>
+<p style="color:var(--text-muted);font-size:14px;">Em cada mapa: arraste para mover, use o scroll para zoom, os botões <code>+</code> / <code>-</code> no canto, ou <strong>Resetar</strong>.</p>
+
+<h3>Quem fala com quem</h3>
+<p>Postman e Swagger pedem token no Auth0 e chamam a API. A API grava no Postgres. O front e o chat de IA entram depois (SaaS).</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart LR
+  Postman -->|"JWT"| API["StockFlow API"]
+  Swagger["Swagger /docs"] -->|"JWT"| API
+  Front["Front futuro"] -.->|"JWT"| API
+  Auth0["Auth0"] -->|"emite JWT"| Postman
+  Auth0 -->|"emite JWT"| Swagger
+  API -->|"valida JWT"| Auth0
+  API --> DB[("Postgres")]
+  </div>
+</div>
+
+<h3>Como as entidades se ligam</h3>
+<p>Um fornecedor tem muitos produtos. Cada produto tem <strong>um</strong> estoque. Um pedido pertence a um fornecedor e lista produtos (itens). Não existe estoque solto: ele nasce no <code>POST /products</code>.</p>
+
+<div class="mermaid-wrap tall">
+  <div class="mermaid">
+flowchart LR
+  Fornecedor["Fornecedor\n----------\nid\nname\ncnpj\nemail"]
+  Produto["Produto\n----------\nid\nsku\nprice\ncostPrice\nsupplierId"]
+  Estoque["Estoque\n----------\nid\nproductId\nquantity\nminQuantity"]
+  Pedido["Pedido\n----------\nid\nsupplierId\nstatus\ntotalCost"]
+  Item["Item do pedido\n----------\nproductId\nquantity\nunitCost"]
+
+  Fornecedor -->|"abastece  1 para N"| Produto
+  Produto -->|"tem  1 para 1"| Estoque
+  Fornecedor -->|"recebe  1 para N"| Pedido
+  Pedido -->|"contem  1 para N"| Item
+  Produto -->|"entra no  1 para N"| Item
+  </div>
+</div>
+
+<h3>Fluxo do dia a dia</h3>
+<p>Ordem que o negócio segue. <code>SENT</code> ainda não tem rota nesta API (seria o envio ao fornecedor). Sem isso, <code>receive-delivery</code> não roda.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  A["1. Criar fornecedor"] --> B["2. Criar produto"]
+  B --> C["Estoque nasce com quantity 0"]
+  C --> D["3. Criar pedido DRAFT"]
+  D --> E{"O que acontece?"}
+  E -->|"cancelar"| X["CANCELLED"]
+  E -->|"envio fora da API"| F["SENT"]
+  F --> G["4. receive-delivery"]
+  G --> H["DELIVERED"]
+  H --> I["Estoque sobe"]
+  F --> X
+  C --> J["quantity menor que minQuantity"]
+  J --> K["GET /stocks/critical"]
+  </div>
+</div>
+
+<h3>Campos de cada entidade</h3>
+
+<h4>Product</h4>
 <p class="file-path">src/products/domain/entities/product.entity.ts</p>
 <pre><code>// src/products/domain/entities/product.entity.ts
 
@@ -1410,7 +1535,7 @@ interface ProductProps {
 }
 </code></pre>
 
-<h3>Supplier</h3>
+<h4>Supplier</h4>
 <p class="file-path">src/suppliers/domain/entities/supplier.entity.ts</p>
 <pre><code>// src/suppliers/domain/entities/supplier.entity.ts
 
@@ -1424,7 +1549,7 @@ interface SupplierProps {
 }
 </code></pre>
 
-<h3>Stock</h3>
+<h4>Stock</h4>
 <p class="file-path">src/stock/domain/entities/stock.entity.ts</p>
 <pre><code>// src/stock/domain/entities/stock.entity.ts
 
@@ -1437,7 +1562,7 @@ interface StockProps {
 }
 </code></pre>
 
-<h3>PurchaseOrder</h3>
+<h4>PurchaseOrder</h4>
 <p class="file-path">src/purchase-orders/domain/entities/purchase-order.entity.ts</p>
 <pre><code>// src/purchase-orders/domain/entities/purchase-order.entity.ts
 
@@ -1465,6 +1590,152 @@ interface PurchaseOrderProps {
 <div class="warning-card">
   <div class="label">⚠️ Importante</div>
   <p>Estas regras devem viver na <strong>camada de domínio</strong> (dentro das entidades e dos use cases), nunca nos controllers ou no banco de dados. Essa é a essência da Clean Architecture.</p>
+</div>
+
+<p>Cada regra abaixo tem o fluxo em desenho. A tabela no final é o checklist de onde implementar.</p>
+
+<h3>Status do pedido</h3>
+<p>O pedido nasce em <code>DRAFT</code>. Só pode ir para <code>SENT</code> (envio ainda fora desta API), ser cancelado, ou — depois de enviado — ser marcado como entregue. <code>DELIVERED</code> e <code>CANCELLED</code> são o fim: não voltam.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart LR
+  Inicio((inicio)) --> DRAFT
+  DRAFT -->|"envio fora da API"| SENT
+  DRAFT -->|"cancelar"| CANCELLED
+  SENT -->|"receive-delivery"| DELIVERED
+  SENT -->|"cancelar"| CANCELLED
+  DELIVERED --> Fim((fim))
+  CANCELLED --> Fim
+  </div>
+</div>
+
+<h3>1. SKU único e imutável</h3>
+<p>O SKU identifica o produto. Na criação, se já existir outro igual, a API recusa (<code>ConflictError</code>). Depois de criado, não existe <code>updateSku()</code> — o código não muda.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["POST /products"] --> B{"SKU ja existe?"}
+  B -->|sim| C["ConflictError"]
+  B -->|nao| D["Cria produto"]
+  D --> E["SKU gravado"]
+  E --> F["PUT /products"]
+  F --> G["Altera nome, preco, etc"]
+  G --> H["SKU permanece o mesmo"]
+  </div>
+</div>
+
+<h3>2. Preço de venda maior que o custo</h3>
+<p>Não dá para vender no prejuízo: <code>price</code> tem que ser maior que <code>costPrice</code> (valores em centavos). A validação mora na entidade <code>Product</code>, na criação e na atualização.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["Criar ou atualizar produto"] --> B{"price maior que costPrice?"}
+  B -->|nao| C["Erro de validacao"]
+  B -->|sim| D["Produto aceito"]
+  </div>
+</div>
+
+<h3>3. CNPJ único</h3>
+<p>Cada fornecedor tem um CNPJ. O use case <code>CreateSupplier</code> consulta o repositório antes de gravar. Se o número já estiver em uso, lança <code>ConflictError</code>.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["POST /suppliers"] --> B{"CNPJ ja existe?"}
+  B -->|sim| C["ConflictError"]
+  B -->|nao| D["Cria fornecedor"]
+  </div>
+</div>
+
+<h3>4. Não apagar fornecedor com pedido ativo</h3>
+<p>Pedido ativo = <code>DRAFT</code> ou <code>SENT</code>. Se o fornecedor ainda tiver um desses, <code>DeleteSupplier</code> recusa. Só apaga quando não há pedido em andamento (já entregue ou cancelado, ou nenhum pedido).</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["DELETE /suppliers/:id"] --> B{"Tem pedido DRAFT ou SENT?"}
+  B -->|sim| C["Recusa a exclusao"]
+  B -->|nao| D["Apaga o fornecedor"]
+  </div>
+</div>
+
+<h3>5. Estoque crítico</h3>
+<p>Estoque crítico é quando a quantidade atual fica abaixo do mínimo combinado: <code>quantity &lt; minQuantity</code>. O getter na entidade <code>Stock</code> decide isso. A rota <code>GET /stocks/critical</code> lista esses casos para o lojista repor.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["Estoque do produto"] --> B{"quantity menor que minQuantity?"}
+  B -->|sim| C["Critico"]
+  C --> D["GET /stocks/critical"]
+  B -->|nao| E["Ok"]
+  </div>
+</div>
+
+<h3>6. Cancelar só em DRAFT ou SENT</h3>
+<p>Cancelar um pedido já entregue reescreveria a história do estoque. Por isso a entidade só aceita cancelamento em <code>DRAFT</code> ou <code>SENT</code>. Em <code>DELIVERED</code> ou <code>CANCELLED</code>, o use case lança <code>ConflictError</code>.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["Cancelar pedido"] --> B{status}
+  B -->|DRAFT| C["Vira CANCELLED"]
+  B -->|SENT| C
+  B -->|DELIVERED| D["ConflictError"]
+  B -->|CANCELLED| D
+  </div>
+</div>
+
+<h3>7. Entrega sobe o estoque</h3>
+<p><code>POST /purchase-orders/:id/receive-delivery</code> só roda se o pedido estiver <code>SENT</code>. Aí o status vira <code>DELIVERED</code> e cada item soma <code>quantity</code> no estoque daquele produto. Sem o passo SENT (ainda fora da API), essa rota não executa.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  A["Pedido em SENT"] --> B["receive-delivery"]
+  B --> C{"Status e SENT?"}
+  C -->|nao| D["Recusa"]
+  C -->|sim| E["Status vira DELIVERED"]
+  E --> F["Para cada item"]
+  F --> G["Estoque do produto += quantity"]
+  </div>
+</div>
+
+<h3>8. totalCost é calculado</h3>
+<p>O cliente não manda o total. A entidade <code>PurchaseOrder</code> soma <code>quantity × unitCost</code> de cada item. Se alguém passar um <code>totalCost</code> na criação, ele é ignorado e recalculado.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["Itens do pedido"] --> B["item: quantity x unitCost"]
+  B --> C["Soma todos os itens"]
+  C --> D["totalCost gravado"]
+  </div>
+</div>
+
+<h3>Checklist — onde cada regra vive</h3>
+<p>O desenho resume criação versus dia a dia. A tabela aponta o arquivo certo.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TB
+  subgraph criar["Na criacao"]
+    R1["SKU unico e imutavel"]
+    R2["price maior que costPrice"]
+    R3["CNPJ unico"]
+    R4["totalCost = soma dos itens"]
+  end
+  subgraph viver["No dia a dia"]
+    R5["Estoque critico se qty menor que min"]
+    R6["Cancela so em DRAFT ou SENT"]
+    R7["DELIVERED sobe o estoque"]
+    R8["Nao apaga fornecedor com pedido ativo"]
+  end
+  criar --> viver
+  </div>
 </div>
 
 <table>
@@ -5144,6 +5415,26 @@ jobs:
   <p>Vá em <strong>Settings → Secrets and Variables → Actions</strong> do repositório e adicione: <code>EC2_HOST</code> (IP público da EC2) e <code>EC2_SSH_KEY</code> (conteúdo do arquivo .pem). Nunca commite credenciais.</p>
 </div>
 
+<!-- ══════════════════════════════ BÔNUS — IA ══════════════════════════════ -->
+<h2 id="sec-bonus-ia">Bônus — IA no produto (SaaS)</h2>
+
+<div class="concept-card">
+  <div class="label">📌 Lembrete — fora deste POC</div>
+  <p>A StockFlow vai virar um <strong>SaaS</strong>. Uma das ofertas futuras é IA no sistema: o lojista conversa com o produto (chat ou assistente) e recebe ajuda sobre estoque, pedidos e o que repor. Esta seção existe só para não esquecer. Nada disso entra no código agora.</p>
+</div>
+
+<p>Quando o produto comercial existir, vale pensar em:</p>
+<ul>
+  <li><strong>Chat no painel</strong> — perguntas em linguagem simples (“o que está acabando esta semana?”) com resposta baseada nos dados da loja.</li>
+  <li><strong>Ajuda no dia a dia</strong> — sugerir pedido de compra, explicar estoque crítico, resumir movimentação.</li>
+  <li><strong>Feature do plano</strong> — IA como opção do SaaS (ligar por cliente), não como peça obrigatória da API de hoje.</li>
+</ul>
+
+<div class="warning-card">
+  <div class="label">⚠️ Escopo</div>
+  <p>Auth, Swagger, Postman e deploy fecham o POC. IA fica para o produto comercial: dado do cliente, custo por conversa e o que a IA pode ou não fazer. Detalhe técnico, outro momento.</p>
+</div>
+
 <!-- ══════════════════════════════ CHECKLIST FINAL ══════════════════════════════ -->
 <hr>
 
@@ -5177,6 +5468,7 @@ jobs:
   <tr><td>☐</td><td>Swagger completo</td><td>15</td></tr>
   <tr><td>☐</td><td>GitHub Actions CI</td><td>16</td></tr>
   <tr><td>☐</td><td>Deploy AWS (EC2 + RDS)</td><td>16</td></tr>
+  <tr><td>☐</td><td>IA no SaaS (chat / assistente) — fora deste POC</td><td>Bônus</td></tr>
 </table>
 
 <hr>
@@ -5189,7 +5481,38 @@ jobs:
 
 </div><!-- /main -->
 
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script>
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        wrappingWidth: 9999,
+        nodeSpacing: 55,
+        rankSpacing: 70,
+        padding: 24,
+      },
+      er: { useMaxWidth: false },
+      state: { useMaxWidth: false },
+      themeVariables: {
+        darkMode: true,
+        background: '#161822',
+        primaryColor: '#3d3470',
+        primaryTextColor: '#e1e4ed',
+        primaryBorderColor: '#a29bfe',
+        lineColor: '#a29bfe',
+        secondaryColor: '#1a1d2e',
+        tertiaryColor: '#161822',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '18px',
+      },
+    })
+  }
   const STORAGE_KEY = 'stockflow-progress-v1'
 
   const groups = {
@@ -5269,7 +5592,52 @@ jobs:
     if (sidebarText) sidebarText.textContent = `${overallPct}% concluído`
   }
 
-  document.addEventListener('DOMContentLoaded', render)
+  async function enableDiagramNav() {
+    if (!window.mermaid) return
+    await mermaid.run({ querySelector: '.mermaid' })
+    if (!window.svgPanZoom) return
+
+    document.querySelectorAll('.mermaid-wrap').forEach(wrap => {
+      if (!wrap.querySelector('.mermaid-toolbar')) {
+        const toolbar = document.createElement('div')
+        toolbar.className = 'mermaid-toolbar'
+        toolbar.innerHTML =
+          '<span>Arraste para mover · scroll para zoom · botoes + / -</span>' +
+          '<button type="button" class="mermaid-reset">Resetar</button>'
+        wrap.insertBefore(toolbar, wrap.firstChild)
+      }
+
+      const svg = wrap.querySelector('svg')
+      if (!svg || svg.dataset.panzoom === '1') return
+      svg.dataset.panzoom = '1'
+      svg.removeAttribute('width')
+      svg.removeAttribute('height')
+      svg.style.maxWidth = 'none'
+      svg.setAttribute('width', '100%')
+      svg.setAttribute('height', '100%')
+
+      const panZoom = svgPanZoom(svg, {
+        zoomEnabled: true,
+        controlIconsEnabled: true,
+        fit: true,
+        center: true,
+        minZoom: 0.3,
+        maxZoom: 6,
+        mouseWheelZoomEnabled: true,
+        preventMouseEventsDefault: true,
+      })
+
+      wrap.querySelector('.mermaid-reset').addEventListener('click', () => {
+        panZoom.fit()
+        panZoom.center()
+      })
+    })
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    enableDiagramNav()
+    render()
+  })
 
   // ── Active sidebar link on scroll ──
   const sidebarLinks = document.querySelectorAll('.sidebar a[href^="#"]')
@@ -5307,6 +5675,7 @@ jobs:
 
   document.querySelectorAll('pre').forEach(pre => {
     if (pre.parentElement.classList.contains('code-block')) return
+    if (pre.closest('.mermaid-wrap')) return
 
     const wrapper = document.createElement('div')
     wrapper.className = 'code-block'
