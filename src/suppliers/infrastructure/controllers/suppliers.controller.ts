@@ -36,10 +36,20 @@ import {
   SupplierPresenter,
   SupplierCollectionPresenter,
 } from '@/suppliers/infrastructure/presenters/supplier.presenter'
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger'
 
 @ApiTags('suppliers')
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Token JWT ausente ou inválido' })
 @Controller('suppliers')
 @UseGuards(AuthGuard('jwt'))
 export class SuppliersController {
@@ -59,7 +69,15 @@ export class SuppliersController {
   private deleteUseCase!: DeleteSupplierUseCase.UseCase
 
   @Post()
+  @ApiOperation({
+    summary: 'Criar fornecedor',
+    description: 'CNPJ deve ter 14 dígitos e ser único.',
+  })
   @ApiBody({ type: CreateSupplierBody })
+  @ApiCreatedResponse({
+    description: 'Fornecedor criado',
+    type: SupplierPresenter,
+  })
   async create(
     @Body(new ZodValidationPipe(createSupplierSchema)) dto: CreateSupplierDto,
   ) {
@@ -68,12 +86,28 @@ export class SuppliersController {
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Buscar fornecedor por ID',
+    description: 'Retorna um fornecedor. 404 se o ID não existir.',
+  })
+  @ApiOkResponse({
+    description: 'Fornecedor encontrado',
+    type: SupplierPresenter,
+  })
   async findOne(@Param('id') id: string) {
     const output = await this.getUseCase.execute({ id })
     return new SupplierPresenter(output)
   }
 
   @Get()
+  @ApiOperation({
+    summary: 'Listar fornecedores',
+    description: 'Lista paginada. Query: page, perPage, sort, sortDir, filter.',
+  })
+  @ApiOkResponse({
+    description: 'Lista de fornecedores',
+    type: SupplierCollectionPresenter,
+  })
   async search(
     @Query(new ZodValidationPipe(listSuppliersSchema)) params: ListSuppliersDto,
   ) {
@@ -82,7 +116,15 @@ export class SuppliersController {
   }
 
   @Put(':id')
+  @ApiOperation({
+    summary: 'Atualizar fornecedor',
+    description: 'CNPJ não muda. Envie só name, email e phone.',
+  })
   @ApiBody({ type: UpdateSupplierBody })
+  @ApiOkResponse({
+    description: 'Fornecedor atualizado',
+    type: SupplierPresenter,
+  })
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateSupplierSchema)) dto: UpdateSupplierDto,
@@ -93,6 +135,11 @@ export class SuppliersController {
 
   @HttpCode(204)
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Remover fornecedor',
+    description: '204 sem body. Falha se houver produto vinculado.',
+  })
+  @ApiNoContentResponse({ description: 'Fornecedor removido' })
   async remove(@Param('id') id: string) {
     await this.deleteUseCase.execute({ id })
   }

@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common'
-import { ApiTags } from '@nestjs/swagger'
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { AppService } from '@/app.service'
 
 @ApiTags('health')
@@ -8,6 +8,12 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'Health check',
+    description:
+      'Rota pública. Não exige JWT. Serve para ver se a API está no ar.',
+  })
+  @ApiOkResponse({ description: 'API no ar' })
   getHello(): string {
     return this.appService.getHello()
   }
