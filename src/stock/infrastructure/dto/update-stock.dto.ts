@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
 export const updateStockSchema = z.object({
@@ -8,3 +9,17 @@ export const updateStockSchema = z.object({
 })
 
 export type UpdateStockDto = z.infer<typeof updateStockSchema>
+
+export class UpdateStockBody {
+  @ApiProperty({ example: 50 })
+  quantity!: number
+
+  @ApiProperty({ example: 10 })
+  minQuantity!: number
+
+  @ApiProperty({ example: 'B3' })
+  location!: string
+
+  @ApiProperty({ example: true })
+  isActive!: boolean
+}

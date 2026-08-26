@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
 export const createPurchaseOrderSchema = z.object({
@@ -17,3 +18,22 @@ export const createPurchaseOrderSchema = z.object({
 })
 
 export type CreatePurchaseOrderDto = z.infer<typeof createPurchaseOrderSchema>
+
+export class PurchaseOrderItemBody {
+  @ApiProperty({ example: '00000000-0000-0000-0000-000000000000' })
+  productId!: string
+
+  @ApiProperty({ example: 100 })
+  quantity!: number
+
+  @ApiProperty({ example: 8000, description: 'Custo unitário em centavos' })
+  unitCost!: number
+}
+
+export class CreatePurchaseOrderBody {
+  @ApiProperty({ example: '00000000-0000-0000-0000-000000000000' })
+  supplierId!: string
+
+  @ApiProperty({ type: [PurchaseOrderItemBody] })
+  items!: PurchaseOrderItemBody[]
+}

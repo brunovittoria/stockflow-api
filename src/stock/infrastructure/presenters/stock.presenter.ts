@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger'
+
 // Contrato de entrada do StockPresenter: campos que qualquer use case de stock deve retornar.
 export type StockOutput = {
   id: string
@@ -23,13 +25,21 @@ export type StockCollectionOutput = {
 // Classe que formata a resposta de um único estoque.
 // É uma classe (não um type) porque o NestJS serializa instâncias como JSON automaticamente.
 export class StockPresenter {
+  @ApiProperty()
   id: string
+  @ApiProperty()
   productId: string
+  @ApiProperty()
   quantity: number
+  @ApiProperty()
   minQuantity: number
+  @ApiProperty()
   location: string
+  @ApiProperty()
   isActive: boolean
+  @ApiProperty()
   createdAt: Date
+  @ApiProperty()
   updatedAt: Date
 
   constructor(output: StockOutput) {
@@ -47,10 +57,15 @@ export class StockPresenter {
 // Classe que formata a resposta de uma listagem de estoques.
 // Converte cada item em StockPresenter e inclui os metadados de paginação (quando disponíveis).
 export class StockCollectionPresenter {
+  @ApiProperty({ type: [StockPresenter] })
   items: StockPresenter[]
+  @ApiProperty()
   total: number
+  @ApiProperty({ required: false })
   currentPage?: number
+  @ApiProperty({ required: false })
   perPage?: number
+  @ApiProperty({ required: false })
   lastPage?: number
 
   constructor(output: StockCollectionOutput) {

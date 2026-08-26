@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
 export const updateSupplierSchema = z.object({
@@ -7,3 +8,14 @@ export const updateSupplierSchema = z.object({
 })
 
 export type UpdateSupplierDto = z.infer<typeof updateSupplierSchema>
+
+export class UpdateSupplierBody {
+  @ApiProperty({ example: 'Distribuidora ABC Atualizada' })
+  name!: string
+
+  @ApiProperty({ example: 'novo@abc.com' })
+  email!: string
+
+  @ApiProperty({ example: '11988887777' })
+  phone!: string
+}

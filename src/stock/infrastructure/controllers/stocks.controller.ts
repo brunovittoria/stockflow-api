@@ -14,13 +14,16 @@ import {
   ListCriticalStockUseCase,
 } from '@/stock/application/usecases'
 import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.pipe'
-import { updateStockSchema } from '@/stock/infrastructure/dto'
+import { updateStockSchema, UpdateStockBody } from '@/stock/infrastructure/dto'
 import type { UpdateStockDto } from '@/stock/infrastructure/dto'
 import {
   StockPresenter,
   StockCollectionPresenter,
 } from '@/stock/infrastructure/presenters/stock.presenter'
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger'
 
+@ApiTags('stocks')
+@ApiBearerAuth()
 @Controller('stocks')
 @UseGuards(AuthGuard('jwt'))
 export class StocksController {
@@ -48,6 +51,7 @@ export class StocksController {
   }
 
   @Put(':id')
+  @ApiBody({ type: UpdateStockBody })
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateStockSchema)) dto: UpdateStockDto,

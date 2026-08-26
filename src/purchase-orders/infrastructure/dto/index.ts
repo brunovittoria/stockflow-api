@@ -1,4 +1,8 @@
-export { createPurchaseOrderSchema } from './create-purchase-order.dto'
+export {
+  createPurchaseOrderSchema,
+  CreatePurchaseOrderBody,
+  PurchaseOrderItemBody,
+} from './create-purchase-order.dto'
 export type { CreatePurchaseOrderDto } from './create-purchase-order.dto'
 
 export { listPurchaseOrdersSchema } from './list-purchase-orders.dto'

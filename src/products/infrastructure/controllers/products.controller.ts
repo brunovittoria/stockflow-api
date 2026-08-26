@@ -24,6 +24,8 @@ import {
   createProductSchema,
   updateProductSchema,
   listProductsSchema,
+  CreateProductBody,
+  UpdateProductBody,
 } from '@/products/infrastructure/dto'
 import type {
   CreateProductDto,
@@ -34,7 +36,10 @@ import {
   ProductPresenter,
   ProductCollectionPresenter,
 } from '@/products/infrastructure/presenters/product.presenter'
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger'
 
+@ApiTags('products')
+@ApiBearerAuth()
 @Controller('products')
 @UseGuards(AuthGuard('jwt'))
 export class ProductsController {
@@ -54,6 +59,7 @@ export class ProductsController {
   private deleteUseCase!: DeleteProductUseCase.UseCase
 
   @Post()
+  @ApiBody({ type: CreateProductBody })
   async create(
     @Body(new ZodValidationPipe(createProductSchema)) dto: CreateProductDto,
   ) {
@@ -76,6 +82,7 @@ export class ProductsController {
   }
 
   @Put(':id')
+  @ApiBody({ type: UpdateProductBody })
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateProductSchema)) dto: UpdateProductDto,

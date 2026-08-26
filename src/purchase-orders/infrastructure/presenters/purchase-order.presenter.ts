@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import type {
   PurchaseOrderItem,
   PurchaseOrderStatus,
@@ -21,13 +22,29 @@ export type PurchaseOrderCollectionOutput = {
   lastPage: number
 }
 
+export class PurchaseOrderItemPresenter {
+  @ApiProperty()
+  productId!: string
+  @ApiProperty()
+  quantity!: number
+  @ApiProperty()
+  unitCost!: number
+}
+
 export class PurchaseOrderPresenter {
+  @ApiProperty()
   id: string
+  @ApiProperty()
   supplierId: string
+  @ApiProperty({ type: [PurchaseOrderItemPresenter] })
   items: PurchaseOrderItem[]
+  @ApiProperty({ example: 'DRAFT' })
   status: PurchaseOrderStatus
+  @ApiProperty()
   totalCost: number
+  @ApiProperty()
   createdAt: Date
+  @ApiProperty()
   updatedAt: Date
 
   constructor(output: PurchaseOrderOutput) {
@@ -42,10 +59,15 @@ export class PurchaseOrderPresenter {
 }
 
 export class PurchaseOrderCollectionPresenter {
+  @ApiProperty({ type: [PurchaseOrderPresenter] })
   items: PurchaseOrderPresenter[]
+  @ApiProperty()
   total: number
+  @ApiProperty()
   currentPage: number
+  @ApiProperty()
   perPage: number
+  @ApiProperty()
   lastPage: number
 
   constructor(output: PurchaseOrderCollectionOutput) {
@@ -56,4 +78,3 @@ export class PurchaseOrderCollectionPresenter {
     this.lastPage = output.lastPage
   }
 }
-

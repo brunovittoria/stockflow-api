@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger'
+
 // Contrato de entrada do presenter: define quais campos o use case deve devolver
 // para que o presenter consiga montar a resposta. Qualquer use case que retorne
 // esses campos pode ser passado para ProductPresenter — sem acoplamento a um use case específico.
@@ -30,16 +32,27 @@ export type ProductCollectionOutput = {
 // Os campos declarados aqui são exatamente o que o cliente vai receber na resposta HTTP.
 // Se quiser esconder um campo (ex: costPrice), basta removê-lo daqui — sem tocar no use case.
 export class ProductPresenter {
+  @ApiProperty()
   id: string
+  @ApiProperty()
   name: string
+  @ApiProperty()
   description: string
+  @ApiProperty()
   sku: string
+  @ApiProperty()
   price: number
+  @ApiProperty()
   costPrice: number
+  @ApiProperty()
   category: string
+  @ApiProperty()
   supplierId: string
+  @ApiProperty()
   isActive: boolean
+  @ApiProperty()
   createdAt: Date
+  @ApiProperty()
   updatedAt: Date
 
   // Recebe o output do use case e copia os campos para as propriedades da classe
@@ -61,10 +74,15 @@ export class ProductPresenter {
 // Classe que formata a resposta de uma listagem de produtos.
 // Converte cada item em ProductPresenter e inclui os metadados de paginação.
 export class ProductCollectionPresenter {
+  @ApiProperty({ type: [ProductPresenter] })
   items: ProductPresenter[]
+  @ApiProperty()
   total: number
+  @ApiProperty()
   currentPage: number
+  @ApiProperty()
   perPage: number
+  @ApiProperty()
   lastPage: number
 
   constructor(output: ProductCollectionOutput) {

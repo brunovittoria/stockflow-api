@@ -24,6 +24,8 @@ import {
   createSupplierSchema,
   updateSupplierSchema,
   listSuppliersSchema,
+  CreateSupplierBody,
+  UpdateSupplierBody,
 } from '@/suppliers/infrastructure/dto'
 import type {
   CreateSupplierDto,
@@ -34,7 +36,10 @@ import {
   SupplierPresenter,
   SupplierCollectionPresenter,
 } from '@/suppliers/infrastructure/presenters/supplier.presenter'
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger'
 
+@ApiTags('suppliers')
+@ApiBearerAuth()
 @Controller('suppliers')
 @UseGuards(AuthGuard('jwt'))
 export class SuppliersController {
@@ -54,6 +59,7 @@ export class SuppliersController {
   private deleteUseCase!: DeleteSupplierUseCase.UseCase
 
   @Post()
+  @ApiBody({ type: CreateSupplierBody })
   async create(
     @Body(new ZodValidationPipe(createSupplierSchema)) dto: CreateSupplierDto,
   ) {
@@ -76,6 +82,7 @@ export class SuppliersController {
   }
 
   @Put(':id')
+  @ApiBody({ type: UpdateSupplierBody })
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateSupplierSchema)) dto: UpdateSupplierDto,

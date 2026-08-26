@@ -20,6 +20,8 @@ import { ZodValidationPipe } from '@/shared/infrastructure/pipes/zod-validation.
 import {
   createPurchaseOrderSchema,
   listPurchaseOrdersSchema,
+  CreatePurchaseOrderBody,
+  PurchaseOrderItemBody,
 } from '@/purchase-orders/infrastructure/dto'
 import type {
   CreatePurchaseOrderDto,
@@ -30,7 +32,11 @@ import {
   PurchaseOrderCollectionPresenter,
 } from '@/purchase-orders/infrastructure/presenters/purchase-order.presenter'
 import { ReceiveDeliveryPresenter } from '@/purchase-orders/infrastructure/presenters/receive-delivery.presenter'
+import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiTags } from '@nestjs/swagger'
 
+@ApiTags('purchase-orders')
+@ApiBearerAuth()
+@ApiExtraModels(PurchaseOrderItemBody)
 @Controller('purchase-orders')
 @UseGuards(AuthGuard('jwt'))
 export class PurchaseOrderController {
@@ -50,6 +56,7 @@ export class PurchaseOrderController {
   private cancelUseCase!: CancelPurchaseOrderUseCase.UseCase
 
   @Post()
+  @ApiBody({ type: CreatePurchaseOrderBody })
   async create(
     @Body(new ZodValidationPipe(createPurchaseOrderSchema))
     dto: CreatePurchaseOrderDto,

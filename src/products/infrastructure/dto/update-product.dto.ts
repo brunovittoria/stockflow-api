@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
 export const updateProductSchema = z.object({
@@ -9,3 +10,20 @@ export const updateProductSchema = z.object({
 })
 
 export type UpdateProductDto = z.infer<typeof updateProductSchema>
+
+export class UpdateProductBody {
+  @ApiProperty({ example: 'Whey Protein 1kg Atualizado' })
+  name!: string
+
+  @ApiProperty({ example: 'Nova descrição' })
+  description!: string
+
+  @ApiProperty({ example: 17990, description: 'Preço de venda em centavos' })
+  price!: number
+
+  @ApiProperty({ example: 8500, description: 'Preço de custo em centavos' })
+  costPrice!: number
+
+  @ApiProperty({ example: 'Suplementos' })
+  category!: string
+}

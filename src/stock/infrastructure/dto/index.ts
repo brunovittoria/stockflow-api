@@ -1,4 +1,4 @@
-export { updateStockSchema } from './update-stock.dto'
+export { updateStockSchema, UpdateStockBody } from './update-stock.dto'
 export type { UpdateStockDto } from './update-stock.dto'
 
 export { listStocksSchema } from './list-stocks.dto'

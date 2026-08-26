@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
 
 export const createProductSchema = z.object({
@@ -13,3 +14,35 @@ export const createProductSchema = z.object({
 })
 
 export type CreateProductDto = z.infer<typeof createProductSchema>
+
+export class CreateProductBody {
+  @ApiProperty({ example: 'Whey Protein 1kg' })
+  name!: string
+
+  @ApiProperty({ example: 'Whey concentrado sabor chocolate' })
+  description!: string
+
+  @ApiProperty({ example: 'WHY-CH-1KG' })
+  sku!: string
+
+  @ApiProperty({ example: 15990, description: 'Preço de venda em centavos' })
+  price!: number
+
+  @ApiProperty({ example: 8000, description: 'Preço de custo em centavos' })
+  costPrice!: number
+
+  @ApiProperty({ example: 'Suplementos' })
+  category!: string
+
+  @ApiProperty({ example: '00000000-0000-0000-0000-000000000000' })
+  supplierId!: string
+
+  @ApiProperty({ example: 'A1', description: 'Local do estoque inicial' })
+  location!: string
+
+  @ApiProperty({
+    example: 10,
+    description: 'Quantidade mínima do estoque inicial',
+  })
+  minQuantity!: number
+}
