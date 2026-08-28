@@ -698,6 +698,24 @@
     .mermaid-wrap svg:active {
       cursor: grabbing;
     }
+
+    .expect {
+      display: inline-block;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .expect-2xx { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+    .expect-4xx { background: rgba(241, 196, 15, 0.16); color: #f1c40f; }
+    .expect-5xx { background: rgba(231, 76, 60, 0.16); color: #e74c3c; }
+
+    table.endpoint-check td:nth-child(3),
+    table.endpoint-check th:nth-child(3) {
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -740,6 +758,8 @@
   <a href="#sec13">Seção 13 — Presenters</a>
   <a href="#sec14">Seção 14 — Auth com Auth0</a>
   <a href="#sec15">Seção 15 — Swagger + Postman</a>
+  <a href="#postman-checklist">Checklist de endpoints</a>
+  <a href="#sec-redis">Seção Redis — Cache</a>
 
   <div class="section-label">Deploy</div>
   <a href="#sec16">Seção 16 — CI/CD + AWS</a>
@@ -1140,6 +1160,39 @@
       <label class="checklist-item" id="item-s14-4">
         <input type="checkbox" data-group="sec14" onchange="updateProgress(this)">
         <span class="checklist-item-label">Testar no Postman (OAuth 2.0) e E2E (token + 401 sem token)</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
+
+  <!-- ── Redis ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Redis — Cache na StockFlow
+        <span class="checklist-group-badge" id="badge-redis">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-redis" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-redis-1">
+        <input type="checkbox" data-group="redis" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Subir o Redis no Docker, env e MCP oficial (<code>uvx</code> + <code>mcp.json</code>)</span>
+      </label>
+      <label class="checklist-item" id="item-redis-2">
+        <input type="checkbox" data-group="redis" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Criar <code>CacheProvider</code> + implementação com <strong>node-redis</strong> (pacote <code>redis</code>)</span>
+      </label>
+      <label class="checklist-item" id="item-redis-3">
+        <input type="checkbox" data-group="redis" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Cachear GET de produto/estoque crítico e invalidar nos writes</span>
+      </label>
+      <label class="checklist-item" id="item-redis-4">
+        <input type="checkbox" data-group="redis" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Conferir HIT no Postman e as chaves pelo Redis MCP</span>
       </label>
     </div>
   </div>
@@ -5079,21 +5132,292 @@ if (id) pm.environment.set('supplier_id', id)
 
 <p><code>ECONNREFUSED</code> no Prisma = Postgres desligado, não bug da rota. <code>ENOTFOUND {{base_url}}</code> = environment não selecionado.</p>
 
-<h4>Passo 5 — Ordem de teste</h4>
-<ol>
-  <li>Health → <code>GET /</code> → 200</li>
-  <li>Auth → <code>GET /products</code> sem token → 401</li>
-  <li>Fornecedores → <code>POST /suppliers</code> (grava <code>supplier_id</code>) → GET/PUT com <code>{{supplier_id}}</code></li>
-  <li>Produtos → <code>POST /products</code> (usa <code>supplier_id</code>, grava <code>product_id</code>, cria estoque com <code>quantity = 0</code>)</li>
-  <li>Estoque → <code>GET /stocks/critical</code> (grava <code>stock_id</code>) → GET/PUT</li>
-  <li>Pedidos → <code>POST /purchase-orders</code> (grava <code>order_id</code>) → GET. <code>cancel</code> funciona em <code>DRAFT</code>.</li>
-</ol>
+<h4 id="postman-checklist">Passo 5 — Checklist de cada endpoint</h4>
 
-<p>Não comece pelo <code>GET /suppliers/:id</code>. Com <code>supplier_id</code> vazio a URL vira <code>/suppliers/</code> e o Nest cai na listagem.</p>
+<p>Siga a ordem. Não comece pelo <code>GET /:id</code>: se a variável estiver vazia, a URL vira <code>/suppliers/</code> (ou <code>/products/</code>) e o Nest cai na listagem.</p>
+<p>Respostas de sucesso (objeto) vêm em <code>{ "data": ... }</code>. <code>GET /</code> é texto puro. Erros 4xx/5xx vêm sem <code>data</code>: <code>{ statusCode, error, message }</code>. Bodies de POST/PUT estão no bloco <em>Rotas e bodies</em> logo abaixo.</p>
+<p>CNPJ e SKU dos exemplos do guia podem já existir no banco (seed). Se der <span class="expect expect-4xx">409</span>, mude um dígito / o SKU e tente de novo.</p>
+<p><code>POST .../cancel</code> e <code>POST .../receive-delivery</code> devolvem <span class="expect expect-2xx">201</span> (default do Nest em POST), não 200. O body está certo mesmo assim.</p>
+
+<div class="checklist-items" style="margin: 16px 0 8px;">
+  <label class="checklist-item" id="item-pm-prep">
+    <input type="checkbox" onchange="updateProgress(this)">
+    <span class="checklist-item-label">Preparação: Docker ligado, <code>pnpm start</code>, environment <strong>StockFlow Local</strong>, token na collection (Passos 1–4)</span>
+  </label>
+</div>
+
+<h5>Health — sem JWT</h5>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-health" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>Texto <code>Hello World!</code>. Sem wrapper <code>data</code>. Sem token.</td>
+  </tr>
+</table>
+
+<h5>Auth — sem JWT (de propósito)</h5>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-auth-401" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /products</code> (Auth = No Auth)</td>
+    <td><span class="expect expect-4xx">401</span></td>
+    <td><code>{"message":"Unauthorized","statusCode":401}</code>. Prova que o guard está ligado.</td>
+  </tr>
+</table>
+
+<h5>Fornecedores — herdar JWT</h5>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-sup-post" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /suppliers</code></td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td><code>data.id</code>, <code>name</code>, <code>cnpj</code>, <code>email</code>, <code>phone</code>, <code>isActive: true</code>. Test script grava <code>supplier_id</code>. CNPJ duplicado → <span class="expect expect-4xx">409</span>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-sup-get-id" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /suppliers/{{supplier_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>O mesmo fornecedor. UUID inexistente → <span class="expect expect-4xx">404</span>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-sup-list" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /suppliers?page=1&amp;perPage=10</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td><code>data.items</code> (array), <code>total</code>, <code>currentPage</code>, <code>perPage</code>, <code>lastPage</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-sup-put" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>PUT /suppliers/{{supplier_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td><code>name</code>, <code>email</code>, <code>phone</code> atualizados. <code>cnpj</code> igual ao da criação (não vai no body).</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-sup-del" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>DELETE /suppliers/:id</code> de um fornecedor <strong>sem</strong> produto</td>
+    <td><span class="expect expect-2xx">204</span></td>
+    <td>Body vazio. Crie um segundo fornecedor só para apagar. Se tiver produto ligado, o Prisma estoura <span class="expect expect-5xx">500</span> (FK).</td>
+  </tr>
+</table>
+
+<h5>Produtos — herdar JWT</h5>
+<p>Usa <code>{{supplier_id}}</code> do POST anterior. O estoque nasce aqui: <code>quantity = 0</code>. Não existe <code>POST /stocks</code>.</p>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-prod-post" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /products</code></td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td><code>data.id</code>, <code>sku</code>, <code>price</code>, <code>costPrice</code>, <code>supplierId</code>. Grava <code>product_id</code>. SKU duplicado → <span class="expect expect-4xx">409</span>. <code>price &lt;= costPrice</code> → erro de validação.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-prod-get-id" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /products/{{product_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>O produto criado. UUID inexistente → <span class="expect expect-4xx">404</span>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-prod-list" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /products?page=1&amp;perPage=10</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>Lista paginada no mesmo formato de fornecedores.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-prod-put" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>PUT /products/{{product_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td><code>name</code>, <code>description</code>, <code>price</code>, <code>costPrice</code>, <code>category</code> mudam. <code>sku</code> e <code>supplierId</code> iguais (não vão no body).</td>
+  </tr>
+</table>
+
+<h5>Estoque — herdar JWT</h5>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-stk-crit" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /stocks/critical</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td><code>data.items</code> inclui o estoque do produto novo (<code>quantity</code> 0 &lt; <code>minQuantity</code> 10). Copie o <code>id</code> → <code>stock_id</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-stk-get" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /stocks/{{stock_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td><code>productId</code> = produto criado, <code>quantity</code>, <code>minQuantity</code>, <code>location</code>, <code>isActive</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-stk-put" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>PUT /stocks/{{stock_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>Body: <code>quantity</code>, <code>minQuantity</code>, <code>location</code>, <code>isActive</code>. <code>productId</code> não muda. Se <code>quantity &gt;= minQuantity</code>, some da lista critical.</td>
+  </tr>
+</table>
+
+<h5>Pedidos de compra — herdar JWT</h5>
+<p>Crie <strong>dois</strong> pedidos: um para cancelar (fica DRAFT) e outro para testar entrega.</p>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-post" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /purchase-orders</code> (pedido A — entrega)</td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td><code>status: "DRAFT"</code>. <code>totalCost</code> = soma de <code>quantity × unitCost</code> (ex.: 100 × 8000 = 800000). Grava <code>order_id</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-get" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /purchase-orders/{{order_id}}</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>Mesmo pedido, com <code>items</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-list" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>GET /purchase-orders?page=1&amp;perPage=10</code></td>
+    <td><span class="expect expect-2xx">200</span></td>
+    <td>Lista paginada.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-recv-draft" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /purchase-orders/{{order_id}}/receive-delivery</code> ainda em DRAFT</td>
+    <td><span class="expect expect-4xx">409</span></td>
+    <td>Mensagem: order must be SENT first. Não tem rota DRAFT → SENT nesta API.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-post-b" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /purchase-orders</code> (pedido B — cancelar)</td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td>Outro <code>id</code>, também DRAFT. Guarde esse id à parte (não sobrescreva <code>order_id</code> do pedido A).</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-cancel" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST /purchase-orders/:id/cancel</code> no pedido B</td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td><code>data.status</code> vira <code>CANCELLED</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-cancel-again" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td>O mesmo <code>cancel</code> de novo</td>
+    <td><span class="expect expect-4xx">409</span></td>
+    <td><code>Cannot cancel a purchase order with status CANCELLED</code>.</td>
+  </tr>
+</table>
+
+<h5>Opcional — entrega de verdade e DELETE com FK</h5>
+<p>Não existe rota para SENT. Para ver o estoque subir, rode no Postgres (Docker) e depois o receive-delivery no pedido A:</p>
+<pre><code>docker exec stockflow-db psql -U stockflow -d stockflow_db -c "UPDATE purchase_orders SET status = 'SENT' WHERE id = 'COLE-O-UUID-DO-PEDIDO-A';"</code></pre>
+<table class="endpoint-check">
+  <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-po-recv-sent" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>POST .../receive-delivery</code> com o pedido A em SENT</td>
+    <td><span class="expect expect-2xx">201</span></td>
+    <td><code>status: "DELIVERED"</code> e <code>updatedStockItems[].newQuantity</code> = quantidade antiga + item. Confira no <code>GET /stocks/:id</code>.</td>
+  </tr>
+  <tr>
+    <td>
+      <label class="checklist-item" id="item-pm-prod-del" style="padding:4px 0;margin:0;">
+        <input type="checkbox" onchange="updateProgress(this)">
+      </label>
+    </td>
+    <td><code>DELETE /products/{{product_id}}</code> com estoque/itens ligados</td>
+    <td><span class="expect expect-5xx">500</span></td>
+    <td>Bug conhecido: FK no Prisma. O esperado “certo” seria 409; hoje estoura 500. Deixe por último.</td>
+  </tr>
+</table>
 
 <div class="concept-card">
   <div class="label">⚠️ Stock não tem POST</div>
-  <p>O estoque nasce no <code>POST /products</code>, com <code>quantity = 0</code>. Sobe de verdade no <code>receive-delivery</code>. Não crie <code>POST /stocks</code>.</p>
+  <p>O estoque nasce no <code>POST /products</code>, com <code>quantity = 0</code>. Sobe de verdade no <code>receive-delivery</code> (pedido em SENT). Não crie <code>POST /stocks</code>.</p>
 </div>
 
 <h4>Rotas e bodies</h4>
@@ -5113,7 +5437,7 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>GET</code></td><td><code>/suppliers/:id</code></td><td>usa <code>{{supplier_id}}</code></td></tr>
   <tr><td><code>GET</code></td><td><code>/suppliers</code></td><td>lista paginada</td></tr>
   <tr><td><code>PUT</code></td><td><code>/suppliers/:id</code></td><td>CNPJ não vai no body</td></tr>
-  <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>204. Falha se houver produto ligado</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>204 se não tiver produto. Com produto ligado: 500 (FK)</td></tr>
 </table>
 
 <p class="file-path">Body — POST /suppliers</p>
@@ -5140,7 +5464,7 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>GET</code></td><td><code>/products/:id</code></td><td>usa <code>{{product_id}}</code></td></tr>
   <tr><td><code>GET</code></td><td><code>/products</code></td><td>lista paginada</td></tr>
   <tr><td><code>PUT</code></td><td><code>/products/:id</code></td><td>SKU e <code>supplierId</code> não vão no body</td></tr>
-  <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>204. Pode falhar por FK do estoque</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>Hoje <strong>500</strong> se houver estoque/itens (FK). O 204 só viria sem vínculo</td></tr>
 </table>
 
 <p class="file-path">Body — POST /products</p>
@@ -5253,6 +5577,1559 @@ if (id) pm.environment.set('supplier_id', id)
     <li>Use <code>@/</code> nos imports do <code>main.ts</code></li>
   </ul>
 </div>
+
+<!-- ══════════════════════════════ REDIS ══════════════════════════════ -->
+<h2 id="sec-redis">Redis — Cache na prática</h2>
+
+<p>Esta seção você implementa. Nada disso vem pronto no código. Fonte de verdade: a <a href="https://redis.io/docs/latest/" target="_blank" rel="noopener">documentação oficial do Redis</a>. As anotações de estudo (ioredis, cache-aside, TTL, SCAN, client-side cache) continuam válidas — aqui elas viram passos na StockFlow.</p>
+
+<div class="concept-card">
+  <div class="label">📚 O que o Redis é (e o que não é)</div>
+  <p>Redis (Remote Dictionary Server) guarda dados na <strong>RAM</strong>. Leitura em microssegundos. Não substitui o Postgres: pedido, CNPJ, SKU e estoque real ficam no disco. Redis acelera o que o lojista lê o tempo todo. Se o Redis cair, a API deve continuar — só mais lenta. Isso está no espírito da doc: Redis Open Source para desenvolvimento local, mesmas APIs depois em produção. Hub: <a href="https://redis.io/docs/latest/" target="_blank" rel="noopener">redis.io/docs/latest</a>.</p>
+</div>
+
+<div class="mapping-card">
+  <div class="label">🔗 Na StockFlow</div>
+  <p>Sem cache: cada <code>GET /products/:id</code> vai no PostgreSQL. Com <strong>cache-aside</strong>: a primeira vez busca no banco, grava no Redis com TTL; as próximas saem da RAM. No <code>PUT</code>/<code>DELETE</code> você <strong>apaga</strong> a chave — senão o Postman mostra preço velho.</p>
+</div>
+
+<div class="warning-card">
+  <div class="label">⚠️ Cliente oficial no Node</div>
+  <p>Suas anotações usam <code>ioredis</code>. A Redis documenta o <strong>node-redis</strong> (<code>npm install redis</code>) como cliente recomendado para Node.js, e ainda documenta o ioredis como cliente mais antigo. Neste POC use <code>redis</code> (node-redis), como em <a href="https://redis.io/docs/latest/develop/clients/nodejs/" target="_blank" rel="noopener">Develop with Redis → Node.js</a>.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">Como usar os snippets abaixo</div>
+  <p>Esta seção é um tutorial: o código <strong>não</strong> está no repositório. Você copia do guia para o projeto.</p>
+  <ul>
+    <li><strong>Arquivo NOVO</strong> — o snippet é o arquivo inteiro. Crie o caminho e cole.</li>
+    <li><strong>Arquivo que JÁ EXISTE</strong> — o snippet é a versão <em>depois</em> da alteração (arquivo completo), para você não ter que adivinhar imports e construtores.</li>
+    <li>Cada arquivo tem um bloco <strong>Propósito</strong>: por que ele existe, em uma frase. Leia isso antes de colar.</li>
+    <li>Depois de cada grupo de arquivos, rode os testes daquele pedaço (<code>pnpm test -- get-product</code>, etc.).</li>
+  </ul>
+</div>
+
+<p>Mapa do que você vai criar ou editar. A camada de <strong>domínio</strong> (<code>entities</code>, <code>repositories</code> de produto/estoque) <strong>não muda</strong> — Redis não é regra de negócio, é aceleração.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>docker-compose.yml</code></td>
+      <td>Editar</td>
+      <td>Sobe o processo Redis na sua máquina, do mesmo jeito que o Postgres. Sem isso não existe servidor na porta 6379.</td>
+    </tr>
+    <tr>
+      <td><code>.env</code>, <code>.env.example</code>, <code>.env.test</code></td>
+      <td>Editar</td>
+      <td>Diz ao Nest <em>onde</em> o Redis está (host e porta). O <code>.env.example</code> documenta para o próximo clone; o <code>.env.test</code> evita o Zod quebrar nos testes.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.interface.ts</code> / <code>.service.ts</code> / <code>.module.ts</code></td>
+      <td>Editar</td>
+      <td>Contrato + leitura tipada das variáveis. O resto do app não lê <code>process.env</code> direto — pede para o <code>EnvConfigService</code>.</td>
+    </tr>
+    <tr>
+      <td><code>~/.cursor/mcp.json</code></td>
+      <td>Editar</td>
+      <td>Liga o agente do Cursor ao Redis, para você inspecionar chaves em linguagem natural. Não faz parte da API.</td>
+    </tr>
+    <tr>
+      <td><code>cache-provider.ts</code></td>
+      <td>Novo</td>
+      <td>Contrato da <em>aplicação</em>: get/set/del. Use cases dependem disto, não do pacote <code>redis</code>.</td>
+    </tr>
+    <tr>
+      <td><code>cache-keys.ts</code></td>
+      <td>Novo</td>
+      <td>Nomes das chaves e TTLs num lugar só. Evita <code>"product:" + id</code> espalhado e TTL mágico no meio do use case.</td>
+    </tr>
+    <tr>
+      <td><code>cache-json.ts</code></td>
+      <td>Novo</td>
+      <td>Redis só guarda string. Aqui vira JSON e, na volta, <code>Date</code> volta a ser <code>Date</code> (senão o presenter quebra).</td>
+    </tr>
+    <tr>
+      <td><code>in-memory-cache.provider.ts</code></td>
+      <td>Novo</td>
+      <td>Fake do Redis: um <code>Map</code> em memória. Serve para teste unitário sem Docker.</td>
+    </tr>
+    <tr>
+      <td><code>redis-cache.provider.ts</code></td>
+      <td>Novo</td>
+      <td>Implementação real: <code>createClient</code>, <code>SET</code>+<code>EX</code>, <code>GET</code>, <code>DEL</code>, <code>SCAN</code>. Se o Redis cair, engole o erro e a API segue no Postgres.</td>
+    </tr>
+    <tr>
+      <td><code>redis.module.ts</code></td>
+      <td>Novo</td>
+      <td>Encaixa o provider no Nest (<code>@Global</code>) para qualquer módulo injetar <code>CACHE_PROVIDER</code>.</td>
+    </tr>
+    <tr>
+      <td><code>app.module.ts</code></td>
+      <td>Editar</td>
+      <td>Importa o <code>RedisModule</code> uma vez, na raiz. Sem isso o token não existe.</td>
+    </tr>
+    <tr>
+      <td>Use cases de produto / estoque / receive-delivery</td>
+      <td>Editar</td>
+      <td>GETs fazem cache-aside. Writes apagam a chave depois de gravar no Postgres.</td>
+    </tr>
+    <tr>
+      <td><code>products.module.ts</code>, <code>stock.module.ts</code>, <code>purchase-order.module.ts</code></td>
+      <td>Editar</td>
+      <td>O Nest não “adivinha” o construtor. O <code>useFactory</code> precisa injetar o cache junto com o repositório.</td>
+    </tr>
+    <tr>
+      <td><code>*.usecase.spec.ts</code> + spec do cache in-memory</td>
+      <td>Editar / novo</td>
+      <td>Construtor agora pede cache: passe <code>InMemoryCacheProvider</code>. Extra: segundo GET não chama o banco.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Passo 1 — Redis no Docker</h3>
+
+<p>A API já sobe o Postgres no <code>docker-compose.yml</code>. Acrescente o serviço Redis. Imagem oficial para local: <code>redis:7-alpine</code>. Porta padrão <strong>6379</strong> (a mesma da doc de install do MCP).</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — docker-compose.yml</div>
+  <p>Orquestra processos na sua máquina. O serviço <code>postgres</code> já existia (disco, fonte da verdade). O serviço <code>redis</code> é o processo em RAM. O volume <code>redisdata</code> guarda o dump se você reiniciar o container — útil no estudo; em produção o cache pode ser efêmero.</p>
+</div>
+
+<p class="file-path">docker-compose.yml — arquivo completo depois da alteração</p>
+<pre><code>version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: stockflow-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: stockflow-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
+</code></pre>
+
+<pre><code>docker compose up -d redis
+docker exec stockflow-redis redis-cli PING
+# esperado: PONG
+</code></pre>
+
+<h3>Passo 1b — Variáveis de ambiente</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — .env / .env.example / .env.test</div>
+  <p><code>.env</code> é o que o Nest lê na sua máquina. <code>.env.example</code> é o modelo sem segredo, para quem clonar o repo. <code>.env.test</code> é o que o Jest usa: se o Zod exigir <code>REDIS_HOST</code> e o arquivo de teste não tiver, <em>todos</em> os testes de env quebram.</p>
+</div>
+
+<p>Acrescente estas duas linhas nos três arquivos (no <code>.env</code> e no <code>.env.example</code> junto das outras vars; no <code>.env.test</code> no final):</p>
+<pre><code>REDIS_HOST=localhost
+REDIS_PORT=6379
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.interface.ts</div>
+  <p>Contrato: “quem implementa configuração precisa saber devolver host e porta do Redis”. O use case de cache não importa Zod nem <code>process.env</code>.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts — arquivo completo</p>
+<pre><code>export interface EnvConfig {
+  getPort(): number
+  getNodeEnv(): string
+  getDatabaseUrl(): string
+  getAuth0Domain(): string
+  getAuth0Audience(): string
+  getRedisHost(): string
+  getRedisPort(): number
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.module.ts</div>
+  <p>Valida o <code>.env</code> na subida da API. Se faltar <code>DATABASE_URL</code> o app nem arranca. <code>REDIS_HOST</code> e <code>REDIS_PORT</code> têm default (<code>localhost</code> / <code>6379</code>) para o clone local não exigir linha extra — mas você ainda deve colocá-las nos arquivos, para ficar explícito.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/env-config/env-config.module.ts — arquivo completo</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+import { z } from 'zod'
+
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3000),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
+  DATABASE_URL: z.string().url(),
+  AUTH0_DOMAIN: z.string().min(1),
+  AUTH0_AUDIENCE: z.string().url(),
+  REDIS_HOST: z.string().min(1).default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
+})
+
+export type EnvVars = z.infer&lt;typeof envSchema&gt;
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validate: (config: Record&lt;string, unknown&gt;) =&gt; {
+        const parsed = envSchema.safeParse(config)
+
+        if (!parsed.success) {
+          const errors = parsed.error.format()
+          throw new Error(
+            `Invalid environment variables: ${JSON.stringify(errors)}`,
+          )
+        }
+
+        return parsed.data
+      },
+    }),
+  ],
+  providers: [EnvConfigService],
+  exports: [EnvConfigService],
+})
+export class EnvConfigModule {}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.service.ts</div>
+  <p>Implementação do contrato. É daqui que o <code>RedisCacheProvider</code> pergunta host e porta, em vez de espalhar <code>process.env.REDIS_HOST</code>.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/env-config/env-config.service.ts — arquivo completo</p>
+<pre><code>import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { EnvConfig } from '@/shared/infrastructure/env-config/env-config.interface'
+
+@Injectable()
+export class EnvConfigService implements EnvConfig {
+  constructor(private configService: ConfigService) {}
+
+  getPort(): number {
+    return Number(this.configService.getOrThrow&lt;number&gt;('PORT'))
+  }
+
+  getNodeEnv(): string {
+    return this.configService.getOrThrow&lt;string&gt;('NODE_ENV')
+  }
+
+  getDatabaseUrl(): string {
+    return this.configService.getOrThrow&lt;string&gt;('DATABASE_URL')
+  }
+
+  getAuth0Domain(): string {
+    return this.configService.getOrThrow&lt;string&gt;('AUTH0_DOMAIN')
+  }
+
+  getAuth0Audience(): string {
+    return this.configService.getOrThrow&lt;string&gt;('AUTH0_AUDIENCE')
+  }
+
+  getRedisHost(): string {
+    return this.configService.getOrThrow&lt;string&gt;('REDIS_HOST')
+  }
+
+  getRedisPort(): number {
+    return Number(this.configService.getOrThrow&lt;number&gt;('REDIS_PORT'))
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.service.spec.ts</div>
+  <p>Garante que os getters existem e leem o que está no <code>.env.test</code>. Sem isso, um typo em <code>REDIS_HOST</code> só aparece quando a API sobe.</p>
+</div>
+<p>No spec que já existe, acrescente dois testes (não apague os outros):</p>
+<pre><code>  it('should return the Redis host', () =&gt; {
+    expect(sut.getRedisHost()).toBe('localhost')
+  })
+
+  it('should return the Redis port', () =&gt; {
+    expect(sut.getRedisPort()).toBe(6379)
+  })
+</code></pre>
+<p>Rode: <code>pnpm test -- env-config.service</code></p>
+
+<h3>Passo 2 — MCP do Redis no Cursor</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ~/.cursor/mcp.json (bloco redis)</div>
+  <p>Não faz parte da API Nest. É um processo à parte que o Cursor usa para falar com o Redis. Você pergunta “mostra a chave <code>product:…</code>” e o MCP roda <code>GET</code>/<code>TTL</code> por você. Sem o Redis no Docker (Passo 1), este server fica vermelho.</p>
+</div>
+
+<p>O <a href="https://redis.io/docs/latest/integrate/redis-mcp/" target="_blank" rel="noopener">Redis MCP</a> deixa o agente ler e escrever no Redis em linguagem natural (“quantas chaves existem?”, “mostra <code>product:…</code>”). O servidor MCP é <strong>separado</strong> do Redis: primeiro o Redis no Docker (Passo 1), depois o MCP aponta para ele. Install: <a href="https://redis.io/docs/latest/integrate/redis-mcp/install/" target="_blank" rel="noopener">Install Redis MCP</a>. Repositório: <a href="https://github.com/redis/mcp-redis" target="_blank" rel="noopener">github.com/redis/mcp-redis</a>.</p>
+
+<p>O caminho recomendado pela Redis é o pacote PyPI via <code>uvx</code> (baixa na hora, ambiente temporário). Instale o <code>uv</code> se ainda não tiver: <a href="https://docs.astral.sh/uv/getting-started/installation/" target="_blank" rel="noopener">docs.astral.sh/uv</a>.</p>
+<pre><code># conferir
+uvx --version
+
+# testar o servidor (Ctrl+C para sair)
+uvx --from redis-mcp-server@latest redis-mcp-server --url redis://localhost:6379/0
+</code></pre>
+
+<p>No Cursor o arquivo é <code>~/.cursor/mcp.json</code> (MCP global) <em>ou</em> <code>.cursor/mcp.json</code> só neste repo. A chave é <code>mcpServers</code> — igual ao exemplo da Redis para Claude Desktop / Augment. Cole o bloco <code>redis</code> <strong>junto</strong> dos servers que você já tem (Auth0, Figma, etc.), não apague o resto do JSON.</p>
+<pre><code>"redis": {
+  "command": "uvx",
+  "args": [
+    "-qq",
+    "--from",
+    "redis-mcp-server@latest",
+    "redis-mcp-server",
+    "--url",
+    "redis://localhost:6379/0"
+  ]
+}
+</code></pre>
+<p><code>-qq</code> silencia o “Installed X packages” no stderr (a própria Redis recomenda isso no README do MCP). URL no formato da doc: <code>redis://[user:password@]host:port/db</code>.</p>
+<p>Reinicie o MCP no Cursor (<strong>Settings → MCP</strong>, toggle no server <code>redis</code>, ou recarregue a janela). Com o Redis no ar, peça no chat: “via MCP do Redis, rode um PING e liste quantas chaves existem”. Se o server ficar vermelho: <code>which uvx</code> — no Mac o binário costuma ser <code>~/.local/bin/uvx</code>; se o Cursor não achar, use o caminho absoluto no <code>command</code>, como no exemplo da Redis para Claude Desktop.</p>
+<p>Variáveis se não quiser URL única (tabela da <a href="https://redis.io/docs/latest/integrate/redis-mcp/install/" target="_blank" rel="noopener">página Install</a>): <code>REDIS_HOST</code>, <code>REDIS_PORT</code>, <code>REDIS_PWD</code>, etc. No MCP a senha é <code>REDIS_PWD</code>, não <code>REDIS_PASSWORD</code>.</p>
+
+<h3>Passo 3 — Confirmar comandos no redis-cli</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — redis-cli (não é um arquivo do projeto)</div>
+  <p>É o terminal do Redis, dentro do container. Você usa para <em>ver</em> o que a API vai fazer: gravar string com TTL, ler, apagar. Quando o Nest estiver pronto, o MCP e o <code>redis-cli</code> mostram as mesmas chaves.</p>
+</div>
+
+<p>Antes de ligar o Nest, brinque com os comandos que o cache vai usar. Referências: <a href="https://redis.io/docs/latest/commands/set/" target="_blank" rel="noopener">SET</a> (opção <code>EX</code> = TTL em segundos), <a href="https://redis.io/docs/latest/commands/get/" target="_blank" rel="noopener">GET</a>, <a href="https://redis.io/docs/latest/commands/del/" target="_blank" rel="noopener">DEL</a>, <a href="https://redis.io/docs/latest/commands/ttl/" target="_blank" rel="noopener">TTL</a>, <a href="https://redis.io/docs/latest/commands/scan/" target="_blank" rel="noopener">SCAN</a>.</p>
+<pre><code>docker exec -it stockflow-redis redis-cli
+
+SET product:demo "{\"name\":\"Whey\"}" EX 60
+GET product:demo
+TTL product:demo
+DEL product:demo
+
+# apagar por prefixo (nunca KEYS *):
+SET products:list:a 1 EX 60
+SET products:list:b 2 EX 60
+SCAN 0 MATCH products:list:* COUNT 100
+# anote as chaves que o SCAN devolveu, depois:
+DEL products:list:a products:list:b
+</code></pre>
+<p><code>TTL</code> devolve segundos restantes; <code>-2</code> = chave sumiu; <code>-1</code> = existe sem expirar (não deixe cache de produto assim). <strong>Nunca</strong> use <code>KEYS *</code> em produção — bloqueia o servidor. Para apagar um prefixo, <code>SCAN</code> com cursor, como a própria página do SCAN descreve.</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart TD
+  A["GET /products/:id"] --> B{"Redis tem product:id?"}
+  B -->|HIT| C["Resposta da RAM"]
+  B -->|MISS| D["Postgres"]
+  D --> E["SET product:id EX ttl"]
+  E --> F["Resposta"]
+  </div>
+</div>
+
+<h3>Passo 4 — Cliente node-redis</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — pacote <code>redis</code></div>
+  <p>É o driver oficial (node-redis). Ele fala o protocolo Redis: <code>SET</code>, <code>GET</code>, <code>DEL</code>, <code>SCAN</code>. Você <strong>não</strong> chama isso nos use cases — só dentro de <code>redis-cache.provider.ts</code>.</p>
+</div>
+
+<pre><code>pnpm add redis
+</code></pre>
+<p>Conexão mínima da <a href="https://redis.io/docs/latest/develop/clients/nodejs/" target="_blank" rel="noopener">guia Node.js</a> (você vai encapsular isso no Passo 5b — não cole isso solto no <code>main.ts</code>):</p>
+<pre><code>import { createClient } from 'redis'
+
+const client = createClient({
+  url: `redis://${host}:${port}`,
+})
+client.on('error', (err) =&gt; console.error('Redis Client Error', err))
+await client.connect()
+
+await client.set('key', 'value', { EX: 60 })
+const value = await client.get('key')
+await client.quit()
+</code></pre>
+<p>No Nest: <code>onModuleInit</code> chama <code>connect</code>; <code>onModuleDestroy</code> chama <code>quit</code>. Host e porta saem do <code>EnvConfigService</code>. Sempre registre <code>client.on('error', …)</code> — a própria Redis avisa que erro sem listener pode derrubar o processo Node.</p>
+
+<h3>Passo 5 — Contrato na aplicação (não no domínio)</h3>
+
+<p>O domínio (entidade, repositório de produto) não importa Redis. Use cases dependem de uma <strong>interface</strong>. Nos testes unitários, um <code>Map</code>. Em runtime, o node-redis.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — cache-provider.ts</div>
+  <p>Contrato da camada de aplicação + o token de injeção do Nest. <code>CACHE_PROVIDER</code> é a string que o <code>inject: [...]</code> dos módulos usa — o mesmo padrão de <code>'ProductRepository'</code>. <code>delByPrefix</code> existe porque a lista de produtos tem muitas chaves (<code>products:list:{…}</code>); você não sabe os params de todas, então apaga pelo prefixo com SCAN.</p>
+</div>
+<p class="file-path">src/shared/application/cache/cache-provider.ts — arquivo NOVO, completo</p>
+<pre><code>export const CACHE_PROVIDER = 'CacheProvider'
+
+export interface CacheProvider {
+  get&lt;T&gt;(key: string): Promise&lt;T | null&gt;
+  set&lt;T&gt;(key: string, value: T, ttlSeconds: number): Promise&lt;void&gt;
+  del(key: string): Promise&lt;void&gt;
+  delByPrefix(prefix: string): Promise&lt;void&gt;
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — cache-keys.ts</div>
+  <p>Uma função por tipo de chave + os TTLs. Se amanhã você mudar o TTL do produto de 300 para 120, muda num lugar só. A chave da lista inclui page/filter/sort — senão a página 2 devolveria o cache da página 1.</p>
+</div>
+<p class="file-path">src/shared/application/cache/cache-keys.ts — arquivo NOVO, completo</p>
+<pre><code>import { SearchParams } from '@/shared/domain/repositories/repository-contracts'
+
+export const CacheTtl = {
+  product: 300,
+  productsList: 60,
+  stock: 60,
+  stocksCritical: 30,
+} as const
+
+export const CachePrefix = {
+  productsList: 'products:list:',
+} as const
+
+export const CacheKeys = {
+  product: (id: string) =&gt; `product:${id}`,
+
+  productsList: (params: SearchParams) =&gt; {
+    const normalized = {
+      page: params.page ?? 1,
+      perPage: params.perPage ?? 15,
+      sort: params.sort ?? null,
+      sortDir: params.sortDir ?? null,
+      filter: params.filter ?? null,
+    }
+    return `${CachePrefix.productsList}${JSON.stringify(normalized)}`
+  },
+
+  stock: (id: string) =&gt; `stock:${id}`,
+
+  stocksCritical: () =&gt; 'stocks:critical',
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — cache-json.ts</div>
+  <p>Redis guarda <em>string</em>. <code>JSON.stringify</code> transforma <code>Date</code> em ISO (<code>"2026-08-26T12:00:00.000Z"</code>). Sem o reviver, o <code>get</code> devolve string e o presenter/Swagger tratam data como texto. Este helper é o único lugar que sabe desse detalhe.</p>
+</div>
+<p class="file-path">src/shared/application/cache/cache-json.ts — arquivo NOVO, completo</p>
+<pre><code>const ISO_DATE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+
+export const stringifyCacheValue = (value: unknown): string =&gt;
+  JSON.stringify(value)
+
+export const parseCacheValue = &lt;T&gt;(raw: string): T =&gt;
+  JSON.parse(raw, (_key, value) =&gt; {
+    if (typeof value === 'string' &amp;&amp; ISO_DATE.test(value)) {
+      return new Date(value)
+    }
+    return value
+  }) as T
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — in-memory-cache.provider.ts</div>
+  <p>Redis de mentira para o Jest. Guarda o JSON num <code>Map</code> e respeita TTL (compara com <code>Date.now()</code>). Os use cases não percebem a diferença: o construtor recebe <code>CacheProvider</code>, não “Redis”.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/cache/in-memory-cache.provider.ts — arquivo NOVO, completo</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import {
+  parseCacheValue,
+  stringifyCacheValue,
+} from '@/shared/application/cache/cache-json'
+
+type Entry = { raw: string; expiresAt: number }
+
+export class InMemoryCacheProvider implements CacheProvider {
+  private readonly store = new Map&lt;string, Entry&gt;()
+
+  async get&lt;T&gt;(key: string): Promise&lt;T | null&gt; {
+    const entry = this.store.get(key)
+    if (!entry) {
+      return null
+    }
+    if (Date.now() &gt;= entry.expiresAt) {
+      this.store.delete(key)
+      return null
+    }
+    return parseCacheValue&lt;T&gt;(entry.raw)
+  }
+
+  async set&lt;T&gt;(key: string, value: T, ttlSeconds: number): Promise&lt;void&gt; {
+    this.store.set(key, {
+      raw: stringifyCacheValue(value),
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    })
+  }
+
+  async del(key: string): Promise&lt;void&gt; {
+    this.store.delete(key)
+  }
+
+  async delByPrefix(prefix: string): Promise&lt;void&gt; {
+    for (const key of this.store.keys()) {
+      if (key.startsWith(prefix)) {
+        this.store.delete(key)
+      }
+    }
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — in-memory-cache.provider.spec.ts</div>
+  <p>Trava o comportamento do fake: hit, miss, expiração, del e prefixo. Se o <code>Map</code> estiver errado, os testes de use case mentem (parecem cachear, mas não).</p>
+</div>
+<p class="file-path">src/shared/infrastructure/cache/in-memory-cache.provider.spec.ts — arquivo NOVO, completo</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+describe('InMemoryCacheProvider', () =&gt; {
+  let sut: InMemoryCacheProvider
+
+  beforeEach(() =&gt; {
+    sut = new InMemoryCacheProvider()
+  })
+
+  it('should return null on miss', async () =&gt; {
+    await expect(sut.get('missing')).resolves.toBeNull()
+  })
+
+  it('should set and get a value', async () =&gt; {
+    await sut.set('product:1', { name: 'Whey' }, 60)
+    await expect(sut.get('product:1')).resolves.toEqual({ name: 'Whey' })
+  })
+
+  it('should revive Date after JSON roundtrip', async () =&gt; {
+    const createdAt = new Date('2026-01-15T12:00:00.000Z')
+    await sut.set('product:1', { createdAt }, 60)
+    const cached = await sut.get&lt;{ createdAt: Date }&gt;('product:1')
+    expect(cached?.createdAt).toBeInstanceOf(Date)
+    expect(cached?.createdAt.toISOString()).toBe(createdAt.toISOString())
+  })
+
+  it('should expire after ttl', async () =&gt; {
+    jest.useFakeTimers()
+    await sut.set('k', 'v', 1)
+    jest.advanceTimersByTime(1001)
+    await expect(sut.get('k')).resolves.toBeNull()
+    jest.useRealTimers()
+  })
+
+  it('should delete a key', async () =&gt; {
+    await sut.set('k', 'v', 60)
+    await sut.del('k')
+    await expect(sut.get('k')).resolves.toBeNull()
+  })
+
+  it('should delete by prefix', async () =&gt; {
+    await sut.set('products:list:a', 1, 60)
+    await sut.set('products:list:b', 2, 60)
+    await sut.set('product:1', 3, 60)
+    await sut.delByPrefix('products:list:')
+    await expect(sut.get('products:list:a')).resolves.toBeNull()
+    await expect(sut.get('product:1')).resolves.toBe(3)
+  })
+})
+</code></pre>
+<p>Rode: <code>pnpm test -- in-memory-cache.provider</code></p>
+
+<h3>Passo 5b — Implementação Redis + módulo Nest</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — redis-cache.provider.ts</div>
+  <p>Único arquivo que importa o pacote <code>redis</code>. Traduz o contrato (<code>get</code>/<code>set</code>/<code>del</code>) para comandos Redis. <strong>Se o Redis estiver fora, loga e devolve miss</strong> — a API não pode 500 por cache. <code>delByPrefix</code> usa <code>SCAN</code> (cursor), nunca <code>KEYS *</code>.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/cache/redis-cache.provider.ts — arquivo NOVO, completo</p>
+<pre><code>import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common'
+import { createClient, type RedisClientType } from 'redis'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import {
+  parseCacheValue,
+  stringifyCacheValue,
+} from '@/shared/application/cache/cache-json'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+
+@Injectable()
+export class RedisCacheProvider
+  implements CacheProvider, OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(RedisCacheProvider.name)
+  private readonly client: RedisClientType
+
+  constructor(envConfig: EnvConfigService) {
+    this.client = createClient({
+      url: `redis://${envConfig.getRedisHost()}:${envConfig.getRedisPort()}`,
+    })
+    this.client.on('error', (error) =&gt; {
+      this.logger.error('Redis Client Error', error)
+    })
+  }
+
+  async onModuleInit(): Promise&lt;void&gt; {
+    try {
+      await this.client.connect()
+    } catch (error) {
+      this.logger.error(
+        'Redis unavailable — API will run without cache',
+        error,
+      )
+    }
+  }
+
+  async onModuleDestroy(): Promise&lt;void&gt; {
+    if (this.client.isOpen) {
+      await this.client.quit()
+    }
+  }
+
+  async get&lt;T&gt;(key: string): Promise&lt;T | null&gt; {
+    try {
+      if (!this.client.isOpen) {
+        return null
+      }
+      const raw = await this.client.get(key)
+      if (raw === null) {
+        return null
+      }
+      return parseCacheValue&lt;T&gt;(raw)
+    } catch (error) {
+      this.logger.error(`Redis GET failed for ${key}`, error)
+      return null
+    }
+  }
+
+  async set&lt;T&gt;(
+    key: string,
+    value: T,
+    ttlSeconds: number,
+  ): Promise&lt;void&gt; {
+    try {
+      if (!this.client.isOpen) {
+        return
+      }
+      await this.client.set(key, stringifyCacheValue(value), {
+        EX: ttlSeconds,
+      })
+    } catch (error) {
+      this.logger.error(`Redis SET failed for ${key}`, error)
+    }
+  }
+
+  async del(key: string): Promise&lt;void&gt; {
+    try {
+      if (!this.client.isOpen) {
+        return
+      }
+      await this.client.del(key)
+    } catch (error) {
+      this.logger.error(`Redis DEL failed for ${key}`, error)
+    }
+  }
+
+  async delByPrefix(prefix: string): Promise&lt;void&gt; {
+    try {
+      if (!this.client.isOpen) {
+        return
+      }
+      let cursor = '0'
+      do {
+        const result = await this.client.scan(cursor, {
+          MATCH: `${prefix}*`,
+          COUNT: 100,
+        })
+        cursor = String(result.cursor)
+        if (result.keys.length &gt; 0) {
+          await this.client.del(result.keys)
+        }
+      } while (cursor !== '0')
+    } catch (error) {
+      this.logger.error(`Redis SCAN/DEL failed for prefix ${prefix}`, error)
+    }
+  }
+}
+</code></pre>
+<p>Se o TypeScript reclamar de <code>RedisClientType</code> (o pacote <code>redis</code> v5 às vezes exporta o tipo de outro jeito), troque a linha do campo por:</p>
+<pre><code>private readonly client: ReturnType&lt;typeof createClient&gt;
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — redis.module.ts</div>
+  <p>Módulo Nest que <em>cria</em> o <code>RedisCacheProvider</code> e o publica com o token <code>CACHE_PROVIDER</code>. <code>@Global()</code> evita importar Redis em todo módulo de produto/estoque — um import na raiz basta. Importa <code>EnvConfigModule</code> porque o provider precisa do host/porta.</p>
+</div>
+<p class="file-path">src/shared/infrastructure/cache/redis.module.ts — arquivo NOVO, completo</p>
+<pre><code>import { Global, Module } from '@nestjs/common'
+import { CACHE_PROVIDER } from '@/shared/application/cache/cache-provider'
+import { RedisCacheProvider } from '@/shared/infrastructure/cache/redis-cache.provider'
+import { EnvConfigModule } from '@/shared/infrastructure/env-config/env-config.module'
+import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
+
+@Global()
+@Module({
+  imports: [EnvConfigModule],
+  providers: [
+    {
+      provide: CACHE_PROVIDER,
+      useFactory: (env: EnvConfigService) =&gt; new RedisCacheProvider(env),
+      inject: [EnvConfigService],
+    },
+  ],
+  exports: [CACHE_PROVIDER],
+})
+export class RedisModule {}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — app.module.ts (import do RedisModule)</div>
+  <p>A raiz da aplicação. Sem este import, o token <code>CACHE_PROVIDER</code> não existe e o Nest quebra na hora de construir os use cases.</p>
+</div>
+<p class="file-path">src/app.module.ts — arquivo completo</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { AppController } from '@/app.controller'
+import { AppService } from '@/app.service'
+import { AuthModule } from '@/auth/infrastructure/auth.module'
+import { ProductsModule } from '@/products/infrastructure/products.module'
+import { SuppliersModule } from '@/suppliers/infrastructure/suppliers.module'
+import { StockModule } from '@/stock/infrastructure/stock.module'
+import { PurchaseOrderModule } from '@/purchase-orders/infrastructure/purchase-order.module'
+import { RedisModule } from '@/shared/infrastructure/cache/redis.module'
+
+@Module({
+  imports: [
+    RedisModule,
+    AuthModule,
+    ProductsModule,
+    SuppliersModule,
+    StockModule,
+    PurchaseOrderModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+</code></pre>
+
+<h3>Passo 6 — Cache-aside no GetProduct e na lista</h3>
+
+<p>Fluxo (o “lazy loading” das anotações):</p>
+<ol>
+  <li><code>GET product:{id}</code> no Redis.</li>
+  <li>Hit → devolve o objeto (não vai no repositório).</li>
+  <li>Miss → <code>findById</code> no Postgres. 404 <strong>não</strong> entra no cache (senão um produto criado depois continuaria “não encontrado” até o TTL).</li>
+  <li>Achei → <code>SET</code> com <code>EX</code> e devolve.</li>
+</ol>
+
+<div class="mapping-card">
+  <div class="label">Propósito — get-product.usecase.ts</div>
+  <p>Continua sendo a regra “buscar produto por id”. O cache é um atalho <em>depois</em> que o contrato da aplicação já está certo. O repositório continua a fonte da verdade no miss.</p>
+</div>
+<p class="file-path">src/products/application/usecases/get-product.usecase.ts — arquivo completo</p>
+<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
+
+/**
+ * GetProductUseCase
+ *
+ * Obtém os dados completos de um produto pelo seu ID.
+ *
+ * Regras de negócio aplicadas:
+ *  - Lança NotFoundError se o produto não for encontrado
+ *  - 404 não é gravado no cache
+ *
+ * Fluxo:
+ *  1. Tenta ler product:{id} no cache
+ *  2. Hit → devolve o valor em cache (não consulta o repositório)
+ *  3. Miss → busca o produto pelo ID no repositório
+ *  4. Lança NotFoundError se não existir
+ *  5. Grava no cache com TTL e retorna os dados completos
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace GetProductUseCase {
+  export interface Input {
+    id: string
+  }
+
+  export interface Output {
+    id: string
+    name: string
+    description: string
+    sku: string
+    price: number
+    costPrice: number
+    category: string
+    supplierId: string
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
+
+    async execute(input: Input): Promise&lt;Output&gt; {
+      const cacheKey = CacheKeys.product(input.id)
+      const cached = await this.cache.get&lt;Output&gt;(cacheKey)
+      if (cached) {
+        return cached
+      }
+
+      const product = await this.productRepository.findById(input.id)
+
+      if (!product) {
+        throw new NotFoundError(`Product not found for id ${input.id}`)
+      }
+
+      const output: Output = {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        sku: product.sku,
+        price: product.price,
+        costPrice: product.costPrice,
+        category: product.category,
+        supplierId: product.supplierId,
+        isActive: product.isActive,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+      }
+
+      await this.cache.set(cacheKey, output, CacheTtl.product)
+      return output
+    }
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — get-product.usecase.spec.ts</div>
+  <p>Os testes antigos continuam válidos: o cache in-memory começa vazio, então o primeiro <code>execute</code> ainda vai no repositório. O teste novo prova o hit: o segundo <code>execute</code> <strong>não</strong> chama <code>findById</code>.</p>
+</div>
+<p class="file-path">src/products/application/usecases/get-product.usecase.spec.ts — arquivo completo</p>
+<pre><code>import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
+import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
+import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+describe('GetProductUseCase', () =&gt; {
+  let sut: GetProductUseCase.UseCase
+  let repository: ProductInMemoryRepository
+  let cache: InMemoryCacheProvider
+
+  beforeEach(() =&gt; {
+    repository = new ProductInMemoryRepository()
+    cache = new InMemoryCacheProvider()
+    sut = new GetProductUseCase.UseCase(repository, cache)
+  })
+
+  it('should return a product by id', async () =&gt; {
+    const entity = new ProductEntity(ProductDataBuilder({}))
+    await repository.insert(entity)
+
+    const output = await sut.execute({ id: entity.id })
+
+    expect(output.id).toBe(entity.id)
+    expect(output.name).toBe(entity.name)
+    expect(output.description).toBe(entity.description)
+    expect(output.sku).toBe(entity.sku)
+    expect(output.price).toBe(entity.price)
+    expect(output.costPrice).toBe(entity.costPrice)
+    expect(output.category).toBe(entity.category)
+    expect(output.supplierId).toBe(entity.supplierId)
+    expect(output.isActive).toBe(entity.isActive)
+    expect(output.createdAt).toEqual(entity.createdAt)
+    expect(output.updatedAt).toEqual(entity.updatedAt)
+  })
+
+  it('should throw NotFoundError when product does not exist', async () =&gt; {
+    await expect(sut.execute({ id: 'non-existent-id' })).rejects.toThrow(
+      NotFoundError,
+    )
+  })
+
+  it('should not call the repository on the second execute (cache hit)', async () =&gt; {
+    const entity = new ProductEntity(ProductDataBuilder({}))
+    await repository.insert(entity)
+    const findByIdSpy = jest.spyOn(repository, 'findById')
+
+    await sut.execute({ id: entity.id })
+    await sut.execute({ id: entity.id })
+
+    expect(findByIdSpy).toHaveBeenCalledTimes(1)
+  })
+})
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — list-products.usecase.ts</div>
+  <p>Mesma ideia do GET por id, mas a chave inclui os params da busca. TTL mais curto (60 s) porque a listagem muda o tempo todo (create/update/delete). Qualquer write de produto apaga o prefixo <code>products:list:</code>.</p>
+</div>
+<p class="file-path">src/products/application/usecases/list-products.usecase.ts — arquivo completo</p>
+<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import {
+  SearchParams,
+  SearchResult,
+} from '@/shared/domain/repositories/repository-contracts'
+import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
+
+/**
+ * ListProductsUseCase
+ *
+ * Lista produtos com suporte a filtro por nome, ordenação e paginação.
+ *
+ * Fluxo:
+ *  1. Monta a chave products:list:{params}
+ *  2. Hit no cache → devolve sem ir ao repositório
+ *  3. Miss → search() no repositório
+ *  4. Mapeia entidades para output, grava no cache (TTL curto) e retorna
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace ListProductsUseCase {
+  export type Input = SearchParams
+
+  export type ProductOutput = {
+    id: string
+    name: string
+    description: string
+    sku: string
+    price: number
+    costPrice: number
+    category: string
+    supplierId: string
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  export type Output = Omit&lt;SearchResult&lt;ProductOutput&gt;, 'items'&gt; &amp; {
+    items: ProductOutput[]
+  }
+
+  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
+
+    async execute(input: Input): Promise&lt;Output&gt; {
+      const cacheKey = CacheKeys.productsList(input)
+      const cached = await this.cache.get&lt;Output&gt;(cacheKey)
+      if (cached) {
+        return cached
+      }
+
+      const result = await this.productRepository.search(input)
+
+      const output: Output = {
+        items: result.items.map((entity) =&gt; this.toOutput(entity)),
+        total: result.total,
+        currentPage: result.currentPage,
+        perPage: result.perPage,
+        lastPage: result.lastPage,
+      }
+
+      await this.cache.set(cacheKey, output, CacheTtl.productsList)
+      return output
+    }
+
+    private toOutput(entity: ProductEntity): ProductOutput {
+      return {
+        id: entity.id,
+        name: entity.name,
+        description: entity.description,
+        sku: entity.sku,
+        price: entity.price,
+        costPrice: entity.costPrice,
+        category: entity.category,
+        supplierId: entity.supplierId,
+        isActive: entity.isActive,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      }
+    }
+  }
+}
+</code></pre>
+<p>No <code>list-products.usecase.spec.ts</code>, só mude o <code>beforeEach</code> (importe o in-memory cache):</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+// dentro do beforeEach:
+sut = new ListProductsUseCase.UseCase(
+  repository,
+  new InMemoryCacheProvider(),
+)
+</code></pre>
+<p>Rode: <code>pnpm test -- get-product.usecase</code> e <code>pnpm test -- list-products.usecase</code></p>
+
+<h3>Passo 7 — Invalidar nos writes de produto</h3>
+
+<p>TTL sozinho deixa dado um pouco atrasado. No write, apague <strong>depois</strong> do Postgres gravar com sucesso (se o insert falhar, você não quer ter apagado o cache à toa).</p>
+
+<div class="mermaid-wrap short">
+  <div class="mermaid">
+flowchart LR
+  W["PUT /products/:id"] --> P["Postgres UPDATE"]
+  P --> D1["DEL product:id"]
+  P --> D2["SCAN products:list:*"]
+  D2 --> D3["DEL essas chaves"]
+  </div>
+</div>
+
+<div class="mapping-card">
+  <div class="label">Propósito — create-product.usecase.ts (invalidação)</div>
+  <p>O create não lê cache; ele <em>suja</em> cache. Um produto novo precisa aparecer na listagem e, com quantity 0, entra no estoque crítico. Por isso apaga o prefixo das listas e a chave <code>stocks:critical</code>.</p>
+</div>
+<p>Altere o construtor e, <strong>depois</strong> de persistir produto + estoque, invalide. Imports novos + construtor + final do <code>execute</code>:</p>
+<p class="file-path">src/products/application/usecases/create-product.usecase.ts — trechos para colar</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
+</code></pre>
+<pre><code>  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+    constructor(
+      private productRepository: ProductRepository,
+      private stockRepository: StockRepository,
+      private cache: CacheProvider,
+    ) {}
+</code></pre>
+<p>No JSDoc, acrescente no fluxo:</p>
+<pre><code> *  8. Invalida o cache das listagens de produto e do estoque crítico
+</code></pre>
+<p>No final do <code>execute</code>, <strong>depois</strong> do <code>stockRepository.insert(stock)</code> e <strong>antes</strong> do <code>return</code>:</p>
+<pre><code>      await this.cache.delByPrefix(CachePrefix.productsList)
+      await this.cache.del(CacheKeys.stocksCritical())
+</code></pre>
+<p>No spec, o construtor ganha o terceiro argumento:</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+sut = new CreateProductUseCase.UseCase(
+  productRepository,
+  stockRepository,
+  new InMemoryCacheProvider(),
+)
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — update-product.usecase.ts (invalidação)</div>
+  <p>O preço/nome mudou no Postgres. Se você não apagar <code>product:{id}</code>, o próximo GET devolve o JSON velho até o TTL (5 min). A listagem também tem nome/preço — apague o prefixo.</p>
+</div>
+<p class="file-path">src/products/application/usecases/update-product.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
+</code></pre>
+<pre><code>    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
+</code></pre>
+<p>Depois de <code>await this.productRepository.update(product)</code> e antes do <code>return</code>:</p>
+<pre><code>      await this.cache.del(CacheKeys.product(product.id))
+      await this.cache.delByPrefix(CachePrefix.productsList)
+</code></pre>
+<pre><code>sut = new UpdateProductUseCase.UseCase(
+  repository,
+  new InMemoryCacheProvider(),
+)
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — delete-product.usecase.ts (invalidação)</div>
+  <p>Produto sumiu do banco. O cache do GET e da lista ainda o mostraria. Apague as duas famílias de chave.</p>
+</div>
+<p class="file-path">src/products/application/usecases/delete-product.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
+</code></pre>
+<pre><code>    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
+</code></pre>
+<p>Depois de <code>await this.productRepository.delete(input.id)</code>:</p>
+<pre><code>      await this.cache.del(CacheKeys.product(input.id))
+      await this.cache.delByPrefix(CachePrefix.productsList)
+</code></pre>
+<pre><code>sut = new DeleteProductUseCase.UseCase(
+  repository,
+  new InMemoryCacheProvider(),
+)
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — products.module.ts</div>
+  <p>Aqui o Nest <em>monta</em> cada use case. O construtor mudou: agora pede <code>CacheProvider</code>. Se você alterar o use case e esquecer o <code>inject</code>, a API sobe com <code>undefined</code> no cache e explode no primeiro GET. O token é <code>CACHE_PROVIDER</code> (o RedisModule já exportou globalmente — não precisa importar RedisModule aqui).</p>
+</div>
+<p class="file-path">src/products/infrastructure/products.module.ts — arquivo completo</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { ProductsController } from './controllers/products.controller'
+import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
+import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
+import { StockPrismaRepository } from '@/stock/infrastructure/database/prisma/stock-prisma.repository'
+import {
+  CreateProductUseCase,
+  GetProductUseCase,
+  ListProductsUseCase,
+  UpdateProductUseCase,
+  DeleteProductUseCase,
+} from '@/products/application/usecases'
+import { ProductRepository } from '@/products/domain/repositories/product.repository'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
+
+@Module({
+  controllers: [ProductsController],
+  providers: [
+    PrismaService,
+    {
+      provide: 'ProductRepository',
+      useFactory: (prisma: PrismaService) =&gt;
+        new ProductPrismaRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: 'StockRepository',
+      useFactory: (prisma: PrismaService) =&gt; new StockPrismaRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: CreateProductUseCase.UseCase,
+      useFactory: (
+        productRepo: ProductRepository,
+        stockRepo: StockRepository,
+        cache: CacheProvider,
+      ) =&gt; new CreateProductUseCase.UseCase(productRepo, stockRepo, cache),
+      inject: ['ProductRepository', 'StockRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: GetProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
+        new GetProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: ListProductsUseCase.UseCase,
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
+        new ListProductsUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: UpdateProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
+        new UpdateProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: DeleteProductUseCase.UseCase,
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
+        new DeleteProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
+    },
+  ],
+})
+export class ProductsModule {}
+</code></pre>
+<p>Rode: <code>pnpm test -- products/application</code></p>
+
+<h3>Passo 8 — Estoque (GET :id e critical) + invalidar no update</h3>
+
+<p><code>GET /stocks/critical</code> é tela de dashboard: TTL curto (30 s). Qualquer mudança de quantidade apaga <code>stock:{id}</code> e <code>stocks:critical</code>.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — get-stock.usecase.ts</div>
+  <p>Idem GetProduct: atalho de leitura. 404 não vai para o Redis.</p>
+</div>
+<p class="file-path">src/stock/application/usecases/get-stock.usecase.ts — arquivo completo</p>
+<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import { NotFoundError } from '@/shared/domain/errors'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
+
+/**
+ * GetStockUseCase
+ *
+ * Obtém os dados completos de um estoque existente.
+ *
+ * Regras de negócio aplicadas:
+ *  - Lança NotFoundError se o estoque não for encontrado
+ *  - 404 não é gravado no cache
+ *
+ * Fluxo:
+ *  1. Tenta ler stock:{id} no cache
+ *  2. Hit → devolve sem ir ao repositório
+ *  3. Miss → busca no repositório
+ *  4. Lança NotFoundError se não existir
+ *  5. Grava no cache com TTL e retorna
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace GetStockUseCase {
+  export interface Input {
+    id: string
+  }
+
+  export interface Output {
+    id: string
+    productId: string
+    location: string
+    quantity: number
+    minQuantity: number
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+    constructor(
+      private stockRepository: StockRepository,
+      private cache: CacheProvider,
+    ) {}
+
+    async execute(input: Input): Promise&lt;Output&gt; {
+      const cacheKey = CacheKeys.stock(input.id)
+      const cached = await this.cache.get&lt;Output&gt;(cacheKey)
+      if (cached) {
+        return cached
+      }
+
+      const stock = await this.stockRepository.findById(input.id)
+
+      if (!stock) {
+        throw new NotFoundError(`Stock not found for id ${input.id}`)
+      }
+
+      const output: Output = {
+        id: stock.id,
+        productId: stock.productId,
+        location: stock.location,
+        quantity: stock.quantity,
+        minQuantity: stock.minQuantity,
+        isActive: stock.isActive,
+        createdAt: stock.createdAt,
+        updatedAt: stock.updatedAt,
+      }
+
+      await this.cache.set(cacheKey, output, CacheTtl.stock)
+      return output
+    }
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — list-critical-stock.usecase.ts</div>
+  <p>Uma chave só (<code>stocks:critical</code>), porque não tem paginação. Barata de invalidar: qualquer write de quantidade dá <code>DEL</code> nela.</p>
+</div>
+<p class="file-path">src/stock/application/usecases/list-critical-stock.usecase.ts — arquivo completo</p>
+<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import { StockEntity } from '@/stock/domain/entities/stock.entity'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
+
+/**
+ * ListCriticalStockUseCase
+ *
+ * Lista todos os estoques cujo quantity &lt; minQuantity (estoque crítico).
+ *
+ * Regras de negócio aplicadas:
+ *  - Estoque crítico é aquele onde quantity &lt; minQuantity
+ *
+ * Fluxo:
+ *  1. Tenta ler stocks:critical no cache
+ *  2. Hit → devolve
+ *  3. Miss → findBelowMinQuantity(), mapeia, grava com TTL curto, retorna
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace ListCriticalStockUseCase {
+  export type Input = Record&lt;string, never&gt;
+
+  export type StockOutput = {
+    id: string
+    productId: string
+    quantity: number
+    minQuantity: number
+    location: string
+    isActive: boolean
+    isCritical: boolean
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  export interface Output {
+    items: StockOutput[]
+    total: number
+  }
+
+  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+    constructor(
+      private stockRepository: StockRepository,
+      private cache: CacheProvider,
+    ) {}
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async execute(_input: Input): Promise&lt;Output&gt; {
+      const cacheKey = CacheKeys.stocksCritical()
+      const cached = await this.cache.get&lt;Output&gt;(cacheKey)
+      if (cached) {
+        return cached
+      }
+
+      const items = await this.stockRepository.findBelowMinQuantity()
+
+      const output: Output = {
+        items: items.map((entity) =&gt; this.toOutput(entity)),
+        total: items.length,
+      }
+
+      await this.cache.set(cacheKey, output, CacheTtl.stocksCritical)
+      return output
+    }
+
+    private toOutput(entity: StockEntity): StockOutput {
+      return {
+        id: entity.id,
+        productId: entity.productId,
+        quantity: entity.quantity,
+        minQuantity: entity.minQuantity,
+        location: entity.location,
+        isActive: entity.isActive,
+        isCritical: entity.isCritical,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      }
+    }
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — update-stock.usecase.ts (invalidação)</div>
+  <p>O lojista ajustou quantidade/mínimo na mão. O GET daquele estoque e o painel crítico ficam mentindo se o cache ficar.</p>
+</div>
+<p class="file-path">src/stock/application/usecases/update-stock.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys } from '@/shared/application/cache/cache-keys'
+</code></pre>
+<pre><code>    constructor(
+      private stockRepository: StockRepository,
+      private cache: CacheProvider,
+    ) {}
+</code></pre>
+<p>Depois de <code>await this.stockRepository.update(stock)</code>:</p>
+<pre><code>      await this.cache.del(CacheKeys.stock(stock.id))
+      await this.cache.del(CacheKeys.stocksCritical())
+</code></pre>
+<p>Specs de estoque — mesmo padrão do produto, último argumento <code>new InMemoryCacheProvider()</code>:</p>
+<pre><code>sut = new GetStockUseCase.UseCase(repository, new InMemoryCacheProvider())
+sut = new ListCriticalStockUseCase.UseCase(
+  repository,
+  new InMemoryCacheProvider(),
+)
+sut = new UpdateStockUseCase.UseCase(repository, new InMemoryCacheProvider())
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — stock.module.ts</div>
+  <p>Mesmo papel do ProductsModule: o Nest precisa saber de onde sai o <code>cache</code> no construtor.</p>
+</div>
+<p class="file-path">src/stock/infrastructure/stock.module.ts — arquivo completo</p>
+<pre><code>import { Module } from '@nestjs/common'
+import { StocksController } from './controllers/stocks.controller'
+import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
+import { StockPrismaRepository } from './database/prisma/stock-prisma.repository'
+import {
+  GetStockUseCase,
+  UpdateStockUseCase,
+  ListCriticalStockUseCase,
+} from '@/stock/application/usecases'
+import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
+
+@Module({
+  controllers: [StocksController],
+  providers: [
+    PrismaService,
+    {
+      provide: 'StockRepository',
+      useFactory: (prisma: PrismaService) =&gt; new StockPrismaRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: GetStockUseCase.UseCase,
+      useFactory: (repo: StockRepository, cache: CacheProvider) =&gt;
+        new GetStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: UpdateStockUseCase.UseCase,
+      useFactory: (repo: StockRepository, cache: CacheProvider) =&gt;
+        new UpdateStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
+    },
+    {
+      provide: ListCriticalStockUseCase.UseCase,
+      useFactory: (repo: StockRepository, cache: CacheProvider) =&gt;
+        new ListCriticalStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
+    },
+  ],
+})
+export class StockModule {}
+</code></pre>
+<p>Rode: <code>pnpm test -- stock/application</code></p>
+
+<h3>Passo 9 — ReceiveDelivery (entrada de mercadoria)</h3>
+
+<div class="mapping-card">
+  <div class="label">Propósito — receive-delivery.usecase.ts (invalidação)</div>
+  <p>Este use case <em>aumenta</em> quantity. O GET do estoque e o painel crítico precisam ver o número novo. Invalide <strong>cada</strong> <code>stock:{id}</code> tocado + <code>stocks:critical</code>. Faça isso depois do loop gravar no Postgres.</p>
+</div>
+<p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys } from '@/shared/application/cache/cache-keys'
+</code></pre>
+<pre><code>    constructor(
+      private purchaseOrderRepo: PurchaseOrderRepository,
+      private stockRepo: StockRepository,
+      private cache: CacheProvider,
+    ) {}
+</code></pre>
+<p>No loop, você já tem o <code>stock</code> atualizado. Acumule os ids e, <strong>depois</strong> de <code>await this.purchaseOrderRepo.update(order)</code>, apague o cache:</p>
+<pre><code>      const touchedStockIds: string[] = []
+
+      for (const item of order.items) {
+        const stocks = await this.stockRepo.findByProductId(item.productId)
+        const stock = stocks[0]
+        // ... NotFoundError + addQuantity + update iguais ao código atual
+        touchedStockIds.push(stock.id)
+      }
+
+      await this.purchaseOrderRepo.update(order)
+
+      await Promise.all(
+        touchedStockIds.map((id) =&gt; this.cache.del(CacheKeys.stock(id))),
+      )
+      await this.cache.del(CacheKeys.stocksCritical())
+
+      return {
+        id: order.id,
+        status: order.status,
+        updatedStockItems,
+      }
+</code></pre>
+<p>O <code>for</code> que já existe permanece — só acrescente <code>touchedStockIds.push(stock.id)</code> depois do <code>update</code> de cada estoque, e o bloco de invalidação depois do update do pedido.</p>
+<p>Spec:</p>
+<pre><code>sut = new ReceiveDeliveryUseCase.UseCase(
+  purchaseOrderRepo,
+  stockRepo,
+  new InMemoryCacheProvider(),
+)
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — purchase-order.module.ts (só o factory do ReceiveDelivery)</div>
+  <p>Os outros use cases de pedido (create/get/list/cancel) <strong>não</strong> entram no cache deste POC. Só o receive mexe em estoque, então só ele ganha o terceiro parâmetro.</p>
+</div>
+<p>Troque <strong>somente</strong> o provider de <code>ReceiveDeliveryUseCase</code>:</p>
+<pre><code>import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
+
+    {
+      provide: ReceiveDeliveryUseCase.UseCase,
+      useFactory: (
+        purchaseOrderRepo: PurchaseOrderRepository,
+        stockRepo: StockRepository,
+        cache: CacheProvider,
+      ) =&gt;
+        new ReceiveDeliveryUseCase.UseCase(
+          purchaseOrderRepo,
+          stockRepo,
+          cache,
+        ),
+      inject: [
+        'PurchaseOrderRepository',
+        'StockRepository',
+        CACHE_PROVIDER,
+      ],
+    },
+</code></pre>
+<p>Rode: <code>pnpm test -- receive-delivery</code> e depois <code>pnpm test</code> (suíte inteira).</p>
+
+<h3>Passo 10 — Ver na prática (você + MCP)</h3>
+
+<ol>
+  <li><code>docker compose up -d</code> (Postgres + Redis) e <code>pnpm start:dev</code>.</li>
+  <li>Postman: <code>GET /products/{{product_id}}</code> duas vezes. A segunda deve ser bem mais barata. No Redis MCP: “mostra o valor e o TTL de <code>product:UUID</code>”.</li>
+  <li><code>PUT</code> no produto. O MCP não deve achar a chave (ou o GET seguinte no Postman traz o nome novo).</li>
+  <li>Pare o container Redis (<code>docker stop stockflow-redis</code>) e faça o GET de novo: a API ainda responde (Postgres). Suba o Redis de novo depois.</li>
+</ol>
+
+<h3>Passo 11 — Client-side caching (opcional, depois que o 6–9 estiver verde)</h3>
+
+<p>As anotações falam de L1 na memória do Node + Pub/Sub. A Redis chama isso de <strong>client-side caching</strong> com <em>tracking</em>: o servidor avisa o cliente quando uma chave que ele leu mudou. Intro: <a href="https://redis.io/docs/latest/develop/clients/client-side-caching/" target="_blank" rel="noopener">Client-side caching</a>. No node-redis isso existe a partir da v5.1 — ver a âncora <em>connect using client-side caching</em> em <a href="https://redis.io/docs/latest/develop/clients/nodejs/connect/" target="_blank" rel="noopener">Connect with node-redis</a>.</p>
+<p>Não misture isso com o primeiro PR. Cache-aside + <code>DEL</code> já ensina o essencial. L1/tracking é o passo seguinte, quando uma instância só não basta (vários workers).</p>
+
+<div class="concept-card">
+  <div class="label">O que não entra neste POC</div>
+  <ul>
+    <li><strong>Rate limit</strong> (<code>INCR</code> + <code>EXPIRE</code>) — você já estudou; no E2E estoura o limite fácil. Depois.</li>
+    <li><strong>Sorted Set / fila / sessão</strong> — não temos ranking nem login de usuário nesta API.</li>
+    <li>Tratar Redis como banco principal.</li>
+    <li>Cachear POST/PUT/DELETE, health, 401 ou 404.</li>
+  </ul>
+</div>
+
+<div class="challenge-card">
+  <div class="label">🏋️ Redis para você implementar</div>
+  <ul>
+    <li>Redis no Docker + <code>REDIS_HOST</code>/<code>REDIS_PORT</code> no env e no <code>EnvConfigService</code></li>
+    <li>MCP oficial (<code>uvx</code> + <code>~/.cursor/mcp.json</code>) apontando para <code>redis://localhost:6379/0</code></li>
+    <li>Pacote <code>redis</code> (node-redis), não ioredis</li>
+    <li><code>CacheProvider</code> no shared/application; implementação no shared/infrastructure</li>
+    <li>Cache-aside nos GETs de produto, lista, estoque e crítico</li>
+    <li>Invalidar nos writes; <code>SCAN</code> no prefixo; não cachear 404</li>
+    <li>Se o Redis cair, a API ainda responde pelo Postgres</li>
+    <li>Teste unitário: segundo GET não chama o repositório</li>
+  </ul>
+</div>
+
 
 <!-- ══════════════════════════════ SEÇÃO 16 ══════════════════════════════ -->
 <h2 id="sec16">Seção 16 — CI/CD e Deploy na AWS</h2>
@@ -5528,6 +7405,7 @@ jobs:
     sec12: { total: 3 },
     sec14: { total: 4 },
     sec15: { total: 4 },
+    redis: { total: 4 },
   }
 
   function loadState() {
