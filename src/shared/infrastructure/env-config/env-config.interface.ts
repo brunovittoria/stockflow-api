@@ -4,4 +4,6 @@ export interface EnvConfig {
   getDatabaseUrl(): string
   getAuth0Domain(): string
   getAuth0Audience(): string
+  getRedisHost(): string
+  getRedisPort(): number
 }

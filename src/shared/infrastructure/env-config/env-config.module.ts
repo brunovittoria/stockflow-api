@@ -11,6 +11,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   AUTH0_DOMAIN: z.string().min(1),
   AUTH0_AUDIENCE: z.string().url(),
+  REDIS_HOST: z.string().min(1).default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
 })
 
 export type EnvVars = z.infer<typeof envSchema>

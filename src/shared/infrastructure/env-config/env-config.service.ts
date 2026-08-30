@@ -25,4 +25,12 @@ export class EnvConfigService implements EnvConfig {
   getAuth0Audience(): string {
     return this.configService.getOrThrow<string>('AUTH0_AUDIENCE')
   }
+
+  getRedisHost(): string {
+    return this.configService.getOrThrow<string>('REDIS_HOST')
+  }
+
+  getRedisPort(): number {
+    return Number(this.configService.getOrThrow<number>('REDIS_PORT'))
+  }
 }

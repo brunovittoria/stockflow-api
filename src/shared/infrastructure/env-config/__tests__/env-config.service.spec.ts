@@ -28,4 +28,12 @@ describe('EnvConfigService', () => {
   it('should return the Auth0 audience', () => {
     expect(sut.getAuth0Audience()).toBe('https://stockflow-api')
   })
+
+  it('should return the Redis host', () => {
+    expect(sut.getRedisHost()).toBe('localhost')
+  })
+
+  it('should return the Redis port', () => {
+    expect(sut.getRedisPort()).toBe(6379)
+  })
 })
