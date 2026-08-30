@@ -757,6 +757,46 @@
       color: var(--accent-light);
     }
 
+    .diagram-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .diagram-legend span {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid;
+    }
+
+    .dl-user {
+      background: #2a2438;
+      border-color: #a29bfe;
+      color: #e1e4ed;
+    }
+
+    .dl-infra {
+      background: #1a2744;
+      border-color: #74b9ff;
+      color: #e1e4ed;
+    }
+
+    .dl-app {
+      background: #14352c;
+      border-color: #00b894;
+      color: #e1e4ed;
+    }
+
+    .dl-domain {
+      background: #3d2a12;
+      border-color: #fdcb6e;
+      color: #e1e4ed;
+    }
+
     .mermaid-wrap .mermaid {
       height: 520px;
       display: block;
@@ -1827,21 +1867,27 @@ export abstract class InMemorySearchableRepository&lt;E extends Entity&lt;any&gt
 }
 </code></pre>
 
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
+
 <div class="mermaid-wrap">
   <div class="mermaid">
 flowchart TB
-  subgraph heranca["extends = herda codigo"]
+  subgraph domain["DOMINIO"]
     Entity["abstract Entity"] --> ProductEntity["ProductEntity"]
+    PR["interface ProductRepository"]
+  end
+  subgraph persist["INFRA - implementacoes"]
     IM["abstract InMemoryRepository"] --> IMS["abstract InMemorySearchable"]
     IMS --> PIM["ProductInMemoryRepository"]
-  end
-  subgraph contrato["implements = cumpre a lista"]
-    PR["interface ProductRepository"]
-    PIM2["ProductInMemoryRepository"]
     PPR["ProductPrismaRepository"]
-    PR --> PIM2
-    PR --> PPR
+    PR -.->|"implements"| PIM
+    PR -.->|"implements"| PPR
   end
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -1976,6 +2022,40 @@ flowchart TB
   <p><strong>Na StockFlow:</strong> o <code>ProductPrismaRepository</code> que conversa com o PostgreSQL, o <code>ProductsController</code> que recebe requisições HTTP, o <code>AuthGuard</code> que valida JWT. Se amanhã você trocar PostgreSQL por MongoDB, só muda esse pedaço — o domínio e os use cases continuam intactos.</p>
 </div>
 
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-user">USUARIO</span>
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TB
+  subgraph usuario["USUARIO"]
+    Cliente["Cliente pede pizza / chama a API"]
+  end
+  subgraph http["INFRA - entrega e caixa"]
+    Canal["HTTP Nest / iFood / telefone"]
+    Maq["Prisma / maquininha"]
+  end
+  subgraph app["APLICACAO - gerente"]
+    Gerente["Use case orquestra o fluxo"]
+  end
+  subgraph domain["DOMINIO - cozinha"]
+    Receita["Entidade + regras da receita"]
+  end
+  Cliente --> Canal
+  Canal --> Gerente
+  Gerente --> Receita
+  Gerente --> Maq
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  </div>
+</div>
+
 <h3>Por que essa separação importa na prática?</h3>
 
 <p>Veja o que acontece <strong>sem</strong> separação de camadas — algo muito comum em projetos iniciantes:</p>
@@ -2057,12 +2137,34 @@ class PurchaseOrderPrismaRepository {
 
 <div class="mapping-card">
   <div class="label">Propósito — direção das dependências</div>
-  <p>Regra de ouro: o domínio não importa Nest nem Prisma. Se <code>products/domain</code> importar <code>@nestjs</code>, a arquitetura quebrou.</p>
+  <p>Regra de ouro: o domínio não importa Nest nem Prisma. Se <code>products/domain</code> importar <code>@nestjs</code>, a arquitetura quebrou. As cores são as mesmas de todos os Mermaid do guia.</p>
 </div>
-<pre><code>INFRAESTRUTURA  →  conhece  →  APLICAÇÃO  →  conhece  →  DOMÍNIO
-    (NestJS)                  (Use Cases)               (Entidades)
-
-DOMÍNIO nunca importa nada de Aplicação ou Infraestrutura
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart LR
+  subgraph http["INFRAESTRUTURA"]
+    Nest["NestJS Prisma HTTP"]
+  end
+  subgraph app["APLICACAO"]
+    UC["Use cases"]
+  end
+  subgraph domain["DOMINIO"]
+    Ent["Entidades regras contratos"]
+  end
+  Nest -->|"conhece"| UC
+  UC -->|"conhece"| Ent
+  Ent -.->|"nunca importa Nest/Prisma"| Nest
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  </div>
+</div>
+<pre><code>DOMÍNIO nunca importa nada de Aplicação ou Infraestrutura
 APLICAÇÃO nunca importa nada de Infraestrutura (NestJS, Prisma)
 INFRAESTRUTURA pode importar de todos
 </code></pre>
@@ -2133,29 +2235,37 @@ INFRAESTRUTURA pode importar de todos
 
 <div class="mapping-card">
   <div class="label">Propósito — diagrama das camadas</div>
-  <p>Mapa mental: HTTP/Prisma por fora, use cases no meio, entidades no centro. Dependência só de fora para dentro.</p>
+  <p>Mapa mental: HTTP/Prisma por fora, use cases no meio, entidades no centro. Dependência só de fora para dentro. Mesmas cores dos outros gráficos.</p>
 </div>
-<pre><code>┌──────────────────────────────────────────────────────────────┐
-│                    INFRAESTRUTURA (NestJS)                    │
-│  Controllers, DTOs, Guards, Filters, Prisma Repositories     │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │               APLICAÇÃO (Use Cases)                    │  │
-│  │  CreateProduct, UpdateStock, ReceiveDelivery, etc.     │  │
-│  │                                                        │  │
-│  │  ┌──────────────────────────────────────────────────┐  │  │
-│  │  │              DOMÍNIO (Entidades)                  │  │  │
-│  │  │  Product, Supplier, Stock, PurchaseOrder          │  │  │
-│  │  │  Validações, Regras de Negócio                    │  │  │
-│  │  └──────────────────────────────────────────────────┘  │  │
-│  └────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
-
-Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
-- Domínio NÃO importa nada de NestJS ou Prisma
-- Aplicação conhece o domínio, mas NÃO conhece Prisma
-- Infraestrutura conhece tudo (implementa interfaces do domínio)
-</code></pre>
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TB
+  subgraph http["INFRAESTRUTURA - NestJS"]
+    Ctrl["Controllers DTOs Guards Filters"]
+    Prisma["Repositorios Prisma"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CreateProduct UpdateStock ReceiveDelivery"]
+  end
+  subgraph domain["DOMINIO"]
+    Ent["Product Supplier Stock PurchaseOrder"]
+    Rules["Validacoes e regras de negocio"]
+  end
+  Ctrl --> UC
+  Prisma --> UC
+  UC --> Ent
+  Ent --> Rules
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  </div>
+</div>
+<p>Regra de dependência: de fora para dentro. NUNCA de dentro para fora. Domínio não importa NestJS ou Prisma. Aplicação conhece o domínio, mas não o Prisma. Infraestrutura implementa as interfaces do domínio.</p>
 
 <h3>Traduzindo para pastas</h3>
 
@@ -2237,7 +2347,14 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
   </tbody>
 </table>
 
-<p style="color:var(--text-muted);font-size:14px;">Em cada mapa: arraste para mover, use o scroll para zoom, os botões <code>+</code> / <code>-</code> no canto, ou <strong>Resetar</strong>.</p>
+<p style="color:var(--text-muted);font-size:14px;">Em cada mapa: arraste para mover, use o scroll para zoom, os botões <code>+</code> / <code>-</code> no canto, ou <strong>Resetar</strong>. Cores = camadas (as mesmas do Flow de Usecases).</p>
+
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-user">USUARIO</span>
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
 
 <h3>Quem fala com quem</h3>
 <p>Postman e Swagger pedem token no Auth0 e chamam a API. A API grava no Postgres. O front e o chat de IA entram depois (SaaS).</p>
@@ -2245,13 +2362,28 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 <div class="mermaid-wrap">
   <div class="mermaid">
 flowchart LR
-  Postman -->|"JWT"| API["StockFlow API"]
-  Swagger["Swagger /docs"] -->|"JWT"| API
-  Front["Front futuro"] -.->|"JWT"| API
-  Auth0["Auth0"] -->|"emite JWT"| Postman
+  subgraph usuario["USUARIO"]
+    Postman["Postman"]
+    Swagger["Swagger /docs"]
+    Front["Front futuro"]
+  end
+  subgraph http["INFRA - API e auth"]
+    API["StockFlow API Nest"]
+    Auth0["Auth0 JWT"]
+  end
+  subgraph persist["INFRA - persistencia"]
+    DB[("Postgres")]
+  end
+  Postman -->|"JWT"| API
+  Swagger -->|"JWT"| API
+  Front -.->|"JWT"| API
+  Auth0 -->|"emite JWT"| Postman
   Auth0 -->|"emite JWT"| Swagger
   API -->|"valida JWT"| Auth0
-  API --> DB[("Postgres")]
+  API --> DB
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -2261,17 +2393,19 @@ flowchart LR
 <div class="mermaid-wrap tall">
   <div class="mermaid">
 flowchart LR
-  Fornecedor["Fornecedor\n----------\nid\nname\ncnpj\nemail"]
-  Produto["Produto\n----------\nid\nsku\nprice\ncostPrice\nsupplierId"]
-  Estoque["Estoque\n----------\nid\nproductId\nquantity\nminQuantity"]
-  Pedido["Pedido\n----------\nid\nsupplierId\nstatus\ntotalCost"]
-  Item["Item do pedido\n----------\nproductId\nquantity\nunitCost"]
-
-  Fornecedor -->|"abastece  1 para N"| Produto
-  Produto -->|"tem  1 para 1"| Estoque
-  Fornecedor -->|"recebe  1 para N"| Pedido
-  Pedido -->|"contem  1 para N"| Item
-  Produto -->|"entra no  1 para N"| Item
+  subgraph domain["DOMINIO - entidades"]
+    Fornecedor["Fornecedor\n----------\nid name cnpj email"]
+    Produto["Produto\n----------\nid sku price costPrice supplierId"]
+    Estoque["Estoque\n----------\nid productId quantity minQuantity"]
+    Pedido["Pedido\n----------\nid supplierId status totalCost"]
+    Item["Item do pedido\n----------\nproductId quantity unitCost"]
+    Fornecedor -->|"abastece 1 para N"| Produto
+    Produto -->|"tem 1 para 1"| Estoque
+    Fornecedor -->|"recebe 1 para N"| Pedido
+    Pedido -->|"contem 1 para N"| Item
+    Produto -->|"entra no 1 para N"| Item
+  end
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2281,18 +2415,47 @@ flowchart LR
 <div class="mermaid-wrap">
   <div class="mermaid">
 flowchart TD
-  A["1. Criar fornecedor"] --> B["2. Criar produto"]
-  B --> C["Estoque nasce com quantity 0"]
-  C --> D["3. Criar pedido DRAFT"]
-  D --> E{"O que acontece?"}
-  E -->|"cancelar"| X["CANCELLED"]
-  E -->|"envio fora da API"| F["SENT"]
-  F --> G["4. receive-delivery"]
-  G --> H["DELIVERED"]
-  H --> I["Estoque sobe"]
-  F --> X
-  C --> J["quantity menor que minQuantity"]
-  J --> K["GET /stocks/critical"]
+  subgraph usuario["USUARIO"]
+    Lojista["Lojista na API"]
+  end
+  subgraph app["APLICACAO"]
+    C1["CreateSupplier"]
+    C2["CreateProduct"]
+    C3["CreatePurchaseOrder"]
+    Rec["ReceiveDelivery"]
+    Crit["ListCriticalStock"]
+  end
+  subgraph domain["DOMINIO"]
+    Draft["Pedido DRAFT"]
+    Sent["SENT"]
+    Del["DELIVERED"]
+    Can["CANCELLED"]
+    St0["Estoque qty 0"]
+    StUp["Estoque sobe"]
+    CritFlag["isCritical"]
+  end
+  subgraph http["INFRA - HTTP"]
+    GetCrit["GET /stocks/critical"]
+  end
+  Lojista --> C1
+  C1 --> C2
+  C2 --> St0
+  St0 --> C3
+  C3 --> Draft
+  Draft -->|"cancelar"| Can
+  Draft -->|"envio fora da API"| Sent
+  Sent --> Rec
+  Rec --> Del
+  Del --> StUp
+  Sent --> Can
+  St0 --> CritFlag
+  CritFlag --> Crit
+  Crit --> GetCrit
+  GetCrit --> Lojista
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -2407,7 +2570,14 @@ interface PurchaseOrderProps {
   </tbody>
 </table>
 
-<p>Cada regra abaixo tem o fluxo em desenho. A tabela no final é o checklist de onde implementar.</p>
+<p>Cada regra abaixo tem o fluxo em desenho. A tabela no final é o checklist de onde implementar. Cores = camada onde a regra mora.</p>
+
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-user">USUARIO</span>
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
 
 <h3>Status do pedido</h3>
 <p>O pedido nasce em <code>DRAFT</code>. Só pode ir para <code>SENT</code> (envio ainda fora desta API), ser cancelado, ou — depois de enviado — ser marcado como entregue. <code>DELIVERED</code> e <code>CANCELLED</code> são o fim: não voltam.</p>
@@ -2415,13 +2585,16 @@ interface PurchaseOrderProps {
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart LR
-  Inicio((inicio)) --> DRAFT
-  DRAFT -->|"envio fora da API"| SENT
-  DRAFT -->|"cancelar"| CANCELLED
-  SENT -->|"receive-delivery"| DELIVERED
-  SENT -->|"cancelar"| CANCELLED
-  DELIVERED --> Fim((fim))
-  CANCELLED --> Fim
+  subgraph domain["DOMINIO - PurchaseOrderEntity"]
+    Inicio((inicio)) --> DRAFT
+    DRAFT -->|"envio fora da API"| SENT
+    DRAFT -->|"cancelar"| CANCELLED
+    SENT -->|"receive-delivery"| DELIVERED
+    SENT -->|"cancelar"| CANCELLED
+    DELIVERED --> Fim((fim))
+    CANCELLED --> Fim
+  end
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2431,13 +2604,36 @@ flowchart LR
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["POST /products"] --> B{"SKU ja existe?"}
-  B -->|sim| C["ConflictError"]
-  B -->|nao| D["Cria produto"]
-  D --> E["SKU gravado"]
-  E --> F["PUT /products"]
-  F --> G["Altera nome, preco, etc"]
-  G --> H["SKU permanece o mesmo"]
+  subgraph http["INFRA - HTTP"]
+    Post["POST /products"]
+    Put["PUT /products"]
+    F409["409 Conflict JSON"]
+  end
+  subgraph app["APLICACAO"]
+    Create["CreateProduct skuExists"]
+    Update["UpdateProduct sem updateSku"]
+  end
+  subgraph domain["DOMINIO"]
+    SKU["SKU na entidade - imutavel"]
+    CF["ConflictError"]
+  end
+  subgraph usuario["USUARIO"]
+    U["Cliente HTTP"]
+  end
+  U --> Post
+  Post --> Create
+  Create -->|ja existe| CF
+  CF --> F409
+  F409 --> U
+  Create -->|ok| SKU
+  U --> Put
+  Put --> Update
+  Update --> SKU
+  SKU -->|"SKU permanece"| U
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2447,9 +2643,19 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["Criar ou atualizar produto"] --> B{"price maior que costPrice?"}
-  B -->|nao| C["Erro de validacao"]
-  B -->|sim| D["Produto aceito"]
+  subgraph app["APLICACAO"]
+    UC["Create ou Update Product"]
+  end
+  subgraph domain["DOMINIO - ProductEntity"]
+    Check{"price maior que costPrice?"}
+    Err["Erro de validacao"]
+    Ok["Produto aceito"]
+  end
+  UC --> Check
+  Check -->|nao| Err
+  Check -->|sim| Ok
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2459,9 +2665,31 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["POST /suppliers"] --> B{"CNPJ ja existe?"}
-  B -->|sim| C["ConflictError"]
-  B -->|nao| D["Cria fornecedor"]
+  subgraph usuario["USUARIO"]
+    U["Cliente HTTP"]
+  end
+  subgraph http["INFRA - HTTP"]
+    Post["POST /suppliers"]
+    F409["409 Conflict JSON"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CreateSupplier findByCnpj"]
+  end
+  subgraph domain["DOMINIO"]
+    CF["ConflictError"]
+    Ent["SupplierEntity"]
+  end
+  U --> Post
+  Post --> UC
+  UC -->|CNPJ existe| CF
+  CF --> F409
+  F409 --> U
+  UC -->|ok| Ent
+  Ent --> U
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2471,9 +2699,34 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["DELETE /suppliers/:id"] --> B{"Tem pedido DRAFT ou SENT?"}
-  B -->|sim| C["Recusa a exclusao"]
-  B -->|nao| D["Apaga o fornecedor"]
+  subgraph usuario["USUARIO"]
+    U["Cliente HTTP"]
+  end
+  subgraph http["INFRA - HTTP"]
+    Del["DELETE /suppliers/:id"]
+  end
+  subgraph app["APLICACAO"]
+    UC["DeleteSupplier"]
+  end
+  subgraph domain["DOMINIO"]
+    Check{"Tem pedido DRAFT ou SENT?"}
+    Recusa["Recusa a exclusao"]
+  end
+  subgraph persist["INFRA - persistencia"]
+    Apaga["Apaga o fornecedor"]
+  end
+  U --> Del
+  Del --> UC
+  UC --> Check
+  Check -->|sim| Recusa
+  Recusa --> U
+  Check -->|nao| Apaga
+  Apaga --> U
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -2483,10 +2736,31 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["Estoque do produto"] --> B{"quantity menor que minQuantity?"}
-  B -->|sim| C["Critico"]
-  C --> D["GET /stocks/critical"]
-  B -->|nao| E["Ok"]
+  subgraph domain["DOMINIO - StockEntity"]
+    Stock["Estoque do produto"]
+    Check{"quantity menor que minQuantity?"}
+    Crit["isCritical true"]
+    Ok["Ok"]
+  end
+  subgraph app["APLICACAO"]
+    List["ListCriticalStock"]
+  end
+  subgraph http["INFRA - HTTP"]
+    Get["GET /stocks/critical"]
+  end
+  subgraph usuario["USUARIO"]
+    U["Lojista ve a lista"]
+  end
+  Stock --> Check
+  Check -->|sim| Crit
+  Crit --> List
+  List --> Get
+  Get --> U
+  Check -->|nao| Ok
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2496,11 +2770,27 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["Cancelar pedido"] --> B{status}
-  B -->|DRAFT| C["Vira CANCELLED"]
-  B -->|SENT| C
-  B -->|DELIVERED| D["ConflictError"]
-  B -->|CANCELLED| D
+  subgraph app["APLICACAO"]
+    UC["CancelPurchaseOrder"]
+  end
+  subgraph domain["DOMINIO - PurchaseOrderEntity"]
+    St{status}
+    Ok["Vira CANCELLED"]
+    CF["ConflictError"]
+  end
+  subgraph usuario["USUARIO"]
+    U["200 pedido CANCELLED ou 409"]
+  end
+  UC --> St
+  St -->|DRAFT| Ok
+  St -->|SENT| Ok
+  St -->|DELIVERED| CF
+  St -->|CANCELLED| CF
+  Ok --> U
+  CF --> U
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2510,12 +2800,31 @@ flowchart TD
 <div class="mermaid-wrap">
   <div class="mermaid">
 flowchart TD
-  A["Pedido em SENT"] --> B["receive-delivery"]
-  B --> C{"Status e SENT?"}
-  C -->|nao| D["Recusa"]
-  C -->|sim| E["Status vira DELIVERED"]
-  E --> F["Para cada item"]
-  F --> G["Estoque do produto += quantity"]
+  subgraph http["INFRA - HTTP"]
+    Route["POST receive-delivery"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ReceiveDeliveryUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Check{"Status e SENT?"}
+    Recusa["ConflictError"]
+    Del["markAsDelivered"]
+    Add["StockEntity addQuantity"]
+  end
+  subgraph persist["INFRA - persistencia"]
+    PG[("Postgres")]
+  end
+  Route --> UC
+  UC --> Check
+  Check -->|nao| Recusa
+  Check -->|sim| Del
+  Del --> Add
+  Add --> PG
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -2525,9 +2834,16 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["Itens do pedido"] --> B["item: quantity x unitCost"]
-  B --> C["Soma todos os itens"]
-  C --> D["totalCost gravado"]
+  subgraph domain["DOMINIO - PurchaseOrderEntity"]
+    Itens["Itens do pedido"]
+    Calc["item: quantity x unitCost"]
+    Soma["Soma todos os itens"]
+    Total["totalCost gravado"]
+    Itens --> Calc
+    Calc --> Soma
+    Soma --> Total
+  end
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
   </div>
 </div>
 
@@ -2537,19 +2853,21 @@ flowchart TD
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TB
-  subgraph criar["Na criacao"]
+  subgraph domain["DOMINIO - entidade"]
     R1["SKU unico e imutavel"]
     R2["price maior que costPrice"]
-    R3["CNPJ unico"]
-    R4["totalCost = soma dos itens"]
-  end
-  subgraph viver["No dia a dia"]
-    R5["Estoque critico se qty menor que min"]
+    R5["Estoque critico qty menor que min"]
     R6["Cancela so em DRAFT ou SENT"]
-    R7["DELIVERED sobe o estoque"]
-    R8["Nao apaga fornecedor com pedido ativo"]
+    R8["totalCost = soma dos itens"]
   end
-  criar --> viver
+  subgraph app["APLICACAO - use case"]
+    R3["CNPJ unico"]
+    R4["Nao apaga fornecedor com pedido ativo"]
+    R7["DELIVERED sobe o estoque"]
+  end
+  domain --> app
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
   </div>
 </div>
 
@@ -2578,6 +2896,12 @@ flowchart TB
 <div class="concept-card">
   <div class="label">Como ler os diagramas — DDD + resposta</div>
   <p>Cada gráfico é o mesmo pedido visto por camada. A seta que volta para <strong>USUARIO</strong> é o que a API devolve (status + JSON).</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">USUARIO</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICACAO</span>
+    <span class="dl-domain">DOMINIO</span>
+  </div>
   <ul>
     <li><strong>Roxo — USUARIO</strong> — Postman, Swagger ou front. Entra com JWT; sai com 200/201 <code>{ data }</code>, 204 sem body, ou 400/401/404/409.</li>
     <li><strong>Azul — INFRAESTRUTURA</strong> — HTTP (controller, DTO/pipe, presenter, interceptor, filter) e persistência (Prisma, mapper, Postgres). Detalhe técnico. Pode trocar Prisma sem mudar a regra.</li>
@@ -9078,14 +9402,43 @@ DEL products:list:a products:list:b
 </code></pre>
 <p><code>TTL</code> devolve segundos restantes; <code>-2</code> = chave sumiu; <code>-1</code> = existe sem expirar (não deixe cache de produto assim). <strong>Nunca</strong> use <code>KEYS *</code> em produção — bloqueia o servidor. Para apagar um prefixo, <code>SCAN</code> com cursor, como a própria página do SCAN descreve.</p>
 
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-user">USUARIO</span>
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICACAO</span>
+  <span class="dl-domain">DOMINIO</span>
+</div>
+
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart TD
-  A["GET /products/:id"] --> B{"Redis tem product:id?"}
-  B -->|HIT| C["Resposta da RAM"]
-  B -->|MISS| D["Postgres"]
-  D --> E["SET product:id EX ttl"]
-  E --> F["Resposta"]
+  subgraph usuario["USUARIO"]
+    U["Cliente GET /products/:id"]
+  end
+  subgraph http["INFRA - HTTP"]
+    Ctrl["Controller"]
+  end
+  subgraph app["APLICACAO"]
+    UC["GetProductUseCase"]
+  end
+  subgraph persist["INFRA - cache e banco"]
+    Redis{"Redis tem product:id?"}
+    Hit["Resposta da RAM"]
+    PG[("Postgres")]
+    Set["SET product:id EX ttl"]
+  end
+  U --> Ctrl
+  Ctrl --> UC
+  UC --> Redis
+  Redis -->|HIT| Hit
+  Hit --> U
+  Redis -->|MISS| PG
+  PG --> Set
+  Set --> U
+  style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
@@ -9759,10 +10112,29 @@ sut = new ListProductsUseCase.UseCase(
 <div class="mermaid-wrap short">
   <div class="mermaid">
 flowchart LR
-  W["PUT /products/:id"] --> P["Postgres UPDATE"]
-  P --> D1["DEL product:id"]
-  P --> D2["SCAN products:list:*"]
-  D2 --> D3["DEL essas chaves"]
+  subgraph http["INFRA - HTTP"]
+    W["PUT /products/:id"]
+  end
+  subgraph app["APLICACAO"]
+    UC["UpdateProductUseCase"]
+  end
+  subgraph persist["INFRA - persistencia"]
+    P["Postgres UPDATE"]
+  end
+  subgraph cache["INFRA - Redis"]
+    D1["DEL product:id"]
+    D2["SCAN products:list:*"]
+    D3["DEL essas chaves"]
+  end
+  W --> UC
+  UC --> P
+  P --> D1
+  P --> D2
+  D2 --> D3
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style cache fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </div>
 </div>
 
