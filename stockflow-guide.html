@@ -401,6 +401,89 @@
     .tree span.folder { color: var(--orange); }
     .tree span.file { color: var(--blue); }
 
+    /* ── Syntax highlight (tema tipo IDE / One Dark) ── */
+    pre code.hljs {
+      background: transparent;
+      padding: 0;
+      color: var(--text);
+      display: block;
+      overflow-x: visible;
+    }
+
+    pre code.hljs::selection,
+    pre code.hljs span::selection {
+      background: rgba(108, 92, 231, 0.35);
+    }
+
+    .hljs-comment,
+    .hljs-quote {
+      color: #7f848e;
+      font-style: italic;
+    }
+
+    .hljs-keyword,
+    .hljs-selector-tag,
+    .hljs-section,
+    .hljs-link {
+      color: #c678dd;
+    }
+
+    .hljs-literal,
+    .hljs-number,
+    .hljs-bullet,
+    .hljs-symbol {
+      color: #d19a66;
+    }
+
+    .hljs-string,
+    .hljs-addition,
+    .hljs-template-tag,
+    .hljs-template-variable {
+      color: #98c379;
+    }
+
+    .hljs-title,
+    .hljs-title.class_,
+    .hljs-title.class_.inherited__,
+    .hljs-type,
+    .hljs-built_in {
+      color: #e5c07b;
+    }
+
+    .hljs-title.function_,
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-selector-id,
+    .hljs-selector-class,
+    .hljs-selector-attr,
+    .hljs-name {
+      color: #61afef;
+    }
+
+    .hljs-variable,
+    .hljs-params,
+    .hljs-property,
+    .hljs-subst {
+      color: var(--text);
+    }
+
+    .hljs-meta,
+    .hljs-meta .hljs-keyword,
+    .hljs-meta .hljs-string,
+    .hljs-doctag {
+      color: #56b6c2;
+    }
+
+    .hljs-deletion,
+    .hljs-regexp {
+      color: #e06c75;
+    }
+
+    .hljs-punctuation,
+    .hljs-operator {
+      color: #abb2bf;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 1100px) {
       .sidebar { display: none; }
@@ -771,6 +854,7 @@
   <div class="section-label">Referência</div>
   <a href="#entities">Mapa de Entidades</a>
   <a href="#rules">Regras de Negócio</a>
+  <a href="#usecase-flow">Flow de Usecases</a>
 </nav>
 
 <!-- ══════════════════════════════════════════ MAIN ══════════════════════════════════════════ -->
@@ -2480,6 +2564,1495 @@ flowchart TB
   <tr><td>7</td><td>DELIVERED atualiza estoque automaticamente</td><td>UseCase ReceiveDelivery</td></tr>
   <tr><td>8</td><td>totalCost é calculado (soma de quantity × unitCost)</td><td>Entidade PurchaseOrder</td></tr>
 </table>
+
+<!-- ══════════════════════════════ FLOW DE USECASES ══════════════════════════════ -->
+<h2 id="usecase-flow">Flow de Usecases</h2>
+
+<p>Referência: o caminho completo de <strong>cada</strong> operação, da chamada do usuário (Postman, Swagger, front) até o Postgres. O use case não fala HTTP nem SQL — o controller, o pipe, o repositório Prisma e o presenter fazem essa ponte.</p>
+
+<div class="concept-card">
+  <div class="label">Como ler esta seção</div>
+  <p>O <strong>pipeline comum</strong> roda em toda rota autenticada. Cada endpoint tem um <strong>diagrama</strong> do fluxo, depois os passos e a tabela de arquivos. Em teste, o módulo injeta o repositório in-memory no lugar do Prisma — o use case não muda.</p>
+</div>
+
+<div class="concept-card">
+  <div class="label">Como ler os diagramas — DDD + resposta</div>
+  <p>Cada gráfico é o mesmo pedido visto por camada. A seta que volta para <strong>USUARIO</strong> é o que a API devolve (status + JSON).</p>
+  <ul>
+    <li><strong>Roxo — USUARIO</strong> — Postman, Swagger ou front. Entra com JWT; sai com 200/201 <code>{ data }</code>, 204 sem body, ou 400/401/404/409.</li>
+    <li><strong>Azul — INFRAESTRUTURA</strong> — HTTP (controller, DTO/pipe, presenter, interceptor, filter) e persistência (Prisma, mapper, Postgres). Detalhe técnico. Pode trocar Prisma sem mudar a regra.</li>
+    <li><strong>Verde — APLICACAO</strong> — o use case. Orquestra: chama o contrato do repositório, pede para a entidade aplicar a regra, monta o output. Não sabe de Nest nem de SQL.</li>
+    <li><strong>Amarelo — DOMINIO</strong> — entidade, validador, <em>interface</em> do repositório, <code>NotFoundError</code> / <code>ConflictError</code>. A regra mora aqui. A linha pontilhada <code>implements</code> liga o contrato (domínio) à classe Prisma (infra).</li>
+  </ul>
+</div>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Só leitura. Os arquivos já existem nas Seções 3–9 e 13–14.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>Mapa HTTP → controller → use case → entidade → Prisma → presenter. Consulte quando um endpoint parecer “mágica”.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Atalhos:</p>
+<ul>
+  <li><a href="#flow-pipeline">Pipeline comum</a></li>
+  <li><a href="#flow-products">Produtos</a> · <a href="#flow-suppliers">Fornecedores</a> · <a href="#flow-stock">Estoque</a> · <a href="#flow-orders">Pedidos</a></li>
+</ul>
+
+<h3 id="flow-pipeline">Pipeline comum — toda rota autenticada</h3>
+
+<p>Antes do use case, o Nest sempre faz o mesmo: sobe a app, valida o JWT, (se houver body/query) valida o DTO, despacha o controller. Depois do use case: presenter → envelope <code>{ data }</code>. Se o domínio lançar erro, o filter vira status HTTP.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — pipeline comum</div>
+  <p>Vale para os 18 use cases. Token inválido para em 401 e nem chega no controller. Body inválido para no pipe (400) e nem chega no <code>execute</code>.</p>
+</div>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger / front"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Guard["AuthGuard JWT"]
+    Pipe["ZodValidationPipe + DTO"]
+    Ctrl["Controller"]
+    Pres["Presenter"]
+    Wrap["WrapperDataInterceptor"]
+    F401["401 token invalido"]
+    F400["400 DTO invalido"]
+    F404["Filter 404"]
+    F409["Filter 409"]
+  end
+  subgraph app["APLICACAO"]
+    UC["UseCase.execute"]
+  end
+  subgraph domain["DOMINIO"]
+    Ent["Entidade + regras + validador"]
+    Contract["Interface do repositorio"]
+    NF["NotFoundError"]
+    CF["ConflictError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["PrismaRepository + Mapper"]
+    PG[("Postgres")]
+  end
+  U -->|"Bearer JWT"| Guard
+  Guard -->|invalido| F401
+  F401 -->|"resposta 401 JSON"| U
+  Guard -->|ok| Pipe
+  Pipe -->|invalido| F400
+  F400 -->|"resposta 400 JSON"| U
+  Pipe -->|ok| Ctrl
+  Ctrl --> UC
+  UC --> Ent
+  UC --> Contract
+  Contract -.->|"implements"| Repo
+  Repo --> PG
+  Repo --> Ent
+  Ent -->|nao achou| NF
+  NF --> F404
+  F404 -->|"resposta 404 JSON"| U
+  Ent -->|conflito SKU CNPJ status| CF
+  CF --> F409
+  F409 -->|"resposta 409 JSON"| U
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"resposta 200 ou 201 data: presenter"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<table>
+  <tr>
+    <th>Camada</th>
+    <th>Arquivo</th>
+    <th>Papel em toda request</th>
+  </tr>
+  <tr>
+    <td>Bootstrap</td>
+    <td><code>src/main.ts</code></td>
+    <td>Cria a app, chama <code>applyGlobalConfig</code>, sobe Swagger em <code>/docs</code>.</td>
+  </tr>
+  <tr>
+    <td>Globais</td>
+    <td><code>src/global-config.ts</code></td>
+    <td>Registra interceptor e filters de 404/409.</td>
+  </tr>
+  <tr>
+    <td>Módulos</td>
+    <td><code>src/app.module.ts</code></td>
+    <td>Importa Auth + Products + Suppliers + Stock + PurchaseOrder.</td>
+  </tr>
+  <tr>
+    <td>Auth</td>
+    <td><code>src/auth/infrastructure/jwt.strategy.ts</code></td>
+    <td>Lê Bearer, busca chave no JWKS da Auth0, checa audience/issuer.</td>
+  </tr>
+  <tr>
+    <td>Auth</td>
+    <td><code>src/auth/infrastructure/auth.module.ts</code></td>
+    <td>Expõe a strategy. Controllers usam <code>@UseGuards(AuthGuard('jwt'))</code>.</td>
+  </tr>
+  <tr>
+    <td>Pipe</td>
+    <td><code>src/shared/infrastructure/pipes/zod-validation.pipe.ts</code></td>
+    <td>Valida body/query contra o schema Zod do DTO. Falha → 400.</td>
+  </tr>
+  <tr>
+    <td>Use case base</td>
+    <td><code>src/shared/application/usecases/use-case.ts</code></td>
+    <td>Contrato: um método <code>execute(input)</code>.</td>
+  </tr>
+  <tr>
+    <td>Erro 404</td>
+    <td><code>src/shared/domain/errors/not-found-error.ts</code> + <code>.../not-found-error.filter.ts</code></td>
+    <td>Domínio lança; filter responde JSON 404.</td>
+  </tr>
+  <tr>
+    <td>Erro 409</td>
+    <td><code>src/shared/domain/errors/conflict-error.ts</code> + <code>.../conflict-error.filter.ts</code></td>
+    <td>SKU/CNPJ/status inválido; filter responde JSON 409.</td>
+  </tr>
+  <tr>
+    <td>Resposta</td>
+    <td><code>src/shared/infrastructure/interceptors/wrapper-data.interceptor.ts</code></td>
+    <td>Envolve o presenter em <code>{ data: ... }</code>. DELETE 204 não tem body.</td>
+  </tr>
+  <tr>
+    <td>Banco</td>
+    <td><code>src/shared/infrastructure/database/prisma/prisma.service.ts</code></td>
+    <td>Cliente Prisma (adapter Postgres). Todo repositório Prisma recebe isto.</td>
+  </tr>
+</table>
+
+<p>Daqui para baixo, cada use case assume o pipeline acima. A tabela de arquivos lista o que é <em>desta</em> operação.</p>
+
+<h3>Índice — HTTP × use case</h3>
+
+<table>
+  <tr>
+    <th>HTTP</th>
+    <th>Use case</th>
+    <th>O que o usuário está pedindo</th>
+  </tr>
+  <tr>
+    <td><a href="#flow-create-product"><code>POST /products</code></a></td>
+    <td>CreateProduct</td>
+    <td>Cadastrar produto (e nascer o estoque zerado)</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-get-product"><code>GET /products/:id</code></a></td>
+    <td>GetProduct</td>
+    <td>Ver um produto</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-list-products"><code>GET /products</code></a></td>
+    <td>ListProducts</td>
+    <td>Listar com filtro/página</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-update-product"><code>PUT /products/:id</code></a></td>
+    <td>UpdateProduct</td>
+    <td>Alterar nome, preço, etc. (SKU não muda)</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-delete-product"><code>DELETE /products/:id</code></a></td>
+    <td>DeleteProduct</td>
+    <td>Remover produto</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-create-supplier"><code>POST /suppliers</code></a></td>
+    <td>CreateSupplier</td>
+    <td>Cadastrar fornecedor</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-get-supplier"><code>GET /suppliers/:id</code></a></td>
+    <td>GetSupplier</td>
+    <td>Ver um fornecedor</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-list-suppliers"><code>GET /suppliers</code></a></td>
+    <td>ListSuppliers</td>
+    <td>Listar com filtro/página</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-update-supplier"><code>PUT /suppliers/:id</code></a></td>
+    <td>UpdateSupplier</td>
+    <td>Alterar name, email, phone (CNPJ não muda)</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-delete-supplier"><code>DELETE /suppliers/:id</code></a></td>
+    <td>DeleteSupplier</td>
+    <td>Remover fornecedor</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-list-critical"><code>GET /stocks/critical</code></a></td>
+    <td>ListCriticalStock</td>
+    <td>Ver o que está abaixo do mínimo</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-get-stock"><code>GET /stocks/:id</code></a></td>
+    <td>GetStock</td>
+    <td>Ver um estoque</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-update-stock"><code>PUT /stocks/:id</code></a></td>
+    <td>UpdateStock</td>
+    <td>Ajustar quantidade, mínimo, local</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-create-po"><code>POST /purchase-orders</code></a></td>
+    <td>CreatePurchaseOrder</td>
+    <td>Abrir pedido em DRAFT</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-get-po"><code>GET /purchase-orders/:id</code></a></td>
+    <td>GetPurchaseOrder</td>
+    <td>Ver um pedido</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-list-po"><code>GET /purchase-orders</code></a></td>
+    <td>ListPurchaseOrders</td>
+    <td>Listar pedidos</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-receive"><code>POST /purchase-orders/:id/receive-delivery</code></a></td>
+    <td>ReceiveDelivery</td>
+    <td>Confirmar entrega e subir o estoque</td>
+  </tr>
+  <tr>
+    <td><a href="#flow-cancel"><code>POST /purchase-orders/:id/cancel</code></a></td>
+    <td>CancelPurchaseOrder</td>
+    <td>Cancelar pedido (DRAFT ou SENT)</td>
+  </tr>
+</table>
+
+<!-- ── PRODUTOS ── -->
+<h3 id="flow-products">Produtos</h3>
+
+<p>Wiring: <code>src/products/infrastructure/products.module.ts</code> liga controller, use cases e <code>ProductPrismaRepository</code> (CreateProduct também recebe <code>StockPrismaRepository</code>).</p>
+
+<h4 id="flow-create-product"><code>POST /products</code> — CreateProduct</h4>
+
+<p>O lojista cadastra um item. A API grava o produto <strong>e</strong> cria o estoque com <code>quantity = 0</code>. Não existe <code>POST /stocks</code>.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — CreateProduct</div>
+  <p>Único create que toca dois agregados. SKU único + preço &gt; custo. Resposta 201 com presenter do produto (o estoque não vai no JSON deste POST).</p>
+</div>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller POST /products"]
+    Zod["DTO createProductSchema"]
+    Pres["ProductPresenter"]
+    Wrap["Wrapper envelope data"]
+    F409["Filter 409"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CreateProductUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    PRepo["ProductRepository contrato"]
+    SRepo["StockRepository contrato"]
+    PE["ProductEntity + validate"]
+    SE["StockEntity qty 0"]
+    CF["ConflictError SKU"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    PPrisma["ProductPrismaRepository"]
+    SPrisma["StockPrismaRepository"]
+    PG[("Postgres")]
+  end
+  U -->|"POST + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> PRepo
+  PRepo -.-> PPrisma
+  PPrisma -->|"skuExists"| PG
+  PPrisma -->|SKU existe| CF
+  CF --> F409
+  F409 -->|"409 message SKU already exists"| U
+  UC -->|"price vs cost"| PE
+  PE --> PPrisma
+  PPrisma -->|"insert produto"| PG
+  UC --> SE
+  SE --> SRepo
+  SRepo -.-> SPrisma
+  SPrisma -->|"insert estoque"| PG
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"201 data: produto estoque NAO vai no JSON"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Usuário manda JSON (name, sku, price, costPrice, supplierId, location, minQuantity…).</li>
+  <li>Guard JWT → pipe Zod do DTO HTTP.</li>
+  <li>Controller chama <code>createUseCase.execute(dto)</code>.</li>
+  <li>Use case: <code>skuExists</code> — se true, <code>ConflictError</code>.</li>
+  <li>Use case: recusa se <code>price &lt;= costPrice</code>.</li>
+  <li><code>new ProductEntity</code> — construtor chama <code>validate()</code> (schema Zod do domínio).</li>
+  <li><code>productRepository.insert</code> → Prisma <code>product.create</code>.</li>
+  <li><code>new StockEntity</code> com <code>productId</code> do produto novo, quantity 0, min/location do input.</li>
+  <li><code>stockRepository.insert</code> → Prisma <code>stock.create</code>.</li>
+  <li>Controller: <code>new ProductPresenter(output)</code> → interceptor <code>{ data }</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>src/products/infrastructure/controllers/products.controller.ts</code></td><td><code>@Post()</code> → <code>create()</code></td></tr>
+  <tr><td>DTO HTTP</td><td><code>src/products/infrastructure/dto/create-product.dto.ts</code></td><td><code>createProductSchema</code> + tipo do body</td></tr>
+  <tr><td>Use case</td><td><code>src/products/application/usecases/create-product.usecase.ts</code></td><td>SKU, margem, cria produto + estoque</td></tr>
+  <tr><td>Contrato</td><td><code>src/products/domain/repositories/product.repository.ts</code></td><td><code>skuExists</code>, <code>insert</code></td></tr>
+  <tr><td>Contrato stock</td><td><code>src/stock/domain/repositories/stock.repository.ts</code></td><td><code>insert</code></td></tr>
+  <tr><td>Entidade</td><td><code>src/products/domain/entities/product.entity.ts</code></td><td>props, UUID, <code>private validate</code></td></tr>
+  <tr><td>Validador</td><td><code>src/products/domain/validators/product.validator.ts</code></td><td>Schema Zod do domínio</td></tr>
+  <tr><td>Entidade stock</td><td><code>src/stock/domain/entities/stock.entity.ts</code></td><td>Estoque inicial</td></tr>
+  <tr><td>Prisma produto</td><td><code>src/products/infrastructure/database/prisma/product-prisma.repository.ts</code></td><td>SQL via Prisma</td></tr>
+  <tr><td>Prisma stock</td><td><code>src/stock/infrastructure/database/prisma/stock-prisma.repository.ts</code></td><td>SQL via Prisma</td></tr>
+  <tr><td>Presenter</td><td><code>src/products/infrastructure/presenters/product.presenter.ts</code></td><td>JSON estável para o cliente</td></tr>
+</table>
+
+<h4 id="flow-get-product"><code>GET /products/:id</code> — GetProduct</h4>
+
+<p>Busca um produto. Sem body. Se o id não existir, 404.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /products/:id"]
+    Pres["ProductPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["GetProductUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["ProductRepository contrato"]
+    Ent["ProductEntity"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma + Mapper"]
+    PG[("Postgres")]
+  end
+  U -->|"GET + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 message Product not found"| U
+  Repo -->|achou| Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: produto"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Usuário chama <code>GET /products/{uuid}</code> com JWT.</li>
+  <li>Controller pega <code>:id</code> e chama <code>getUseCase.execute({ id })</code>.</li>
+  <li>Use case: <code>findById</code>. Prisma não achou → <code>NotFoundError</code> (o repositório já lança; o use case também checa).</li>
+  <li>Mapper: linha do banco → <code>ProductEntity</code> (reusa o id, não gera outro UUID).</li>
+  <li>Use case devolve objeto plano → <code>ProductPresenter</code> → <code>{ data }</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>products.controller.ts</code> → <code>findOne</code></td><td><code>@Get(':id')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/products/application/usecases/get-product.usecase.ts</code></td><td>Busca e mapeia output</td></tr>
+  <tr><td>Prisma + mapper</td><td><code>product-prisma.repository.ts</code> + <code>product-model.mapper.ts</code></td><td><code>findUnique</code> → entidade</td></tr>
+  <tr><td>Presenter</td><td><code>product.presenter.ts</code></td><td>Resposta 200</td></tr>
+</table>
+
+<h4 id="flow-list-products"><code>GET /products</code> — ListProducts</h4>
+
+<p>Lista paginada. Query: <code>page</code>, <code>perPage</code>, <code>sort</code>, <code>sortDir</code>, <code>filter</code> (nome).</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /products"]
+    Zod["DTO listProductsSchema query"]
+    Pres["ProductCollectionPresenter"]
+    Wrap["Wrapper envelope data"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ListProductsUseCase toOutput"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["ProductRepository.search"]
+    Ent["ProductEntity lista"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma search filtro pagina"]
+    PG[("Postgres")]
+  end
+  U -->|"GET query + JWT"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: items + paginacao"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Usuário chama <code>GET /products?page=1&amp;filter=camiseta</code>.</li>
+  <li>Pipe Zod: <code>listProductsSchema</code>.</li>
+  <li>Use case: <code>productRepository.search(params)</code> — filtro, sort, página no Prisma.</li>
+  <li>Cada entidade vira objeto plano (<code>toOutput</code>).</li>
+  <li><code>ProductCollectionPresenter</code> — itens + metadados de paginação → <code>{ data }</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>products.controller.ts</code> → <code>search</code></td><td><code>@Get()</code> + query</td></tr>
+  <tr><td>DTO</td><td><code>src/products/infrastructure/dto/list-products.dto.ts</code></td><td>Query Zod</td></tr>
+  <tr><td>Use case</td><td><code>src/products/application/usecases/list-products.usecase.ts</code></td><td>Delega <code>search</code></td></tr>
+  <tr><td>Contrato</td><td><code>repository-contracts.ts</code> + <code>product.repository.ts</code></td><td><code>SearchParams</code> / <code>SearchResult</code></td></tr>
+  <tr><td>Prisma</td><td><code>product-prisma.repository.ts</code> → <code>search</code></td><td>WHERE/ORDER/SKIP/TAKE</td></tr>
+  <tr><td>Presenter</td><td><code>product.presenter.ts</code> (<code>ProductCollectionPresenter</code>)</td><td>Lista + paginação</td></tr>
+</table>
+
+<h4 id="flow-update-product"><code>PUT /products/:id</code> — UpdateProduct</h4>
+
+<p>Altera name, description, price, costPrice, category. SKU e supplierId não entram no DTO — são imutáveis.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller PUT /products/:id"]
+    Zod["DTO updateProductSchema"]
+    Pres["ProductPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["UpdateProductUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["ProductRepository"]
+    Ent["ProductEntity updateName Price..."]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma update"]
+    PG[("Postgres")]
+  end
+  U -->|"PUT + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent -->|"price maior que cost + validate"| UC
+  UC --> Repo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: produto atualizado"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Body validado por <code>updateProductSchema</code>.</li>
+  <li>Use case: <code>findById</code> — 404 se não existir.</li>
+  <li>Chama métodos da entidade: <code>updateName</code>, <code>updateDescription</code>, <code>updateCostPrice</code>, <code>updatePrice</code>, <code>updateCategory</code>. Cada um revalida; <code>updatePrice</code> exige price &gt; cost.</li>
+  <li><code>productRepository.update</code> → Prisma <code>update</code>.</li>
+  <li><code>ProductPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>products.controller.ts</code> → <code>update</code></td><td>Junta <code>id</code> da URL com o body</td></tr>
+  <tr><td>DTO</td><td><code>src/products/infrastructure/dto/update-product.dto.ts</code></td><td>Campos editáveis</td></tr>
+  <tr><td>Use case</td><td><code>src/products/application/usecases/update-product.usecase.ts</code></td><td>Orquestra updates da entidade</td></tr>
+  <tr><td>Entidade</td><td><code>product.entity.ts</code></td><td>Regras + <code>validate()</code></td></tr>
+  <tr><td>Prisma</td><td><code>product-prisma.repository.ts</code> → <code>update</code></td><td>Persiste</td></tr>
+</table>
+
+<h4 id="flow-delete-product"><code>DELETE /products/:id</code> — DeleteProduct</h4>
+
+<p>Resposta <strong>204 sem body</strong>. Se ainda houver estoque/FK no Postgres, o Prisma pode recusar — o use case em si só apaga o produto depois de confirmar que existe.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller DELETE /products/:id"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["DeleteProductUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["ProductRepository"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma delete"]
+    PG[("Postgres")]
+  end
+  U -->|"DELETE + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo -->|FK estoque| PG
+  Repo -->|ok| Ctrl
+  Ctrl -->|"204 sem body"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li><code>findById</code> — 404 se não existir.</li>
+  <li><code>productRepository.delete(id)</code> → Prisma <code>delete</code>.</li>
+  <li>Controller não retorna presenter (<code>@HttpCode(204)</code>).</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>products.controller.ts</code> → <code>remove</code></td><td><code>@Delete(':id')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/products/application/usecases/delete-product.usecase.ts</code></td><td>Confirma existência e deleta</td></tr>
+  <tr><td>Prisma</td><td><code>product-prisma.repository.ts</code> → <code>delete</code></td><td>Remove a linha</td></tr>
+</table>
+
+<!-- ── FORNECEDORES ── -->
+<h3 id="flow-suppliers">Fornecedores</h3>
+
+<p>Wiring: <code>src/suppliers/infrastructure/suppliers.module.ts</code>. Mesmo desenho de produtos, sem criar estoque.</p>
+
+<h4 id="flow-create-supplier"><code>POST /suppliers</code> — CreateSupplier</h4>
+
+<p>CNPJ único (14 dígitos no Zod do domínio). O use case consulta <code>findByCnpj</code> antes de inserir.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller POST /suppliers"]
+    Zod["DTO createSupplierSchema"]
+    Pres["SupplierPresenter"]
+    Wrap["Wrapper envelope data"]
+    F409["Filter 409"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CreateSupplierUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["SupplierRepository.findByCnpj"]
+    Ent["SupplierEntity + validate"]
+    CF["ConflictError CNPJ"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma insert"]
+    PG[("Postgres")]
+  end
+  U -->|"POST + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|CNPJ existe| CF
+  CF --> F409
+  F409 -->|"409 message CNPJ already exists"| U
+  UC --> Ent
+  Ent --> Repo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"201 data: fornecedor"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Body → <code>createSupplierSchema</code>.</li>
+  <li><code>findByCnpj</code> — se já houver, <code>ConflictError</code> 409.</li>
+  <li><code>new SupplierEntity</code> + <code>validate()</code>.</li>
+  <li><code>insert</code> no Prisma.</li>
+  <li><code>SupplierPresenter</code>, 201.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>src/suppliers/infrastructure/controllers/suppliers.controller.ts</code></td><td><code>create()</code></td></tr>
+  <tr><td>DTO</td><td><code>src/suppliers/infrastructure/dto/create-supplier.dto.ts</code></td><td>Body Zod</td></tr>
+  <tr><td>Use case</td><td><code>src/suppliers/application/usecases/create-supplier.usecase.ts</code></td><td>Unicidade de CNPJ + insert</td></tr>
+  <tr><td>Entidade / validador</td><td><code>supplier.entity.ts</code> + <code>supplier.validator.ts</code></td><td>Campos e regras</td></tr>
+  <tr><td>Contrato</td><td><code>src/suppliers/domain/repositories/supplier.repository.ts</code></td><td><code>findByCnpj</code></td></tr>
+  <tr><td>Prisma + mapper</td><td><code>supplier-prisma.repository.ts</code> + <code>supplier-model.mapper.ts</code></td><td>Persistência</td></tr>
+  <tr><td>Presenter</td><td><code>src/suppliers/infrastructure/presenters/supplier.presenter.ts</code></td><td>JSON</td></tr>
+</table>
+
+<h4 id="flow-get-supplier"><code>GET /suppliers/:id</code> — GetSupplier</h4>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /suppliers/:id"]
+    Pres["SupplierPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["GetSupplierUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["SupplierRepository"]
+    Ent["SupplierEntity"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma + Mapper"]
+    PG[("Postgres")]
+  end
+  U -->|"GET + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: fornecedor"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Controller → <code>execute({ id })</code>.</li>
+  <li><code>findById</code> — 404 se vazio.</li>
+  <li>Mapper → entidade → output plano → <code>SupplierPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>suppliers.controller.ts</code> → <code>findOne</code></td><td><code>@Get(':id')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/suppliers/application/usecases/get-supplier.usecase.ts</code></td><td>Busca</td></tr>
+  <tr><td>Prisma</td><td><code>supplier-prisma.repository.ts</code> + mapper</td><td>Linha → entidade</td></tr>
+</table>
+
+<h4 id="flow-list-suppliers"><code>GET /suppliers</code> — ListSuppliers</h4>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /suppliers"]
+    Zod["DTO listSuppliersSchema"]
+    Pres["SupplierCollectionPresenter"]
+    Wrap["Wrapper envelope data"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ListSuppliersUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["SupplierRepository.search"]
+    Ent["SupplierEntity lista"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma search"]
+    PG[("Postgres")]
+  end
+  U -->|"GET query + JWT"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: items + paginacao"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Query validada por <code>listSuppliersSchema</code>.</li>
+  <li><code>supplierRepository.search</code>.</li>
+  <li><code>toOutput</code> em cada entidade → <code>SupplierCollectionPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota / DTO</td><td><code>suppliers.controller.ts</code> + <code>list-suppliers.dto.ts</code></td><td>Query paginada</td></tr>
+  <tr><td>Use case</td><td><code>src/suppliers/application/usecases/list-suppliers.usecase.ts</code></td><td><code>search</code> + map</td></tr>
+  <tr><td>Prisma</td><td><code>supplier-prisma.repository.ts</code> → <code>search</code></td><td>Filtro por nome, página</td></tr>
+</table>
+
+<h4 id="flow-update-supplier"><code>PUT /suppliers/:id</code> — UpdateSupplier</h4>
+
+<p>CNPJ não está no DTO. Atualiza name, email, phone via métodos da entidade (revalidam).</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller PUT /suppliers/:id"]
+    Zod["DTO updateSupplierSchema"]
+    Pres["SupplierPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["UpdateSupplierUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["SupplierRepository"]
+    Ent["SupplierEntity updateName Email Phone"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma update"]
+    PG[("Postgres")]
+  end
+  U -->|"PUT + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent --> UC
+  UC --> Repo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: fornecedor atualizado"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li><code>findById</code> — 404.</li>
+  <li><code>updateName</code> / <code>updateEmail</code> / <code>updatePhone</code>.</li>
+  <li><code>update</code> no Prisma → presenter.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>DTO</td><td><code>src/suppliers/infrastructure/dto/update-supplier.dto.ts</code></td><td>Campos editáveis</td></tr>
+  <tr><td>Use case</td><td><code>src/suppliers/application/usecases/update-supplier.usecase.ts</code></td><td>Orquestra a entidade</td></tr>
+  <tr><td>Entidade</td><td><code>supplier.entity.ts</code></td><td>Métodos de update + validate</td></tr>
+</table>
+
+<h4 id="flow-delete-supplier"><code>DELETE /suppliers/:id</code> — DeleteSupplier</h4>
+
+<p>204 sem body. O use case <strong>não</strong> consulta pedidos ativos: só confirma que o fornecedor existe e deleta. Se houver produto com FK, o Postgres recusa.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller DELETE /suppliers/:id"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["DeleteSupplierUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["SupplierRepository"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma delete"]
+    PG[("Postgres")]
+  end
+  U -->|"DELETE + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo -->|produto com FK| PG
+  Repo -->|ok| Ctrl
+  Ctrl -->|"204 sem body"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li><code>findById</code> — 404.</li>
+  <li><code>delete</code> no Prisma.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>suppliers.controller.ts</code> → <code>remove</code></td><td><code>@HttpCode(204)</code></td></tr>
+  <tr><td>Use case</td><td><code>src/suppliers/application/usecases/delete-supplier.usecase.ts</code></td><td>Existe? então deleta</td></tr>
+  <tr><td>Prisma</td><td><code>supplier-prisma.repository.ts</code> → <code>delete</code></td><td>Remove a linha</td></tr>
+</table>
+
+<!-- ── ESTOQUE ── -->
+<h3 id="flow-stock">Estoque</h3>
+
+<p>Não há create HTTP. O estoque nasce no <a href="#flow-create-product">CreateProduct</a>. Wiring: <code>src/stock/infrastructure/stock.module.ts</code>. <code>GET /stocks/critical</code> está <strong>antes</strong> de <code>GET /stocks/:id</code> no controller — senão o Nest trata <code>critical</code> como id.</p>
+
+<h4 id="flow-list-critical"><code>GET /stocks/critical</code> — ListCriticalStock</h4>
+
+<p>Lista onde <code>quantity &lt; minQuantity</code>. Lista vazia é sucesso (nada crítico).</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /stocks/critical"]
+    Pres["StockCollectionPresenter"]
+    Wrap["Wrapper envelope data"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ListCriticalStockUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["StockRepository.findBelowMinQuantity"]
+    Ent["StockEntity isCritical"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma qty menor que min"]
+    PG[("Postgres")]
+  end
+  U -->|"GET + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: items + total lista vazia e sucesso"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Sem query/body. Controller chama <code>execute({})</code>.</li>
+  <li>Use case: <code>findBelowMinQuantity()</code> no repositório (SQL/filtro no Prisma).</li>
+  <li>Mapeia entidades; inclui getter <code>isCritical</code>.</li>
+  <li><code>StockCollectionPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>src/stock/infrastructure/controllers/stocks.controller.ts</code></td><td><code>@Get('critical')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/stock/application/usecases/list-critical-stock.usecase.ts</code></td><td>Delega a regra ao repo</td></tr>
+  <tr><td>Contrato</td><td><code>stock.repository.ts</code> → <code>findBelowMinQuantity</code></td><td>Query específica</td></tr>
+  <tr><td>Entidade</td><td><code>stock.entity.ts</code> getter <code>isCritical</code></td><td>quantity &lt; minQuantity</td></tr>
+  <tr><td>Prisma</td><td><code>stock-prisma.repository.ts</code></td><td>Busca no banco</td></tr>
+  <tr><td>Presenter</td><td><code>src/stock/infrastructure/presenters/stock.presenter.ts</code></td><td>Coleção</td></tr>
+</table>
+
+<h4 id="flow-get-stock"><code>GET /stocks/:id</code> — GetStock</h4>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /stocks/:id"]
+    Pres["StockPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["GetStockUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["StockRepository"]
+    Ent["StockEntity"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma + Mapper"]
+    PG[("Postgres")]
+  end
+  U -->|"GET + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: estoque"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li><code>execute({ id })</code>.</li>
+  <li><code>findById</code> — 404.</li>
+  <li>Mapper → output → <code>StockPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>stocks.controller.ts</code> → <code>findOne</code></td><td><code>@Get(':id')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/stock/application/usecases/get-stock.usecase.ts</code></td><td>Busca</td></tr>
+  <tr><td>Prisma + mapper</td><td><code>stock-prisma.repository.ts</code> + <code>stock-model.mapper.ts</code></td><td>Linha → entidade</td></tr>
+</table>
+
+<h4 id="flow-update-stock"><code>PUT /stocks/:id</code> — UpdateStock</h4>
+
+<p><code>productId</code> não muda. Quantity não pode ser negativa (entidade).</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller PUT /stocks/:id"]
+    Zod["DTO updateStockSchema"]
+    Pres["StockPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["UpdateStockUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["StockRepository"]
+    Ent["StockEntity updateQuantity activate"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma update"]
+    PG[("Postgres")]
+  end
+  U -->|"PUT + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent -->|"qty nao negativa"| UC
+  UC --> Repo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: estoque atualizado"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Body → <code>updateStockSchema</code>.</li>
+  <li><code>findById</code> — 404.</li>
+  <li><code>updateQuantity</code>, <code>updateMinQuantity</code>, <code>updateLocation</code>, <code>activate</code> ou <code>deactivate</code>.</li>
+  <li>Prisma <code>update</code> → <code>StockPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>DTO</td><td><code>src/stock/infrastructure/dto/update-stock.dto.ts</code></td><td>quantity, min, location, isActive</td></tr>
+  <tr><td>Use case</td><td><code>src/stock/application/usecases/update-stock.usecase.ts</code></td><td>Métodos da entidade</td></tr>
+  <tr><td>Entidade</td><td><code>stock.entity.ts</code></td><td>Regras de quantidade</td></tr>
+  <tr><td>Prisma</td><td><code>stock-prisma.repository.ts</code> → <code>update</code></td><td>Persiste</td></tr>
+</table>
+
+<!-- ── PEDIDOS ── -->
+<h3 id="flow-orders">Pedidos de compra</h3>
+
+<p>Wiring: <code>src/purchase-orders/infrastructure/purchase-order.module.ts</code>. ReceiveDelivery também injeta <code>StockRepository</code>. Não há rota <code>SENT</code> nesta API — o pedido precisa já estar SENT no banco para receber entrega.</p>
+
+<h4 id="flow-create-po"><code>POST /purchase-orders</code> — CreatePurchaseOrder</h4>
+
+<p>Status inicial <code>DRAFT</code>. <code>totalCost</code> é calculado na entidade (soma quantity × unitCost). Itens vazios ou inválidos falham no validate.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller POST /purchase-orders"]
+    Zod["DTO createPurchaseOrderSchema"]
+    Pres["PurchaseOrderPresenter"]
+    Wrap["Wrapper envelope data"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CreatePurchaseOrderUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["PurchaseOrderRepository"]
+    Ent["PurchaseOrderEntity DRAFT totalCost"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma insert pedido + itens"]
+    PG[("Postgres")]
+  end
+  U -->|"POST + JWT + body"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Ent
+  Ent -->|"calcula total + validate itens"| UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"201 data: pedido DRAFT + totalCost"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Body: <code>supplierId</code> + <code>items[]</code> → <code>createPurchaseOrderSchema</code>.</li>
+  <li><code>new PurchaseOrderEntity</code> — calcula total, status DRAFT, validate.</li>
+  <li><code>insert</code> no Prisma (pedido + itens, conforme o schema).</li>
+  <li><code>PurchaseOrderPresenter</code>, 201.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>src/purchase-orders/infrastructure/controllers/purchase-order.controller.ts</code></td><td><code>create()</code></td></tr>
+  <tr><td>DTO</td><td><code>src/purchase-orders/infrastructure/dto/create-purchase-order.dto.ts</code></td><td>supplierId + items</td></tr>
+  <tr><td>Use case</td><td><code>src/purchase-orders/application/usecases/create-purchase-order.usecase.ts</code></td><td>Cria entidade e persiste</td></tr>
+  <tr><td>Entidade</td><td><code>purchase-order.entity.ts</code></td><td>DRAFT, <code>calculateTotalCost</code></td></tr>
+  <tr><td>Validador</td><td><code>purchase-order.validator.ts</code></td><td>Itens, quantity, unitCost</td></tr>
+  <tr><td>Prisma + mapper</td><td><code>purchase-order-prisma.repository.ts</code> + <code>purchase-order-model.mapper.ts</code></td><td>Persistência</td></tr>
+  <tr><td>Presenter</td><td><code>purchase-order.presenter.ts</code></td><td>JSON do pedido</td></tr>
+</table>
+
+<h4 id="flow-get-po"><code>GET /purchase-orders/:id</code> — GetPurchaseOrder</h4>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /purchase-orders/:id"]
+    Pres["PurchaseOrderPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+  end
+  subgraph app["APLICACAO"]
+    UC["GetPurchaseOrderUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["PurchaseOrderRepository"]
+    Ent["PurchaseOrderEntity + itens"]
+    NF["NotFoundError"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma + Mapper"]
+    PG[("Postgres")]
+  end
+  U -->|"GET + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: pedido"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li><code>execute({ id })</code>.</li>
+  <li><code>findById</code> — 404.</li>
+  <li>Output plano → <code>PurchaseOrderPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>purchase-order.controller.ts</code> → <code>findOne</code></td><td><code>@Get(':id')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/purchase-orders/application/usecases/get-purchase-order.usecase.ts</code></td><td>Busca</td></tr>
+  <tr><td>Prisma</td><td><code>purchase-order-prisma.repository.ts</code> + mapper</td><td>Pedido + itens</td></tr>
+</table>
+
+<h4 id="flow-list-po"><code>GET /purchase-orders</code> — ListPurchaseOrders</h4>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller GET /purchase-orders"]
+    Zod["DTO listPurchaseOrdersSchema"]
+    Pres["PurchaseOrderCollectionPresenter"]
+    Wrap["Wrapper envelope data"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ListPurchaseOrdersUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["PurchaseOrderRepository.search"]
+    Ent["PurchaseOrderEntity lista"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma search"]
+    PG[("Postgres")]
+  end
+  U -->|"GET query + JWT"| Ctrl
+  Ctrl --> Zod
+  Zod --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo --> Ent
+  Ent --> UC
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: items + paginacao"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Query → <code>listPurchaseOrdersSchema</code>.</li>
+  <li><code>search</code> no repositório.</li>
+  <li><code>PurchaseOrderCollectionPresenter</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>DTO</td><td><code>src/purchase-orders/infrastructure/dto/list-purchase-orders.dto.ts</code></td><td>Paginação</td></tr>
+  <tr><td>Use case</td><td><code>src/purchase-orders/application/usecases/list-purchase-orders.usecase.ts</code></td><td><code>search</code> + <code>toOutput</code></td></tr>
+  <tr><td>Prisma</td><td><code>purchase-order-prisma.repository.ts</code> → <code>search</code></td><td>Lista</td></tr>
+</table>
+
+<h4 id="flow-receive"><code>POST /purchase-orders/:id/receive-delivery</code> — ReceiveDelivery</h4>
+
+<p>Confirma que a carga chegou. Só se o status for <code>SENT</code>. Marca <code>DELIVERED</code> e <strong>soma</strong> quantity em cada estoque (não diminui). O <code>:id</code> da URL vira <code>purchaseOrderId</code> no input do use case.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ReceiveDelivery</div>
+  <p>Segundo use case que cruza módulos (pedido + estoque). Sem rota SENT nesta API: se o pedido ainda estiver DRAFT, 409.</p>
+</div>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller POST :id/receive-delivery"]
+    Pres["ReceiveDeliveryPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+    F409["Filter 409"]
+  end
+  subgraph app["APLICACAO"]
+    UC["ReceiveDeliveryUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    POContract["PurchaseOrderRepository"]
+    STContract["StockRepository"]
+    Order["PurchaseOrderEntity markAsDelivered"]
+    Stock["StockEntity addQuantity"]
+    NF["NotFoundError"]
+    CF["ConflictError se nao SENT"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    PORepo["Prisma pedido"]
+    STRepo["Prisma estoque"]
+    PG[("Postgres")]
+  end
+  U -->|"POST + JWT sem body"| Ctrl
+  Ctrl --> UC
+  UC --> POContract
+  POContract -.-> PORepo
+  PORepo --> PG
+  PORepo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  PORepo --> Order
+  Order -->|status nao SENT| CF
+  CF --> F409
+  F409 -->|"409 JSON"| U
+  Order -->|SENT vira DELIVERED| UC
+  UC --> STContract
+  STContract -.-> STRepo
+  STRepo --> PG
+  STRepo -->|sem estoque do item| NF
+  STRepo --> Stock
+  Stock --> STRepo
+  UC --> PORepo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: id + DELIVERED + estoques"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Controller: <code>execute({ purchaseOrderId: id })</code> — sem body.</li>
+  <li>Busca o pedido — 404.</li>
+  <li>Se status ≠ SENT → <code>ConflictError</code> 409.</li>
+  <li><code>order.markAsDelivered()</code> (a entidade também exige SENT).</li>
+  <li>Para cada item: acha estoque do <code>productId</code> (primeiro da lista); 404 se não houver.</li>
+  <li><code>stock.addQuantity(item.quantity)</code> + <code>stockRepo.update</code>.</li>
+  <li><code>purchaseOrderRepo.update(order)</code>.</li>
+  <li><code>ReceiveDeliveryPresenter</code>: id, status, <code>updatedStockItems</code>.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>purchase-order.controller.ts</code> → <code>receiveDelivery</code></td><td>Mapeia <code>:id</code> → <code>purchaseOrderId</code></td></tr>
+  <tr><td>Use case</td><td><code>src/purchase-orders/application/usecases/receive-delivery.usecase.ts</code></td><td>Status + loop de estoque</td></tr>
+  <tr><td>Entidade pedido</td><td><code>purchase-order.entity.ts</code> → <code>markAsDelivered()</code></td><td>SENT → DELIVERED</td></tr>
+  <tr><td>Entidade stock</td><td><code>stock.entity.ts</code> → <code>addQuantity()</code></td><td>Sobe quantity</td></tr>
+  <tr><td>Repos</td><td><code>purchase-order-prisma.repository.ts</code> + <code>stock-prisma.repository.ts</code></td><td>Dois writes</td></tr>
+  <tr><td>Presenter</td><td><code>src/purchase-orders/infrastructure/presenters/receive-delivery.presenter.ts</code></td><td>Status + estoques novos</td></tr>
+</table>
+
+<h4 id="flow-cancel"><code>POST /purchase-orders/:id/cancel</code> — CancelPurchaseOrder</h4>
+
+<p>Não é DELETE: o recurso continua existindo, só muda o status. Só DRAFT ou SENT. DELIVERED / já CANCELLED → 409.</p>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  subgraph usuario["USUARIO"]
+    U["Postman / Swagger"]
+  end
+  subgraph http["INFRAESTRUTURA - HTTP"]
+    Ctrl["Controller POST :id/cancel"]
+    Pres["PurchaseOrderPresenter"]
+    Wrap["Wrapper envelope data"]
+    F404["Filter 404"]
+    F409["Filter 409"]
+  end
+  subgraph app["APLICACAO"]
+    UC["CancelPurchaseOrderUseCase"]
+  end
+  subgraph domain["DOMINIO"]
+    Contract["PurchaseOrderRepository"]
+    Ent["PurchaseOrderEntity.cancel"]
+    NF["NotFoundError"]
+    CF["ConflictError se DELIVERED ou CANCELLED"]
+  end
+  subgraph persist["INFRAESTRUTURA - persistencia"]
+    Repo["Prisma update"]
+    PG[("Postgres")]
+  end
+  U -->|"POST + JWT"| Ctrl
+  Ctrl --> UC
+  UC --> Contract
+  Contract -.-> Repo
+  Repo --> PG
+  Repo -->|nao achou| NF
+  NF --> F404
+  F404 -->|"404 JSON"| U
+  Repo --> Ent
+  Ent -->|DELIVERED ou CANCELLED| CF
+  CF --> F409
+  F409 -->|"409 JSON"| U
+  Ent -->|DRAFT ou SENT vira CANCELLED| UC
+  UC --> Repo
+  UC --> Pres
+  Pres --> Wrap
+  Wrap -->|"200 data: pedido CANCELLED"| U
+style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+  style http fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style app fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style domain fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style persist fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+</div>
+</div>
+
+<ol>
+  <li>Controller: <code>execute({ id })</code>.</li>
+  <li><code>findById</code> — 404.</li>
+  <li>Use case recusa DELIVERED/CANCELLED com <code>ConflictError</code>.</li>
+  <li><code>purchaseOrder.cancel()</code> na entidade (também só DRAFT/SENT).</li>
+  <li><code>update</code> no Prisma → <code>PurchaseOrderPresenter</code> com status CANCELLED.</li>
+</ol>
+
+<table>
+  <tr><th>Passo</th><th>Arquivo</th><th>O que faz</th></tr>
+  <tr><td>Rota</td><td><code>purchase-order.controller.ts</code> → <code>cancel</code></td><td><code>@Post(':id/cancel')</code></td></tr>
+  <tr><td>Use case</td><td><code>src/purchase-orders/application/usecases/cancel-purchase-order.usecase.ts</code></td><td>Checagem de status + persistir</td></tr>
+  <tr><td>Entidade</td><td><code>purchase-order.entity.ts</code> → <code>cancel()</code></td><td>Transição de status</td></tr>
+  <tr><td>Prisma</td><td><code>purchase-order-prisma.repository.ts</code> → <code>update</code></td><td>Grava CANCELLED</td></tr>
+</table>
+
+<div class="warning-card">
+  <div class="label">O que esta API não tem (ainda)</div>
+  <p>Não há use case HTTP para marcar o pedido como <code>SENT</code> (só o método <code>send()</code> na entidade). Sem isso, <code>receive-delivery</code> não roda em pedidos recém-criados (nascem DRAFT). Também não há use case de venda — o estoque só sobe na entrega; não desce por venda ao cliente.</p>
+</div>
 
 <!-- ══════════════════════════════ SEÇÃO 2 ══════════════════════════════ -->
 <h2 id="sec2">Seção 2 — Criando o Projeto</h2>
@@ -9079,6 +10652,9 @@ jobs:
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/dockerfile.min.js"></script>
 <script>
   if (window.mermaid) {
     mermaid.initialize({
@@ -9266,6 +10842,62 @@ jobs:
     const el = document.getElementById(id)
     if (el) observer.observe(el)
   })
+
+  // ── Syntax highlight (IDE) ──
+  function guessSnippetLanguage(codeEl, text) {
+    const pre = codeEl.closest('pre')
+    const prev = pre && pre.previousElementSibling
+    const fileHint = (prev && prev.classList.contains('file-path'))
+      ? prev.textContent
+      : ''
+
+    if (/\.ya?ml|docker-compose|workflows\//.test(fileHint)) return 'yaml'
+    if (/\.json/.test(fileHint)) return 'json'
+    if (/\.env/.test(fileHint)) return 'ini'
+    if (/Dockerfile/.test(fileHint)) return 'dockerfile'
+    if (/\.prisma/.test(fileHint)) return 'sql'
+    if (/\.(ts|js)/.test(fileHint)) return 'typescript'
+
+    const t = text.trim()
+    if (/^(pnpm|npm|npx|nest |docker |cat |find |git |curl |ssh |# Instalar|# Zod|# Na raiz|# Rodar|# \.env|# Criar|# Instalar CLI)/.test(t)) {
+      return 'bash'
+    }
+    if (/^(services:|version:|name: Deploy|on:|jobs:)/.test(t)) return 'yaml'
+    if (/^[{\[]/.test(t)) return 'json'
+    if (/^[A-Z][A-Z0-9_]*=/.test(t) && !t.includes('export ')) return 'ini'
+    if (/^(datasource |generator |model )/.test(t)) return 'sql'
+    return 'typescript'
+  }
+
+  function highlightSnippets() {
+    if (!window.hljs) return
+
+    hljs.configure({
+      ignoreUnescapedHTML: true,
+      languages: ['typescript', 'javascript', 'bash', 'shell', 'yaml', 'json', 'ini', 'dockerfile', 'sql', 'xml'],
+    })
+
+    document.querySelectorAll('pre > code').forEach(codeEl => {
+      if (codeEl.classList.contains('tree')) return
+      if (codeEl.classList.contains('hljs')) return
+
+      const text = codeEl.textContent || ''
+      if (!text.trim()) return
+      if (/[┌┐└┘├┤┬┴┼─│]/.test(text) && !text.includes('import ') && !text.includes('export ')) return
+      if (text.includes('INFRAESTRUTURA') && text.includes('conhece')) return
+
+      const lang = guessSnippetLanguage(codeEl, text)
+      codeEl.classList.add('language-' + lang)
+
+      try {
+        hljs.highlightElement(codeEl)
+      } catch (_) {
+        /* deixa o bloco como texto se o highlighter falhar */
+      }
+    })
+  }
+
+  highlightSnippets()
 
   // ── Copy buttons on every code snippet ──
   const copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
