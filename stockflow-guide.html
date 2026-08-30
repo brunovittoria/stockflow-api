@@ -733,6 +733,7 @@
 
   <div class="section-label">Fundamentos</div>
   <a href="#intro">Introdução e Visão Geral</a>
+  <a href="#oop">TypeScript OOP — vocabulário</a>
   <a href="#ddd-simples">DDD em linguagem simples</a>
   <a href="#architecture">Clean Architecture e DDD</a>
   <a href="#setup">Configuração do Projeto</a>
@@ -794,6 +795,39 @@
     </div>
     <span class="progress-overall-count" id="overall-count">0 / 0</span>
   </div>
+
+  <!-- ── Fundamentos OOP ── -->
+  <div class="checklist-group">
+    <div class="checklist-group-header">
+      <span class="checklist-group-title">
+        Fundamentos — TypeScript OOP
+        <span class="checklist-group-badge" id="badge-oop">0/4</span>
+      </span>
+      <div class="checklist-mini-bar">
+        <div class="checklist-mini-bar-fill" id="bar-oop" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="checklist-items">
+      <label class="checklist-item" id="item-oop-1">
+        <input type="checkbox" data-group="oop" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Entendi <code>class</code>, construtor e <code>props</code></span>
+      </label>
+      <label class="checklist-item" id="item-oop-2">
+        <input type="checkbox" data-group="oop" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Sei a diferença: <code>implements</code> (contrato) vs <code>extends</code> + <code>super()</code> (código do pai)</span>
+      </label>
+      <label class="checklist-item" id="item-oop-3">
+        <input type="checkbox" data-group="oop" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Sei o que é <code>abstract</code> e o <code>&lt;T&gt;</code> genérico (Entity, repositório, UseCase)</span>
+      </label>
+      <label class="checklist-item" id="item-oop-4">
+        <input type="checkbox" data-group="oop" onchange="updateProgress(this)">
+        <span class="checklist-item-label">Localizei no mapa onde cada conceito aparece (entidade, in-memory, Prisma, use case)</span>
+      </label>
+    </div>
+  </div>
+
+  <hr class="checklist-divider">
 
   <!-- ── Seção 2 ── -->
   <div class="checklist-group">
@@ -1234,14 +1268,35 @@
 <!-- ══════════════════════════════ INTRODUÇÃO ══════════════════════════════ -->
 <h2 id="intro">Introdução</h2>
 
-<p>Este documento é um guia passo a passo para construir a <strong>StockFlow API</strong> — um sistema de gerenciamento de loja virtual que controla produtos, estoque, fornecedores e pedidos de compra. O projeto aplica os mesmos conceitos do curso de NestJS com Clean Architecture, mas em um domínio diferente para fixar o aprendizado.</p>
+<p>Este documento <strong>é o curso</strong> — um guia passo a passo para construir a <strong>StockFlow API</strong>, um sistema de gerenciamento de loja virtual (produtos, estoque, fornecedores e pedidos de compra). Você não precisa do vídeo da Udemy: cada bloco de código tem um cartão <strong>Propósito</strong> dizendo por que aquele arquivo ou comando existe. Os conceitos vêm de NestJS + Clean Architecture, aplicados a este domínio.</p>
+
+<p>Antes das camadas (DDD), leia a seção <a href="#oop">TypeScript OOP</a>: é o vocabulário que o resto do guia assume (<code>class</code>, <code>implements</code>, <code>extends</code>, generics, <code>abstract</code>, <code>private</code>, construtor, <code>props</code>, <code>super()</code>).</p>
 
 <div class="concept-card">
   <div class="label">📝 Como este documento foi criado</div>
-  <p>O conteúdo da StockFlow não foi inventado do zero. Ele foi extraído do curso de NestJS na Udemy, aula por aula, e depois reorganizado para um domínio de loja virtual.</p>
+  <p>O conteúdo foi extraído de um curso de NestJS na Udemy (aula por aula) e reorganizado para o domínio da loja. Daqui em diante, <strong>este HTML é o material que você segue</strong> — cada snippet traz o propósito do arquivo.</p>
   <p>A extração foi feita com o <strong>plugin do Cloud Code no Chrome</strong>: em cada ação do curso (criar entidade, montar use case, ligar Prisma, escrever teste, etc.), o plugin gerava um resumo do que estava sendo feito naquela aula. Esses resumos viraram o mapa das seções — o que o curso ensina, em que ordem, e o que cada etapa produz.</p>
   <p>Com essa base, o material foi separado por camada (domínio, aplicação, infraestrutura, testes, auth, docs, deploy) e traduzido para a StockFlow: o <code>User</code> do curso vira <code>Product</code>, <code>Supplier</code>, <code>Stock</code> e <code>PurchaseOrder</code>. Cada seção deste guia segue o mesmo fluxo da aula original, com o card <em>O que o curso ensina</em> e o desafio correspondente no domínio da loja.</p>
 </div>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Esta introdução não cria código. A partir da Seção 2, cada seção abre com uma tabela igual a esta.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>Leitura: o que o produto é, a stack e como o guia foi montado. Código começa na Seção 2.</td>
+    </tr>
+  </tbody>
+</table>
+
 
 <h3>O que você vai construir</h3>
 
@@ -1291,10 +1346,527 @@
   <tr><td>AWS (EC2 + RDS)</td><td>Deploy em produção</td></tr>
 </table>
 
+<!-- ══════════════════════════════ TYPESCRIPT OOP ══════════════════════════════ -->
+<h2 id="oop">TypeScript OOP — o vocabulário deste projeto</h2>
+
+<p>OOP (orientação a objetos) aqui não é teoria acadêmica. É o jeito que o TypeScript descreve as peças da StockFlow. Sem essas palavras, a Seção 3 (entidade) e a Seção 5 (repositório) ficam ilegíveis — não porque a regra de negócio seja difícil, mas porque o arquivo começa com <code>extends Entity&lt;ProductProps&gt;</code>.</p>
+
+<div class="concept-card">
+  <div class="label">O que você precisa nesta seção</div>
+  <p>Entender <strong>nove palavras</strong> e <strong>onde cada uma aparece</strong> no código. Você não precisa memorizar SOLID, polimorfismo profundo nem desenhar hierarquias. Quando a Seção 3 pedir <code>super(props, id)</code>, volte nesta página.</p>
+</div>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Só leitura. Os snippets copiam o padrão dos arquivos reais — não cole um arquivo novo agora.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>Vocabulário. Os exemplos apontam para <code>entity.ts</code>, <code>product.entity.ts</code>, repositórios e use cases — você os cria nas Seções 2–6.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Glossário rápido</h3>
+
+<table>
+  <tr>
+    <th>Palavra</th>
+    <th>Em uma frase</th>
+    <th>Analogia da loja</th>
+  </tr>
+  <tr>
+    <td><code>class</code></td>
+    <td>Molde com dados e comportamento. Você instancia com <code>new</code>.</td>
+    <td>A ficha-padrão do produto — não é a camiseta na prateleira, é o modelo.</td>
+  </tr>
+  <tr>
+    <td><code>constructor</code></td>
+    <td>Roda no <code>new</code>. Monta o objeto.</td>
+    <td>O que a loja preenche quando o produto entra no cadastro (nome, SKU, preço).</td>
+  </tr>
+  <tr>
+    <td><code>props</code></td>
+    <td>Objeto com os dados da entidade (name, sku, price…).</td>
+    <td>Os campos da ficha. O id fica ao lado, não misturado nos campos.</td>
+  </tr>
+  <tr>
+    <td><code>private</code></td>
+    <td>Só a própria classe pode chamar. De fora, o TypeScript barra.</td>
+    <td>Validar SKU é serviço interno — o controller não chama <code>validate()</code>.</td>
+  </tr>
+  <tr>
+    <td><code>interface</code></td>
+    <td>Lista de métodos/tipos. Zero código.</td>
+    <td>O cardápio: “tem que ter insert, findById…”. Não diz <em>como</em>.</td>
+  </tr>
+  <tr>
+    <td><code>implements</code></td>
+    <td>A classe promete cumprir a interface. Faltou método → erro de compilação.</td>
+    <td>O repositório Prisma assina o contrato do domínio.</td>
+  </tr>
+  <tr>
+    <td><code>extends</code></td>
+    <td>Herda <strong>código pronto</strong> da classe pai (ou a lista, se for interface).</td>
+    <td>A filial nasce com o estoque e os processos da matriz.</td>
+  </tr>
+  <tr>
+    <td><code>super()</code></td>
+    <td>Chama o construtor (ou método) do pai. Sem isso, o pai não monta <code>id</code>/<code>props</code>.</td>
+    <td>Antes de cadastrar a camiseta, preenche a ficha-base (id + campos).</td>
+  </tr>
+  <tr>
+    <td><code>abstract</code></td>
+    <td>Molde incompleto. Não dá <code>new</code> nela. A filha completa o que falta.</td>
+    <td>Não existe “entidade genérica” na loja — existe Product, Supplier…</td>
+  </tr>
+  <tr>
+    <td>generics <code>&lt;T&gt;</code></td>
+    <td>A mesma classe/interface, com o tipo preenchido depois.</td>
+    <td>Uma gaveta. <code>&lt;ProductEntity&gt;</code> = esta gaveta só guarda produto.</td>
+  </tr>
+</table>
+
+<h3>1. <code>class</code> — o molde</h3>
+
+<p>Função agrupa passos. Classe agrupa <strong>dados + regras</strong> que pertencem à mesma coisa. No domínio, essa “coisa” é a entidade: produto, fornecedor, estoque, pedido.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — o que é uma class</div>
+  <p>Didático. No projeto a classe real é <code>ProductEntity</code>. <code>new</code> cria <strong>uma instância</strong> (um produto concreto).</p>
+</div>
+<pre><code>// Molde
+class ProductEntity { /* campos e métodos */ }
+
+// Instância — um produto de verdade na memória
+const camiseta = new ProductEntity({ name: 'Camiseta Preta M', sku: 'CAM-PT-M', /* ... */ })
+</code></pre>
+
+<p><strong>Onde no projeto:</strong> quase tudo que não é tipo/interface. Exemplos: <code>ProductEntity</code>, <code>CreateProductUseCase.UseCase</code>, <code>ProductsController</code>, <code>EnvConfigService</code>, <code>ProductPrismaRepository</code>.</p>
+
+<h3>2. <code>constructor</code> — o que acontece no <code>new</code></h3>
+
+<p>É a função especial que o TypeScript chama quando você faz <code>new Classe(...)</code>. É o lugar de receber dados, chamar o pai (<code>super</code>) e disparar validação.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — constructor</div>
+  <p>Padrão da Seção 3. O construtor recebe <code>props</code> (dados) e um <code>id</code> opcional. Se o id não vier, a classe base gera um UUID.</p>
+</div>
+<pre><code>export class ProductEntity extends Entity&lt;ProductProps&gt; {
+  constructor(props: ProductProps, id?: string) {
+    super({ ...props, isActive: props.isActive ?? true, /* datas */ }, id)
+    this.validate()  // regra: produto inválido nem chega a existir
+  }
+}
+</code></pre>
+
+<p>No use case, o NestJS também usa construtor — mas para <strong>injeção</strong>: “quando criar este use case, entregue os repositórios”.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — constructor no use case</div>
+  <p>Arquivo real: <code>create-product.usecase.ts</code>. <code>private</code> no parâmetro cria e esconde a propriedade ao mesmo tempo (atalho do TypeScript).</p>
+</div>
+<pre><code>export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
+  constructor(
+    private productRepository: ProductRepository,
+    private stockRepository: StockRepository,
+  ) {}
+}
+</code></pre>
+
+<h3>3. <code>props</code> — os dados da entidade</h3>
+
+<p><code>props</code> não é palavra-chave do TypeScript. É o <strong>nome que este projeto deu</strong> ao objeto com os campos de negócio. A classe base <code>Entity</code> guarda <code>props</code> + <code>_id</code>. Assim toda entidade tem o mesmo formato: identidade de um lado, dados do outro.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ProductProps + props</div>
+  <p>Arquivos: <code>product.entity.ts</code> (interface <code>ProductProps</code>) e <code>shared/domain/entities/entity.ts</code> (campo <code>props</code>). Getters leem <code>this.props.name</code> sem expor o objeto inteiro para o controller.</p>
+</div>
+<pre><code>export interface ProductProps {
+  name: string
+  sku: string
+  price: number
+  costPrice: number
+  // ...
+}
+
+export abstract class Entity&lt;Props&gt; {
+  public readonly _id: string
+  public readonly props: Props   // &lt;-- os dados vivem aqui
+
+  constructor(props: Props, id?: string) {
+    this.props = props
+    this._id = id ?? randomUUID()
+  }
+}
+</code></pre>
+
+<p>Métodos de negócio <strong>alteram</strong> <code>this.props</code> (ex.: <code>updatePrice</code>, <code>deactivate</code>) e chamam <code>validate()</code> de novo. Não existe <code>updateSku()</code> — SKU é imutável depois da criação. Isso é regra de domínio, não detalhe de TypeScript.</p>
+
+<h3>4. <code>private</code> (e <code>protected</code>)</h3>
+
+<p><code>private</code>: só métodos da <strong>mesma classe</strong> enxergam. O use case chama <code>product.updatePrice(x)</code>, nunca <code>product.validate()</code>.</p>
+
+<p><code>protected</code>: a classe e as <strong>filhas</strong> enxergam; o mundo de fora não. O repositório in-memory usa isso em <code>applyFilter</code> — a classe pai define o esqueleto da busca, a filha diz <em>como</em> filtrar produto.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — private vs protected</div>
+  <p><code>validate</code> é privado na entidade. <code>applyFilter</code> é protegido (e abstrato) no repositório pesquisável — a filha é obrigada a implementar.</p>
+</div>
+<pre><code>// product.entity.ts
+private validate(): void { /* Zod + throw se inválido */ }
+
+// in-memory-searchable.repository.ts
+protected abstract applyFilter(items: E[], filter: string | null): Promise&lt;E[]&gt;
+</code></pre>
+
+<p><strong>Onde no projeto:</strong> <code>private validate</code> em cada entidade; <code>private productRepository</code> no construtor dos use cases; <code>private schema</code> em <code>ZodValidatorFields</code> e <code>ZodValidationPipe</code>; <code>formatErrors</code> privado no validador base.</p>
+
+<h3>5. <code>interface</code> + <code>implements</code> — o contrato</h3>
+
+<p>A interface é a lista. A classe com <code>implements</code> é quem <strong>escreve o código</strong> de cada item da lista. O domínio declara o contrato; a infraestrutura cumpre — por isso o use case depende de <code>ProductRepository</code> (interface), não de Prisma.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — contrato EnvConfig</div>
+  <p>Seção 2. A interface não sabe se a config vem de <code>.env</code> ou de teste. O service implementa lendo o <code>ConfigService</code> do Nest.</p>
+</div>
+<pre><code>// env-config.interface.ts — só a lista
+export interface EnvConfig {
+  getPort(): number
+  getNodeEnv(): string
+  getDatabaseUrl(): string
+  // ...
+}
+
+// env-config.service.ts — cumpre a lista
+export class EnvConfigService implements EnvConfig {
+  constructor(private configService: ConfigService) {}
+  getPort(): number {
+    return Number(this.configService.getOrThrow&lt;number&gt;('PORT'))
+  }
+  // ...os outros métodos da interface
+}
+</code></pre>
+
+<p>O mesmo padrão no Nest: <code>ZodValidationPipe implements PipeTransform</code>, filters <code>implements ExceptionFilter</code>, interceptor <code>implements NestInterceptor</code>. Você não inventa o contrato — o framework já tem a interface; sua classe assina.</p>
+
+<p>Interface também pode <code>extends</code> outra interface: herda a <strong>lista</strong>, não código.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ProductRepository extends</div>
+  <p>Arquivo: <code>product.repository.ts</code>. Ganha insert/find/search do contrato genérico e acrescenta o que só produto tem (SKU).</p>
+</div>
+<pre><code>export interface ProductRepository
+  extends SearchableRepositoryInterface&lt;ProductEntity&gt; {
+  findBySku(sku: string): Promise&lt;ProductEntity&gt;
+  skuExists(sku: string): Promise&lt;boolean&gt;
+  findBySupplierId(supplierId: string): Promise&lt;ProductEntity[]&gt;
+}
+</code></pre>
+
+<h3>6. <code>extends</code> + <code>super()</code> — herdar código</h3>
+
+<p><code>implements</code> = obrigação sem implementação. <code>extends</code> numa <strong>classe</strong> = a filha <strong>já nasce</strong> com os métodos do pai.</p>
+
+<div class="concept-card">
+  <div class="label">A frase para gravar</div>
+  <p><strong>extends</strong> → herda código. <strong>implements</strong> → herda só a obrigação. Uma classe pode fazer os dois na mesma linha (repositório in-memory).</p>
+</div>
+
+<p><code>super(...)</code> no construtor da filha chama o construtor do pai. Sem isso, <code>Entity</code> não grava <code>props</code> nem <code>_id</code>.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — super() em três lugares</div>
+  <p>Três pais diferentes, mesma palavra: entidade base, validador Zod, cliente Prisma.</p>
+</div>
+<pre><code>// 1) ProductEntity → Entity (id + props)
+constructor(props: ProductProps, id?: string) {
+  super({ ...props, isActive: props.isActive ?? true }, id)
+}
+
+// 2) ProductValidator → ZodValidatorFields (guarda o schema)
+constructor() {
+  super(productSchema)
+}
+
+// 3) PrismaService → PrismaClient (passa o adapter)
+constructor() {
+  super({ adapter })
+}
+
+// 4) Erros de domínio → Error nativo do JS
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NotFoundError'
+  }
+}
+</code></pre>
+
+<h3>7. <code>abstract</code> — molde incompleto</h3>
+
+<p>Classe <code>abstract</code>: ninguém faz <code>new Entity()</code> nem <code>new InMemorySearchableRepository()</code>. Só a filha concreta (Product, Supplier…) é instanciável.</p>
+
+<p>Método <code>abstract</code>: a pai <strong>declara</strong> a assinatura; a filha <strong>escreve</strong> o corpo. É assim que a busca paginada é genérica, mas o filtro de produto é “nome contém o texto”.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — abstract class e abstract method</div>
+  <p>Seção 3: <code>Entity</code>. Seção 5: <code>InMemoryRepository</code> e <code>InMemorySearchableRepository</code>. A filha <code>ProductInMemoryRepository</code> implementa <code>applyFilter</code>.</p>
+</div>
+<pre><code>export abstract class Entity&lt;Props&gt; { /* id + props — filha concreta é ProductEntity */ }
+
+export abstract class InMemorySearchableRepository&lt;E extends Entity&lt;any&gt;&gt;
+  extends InMemoryRepository&lt;E&gt;
+  implements SearchableRepositoryInterface&lt;E&gt;
+{
+  abstract sortableFields: string[]
+
+  protected abstract applyFilter(
+    items: E[],
+    filter: string | null,
+  ): Promise&lt;E[]&gt;
+}
+</code></pre>
+
+<h3>8. Generics — o <code>&lt;T&gt;</code></h3>
+
+<p>Generic é um <strong>buraco de tipo</strong>. Você escreve a lógica uma vez; quem usa preenche o tipo. Sem isso, existiria um <code>InMemoryRepository</code> copiado para produto, outro para fornecedor, outro para estoque.</p>
+
+<table>
+  <tr>
+    <th>Escrito assim</th>
+    <th>Buraco</th>
+    <th>Preenchido com</th>
+    <th>Significa</th>
+  </tr>
+  <tr>
+    <td><code>Entity&lt;Props&gt;</code></td>
+    <td><code>Props</code></td>
+    <td><code>ProductProps</code></td>
+    <td><code>this.props</code> tem name, sku, price…</td>
+  </tr>
+  <tr>
+    <td><code>RepositoryInterface&lt;E&gt;</code></td>
+    <td><code>E</code></td>
+    <td><code>ProductEntity</code></td>
+    <td><code>insert</code> recebe produto, não fornecedor</td>
+  </tr>
+  <tr>
+    <td><code>E extends Entity&lt;any&gt;</code></td>
+    <td><code>E</code> com restrição</td>
+    <td>qualquer entidade</td>
+    <td>a gaveta só aceita coisa que <em>é</em> Entity (tem <code>id</code>)</td>
+  </tr>
+  <tr>
+    <td><code>UseCase&lt;Input, Output&gt;</code></td>
+    <td>dois buracos</td>
+    <td>DTOs do create product</td>
+    <td><code>execute</code> tem entrada e saída tipadas</td>
+  </tr>
+  <tr>
+    <td><code>ZodValidatorFields&lt;ValidatedProps&gt;</code></td>
+    <td><code>ValidatedProps</code></td>
+    <td><code>ProductValidated</code></td>
+    <td>dados validados têm o shape do schema Zod</td>
+  </tr>
+</table>
+
+<div class="mapping-card">
+  <div class="label">Propósito — UseCase genérico</div>
+  <p>Arquivo: <code>shared/application/usecases/use-case.ts</code>. Todo use case da Seção 6 é <code>implements UseCaseInterface&lt;Input, Output&gt;</code> — o contrato é um único método <code>execute</code>.</p>
+</div>
+<pre><code>export interface UseCase&lt;Input, Output&gt; {
+  execute(input: Input): Promise&lt;Output&gt;
+}
+</code></pre>
+
+<div class="warning-card">
+  <div class="label">Não precisa dominar agora</div>
+  <p>A restrição <code>E extends Entity&lt;any&gt;</code> só diz: “E tem que ser entidade”. Quando o compilador reclamar, leia a mensagem — quase sempre faltou passar o tipo no <code>&lt;...&gt;</code> ou a filha não implementou um método <code>abstract</code>.</p>
+</div>
+
+<h3>9. O combo real — os dois arquivos que juntam tudo</h3>
+
+<p>Quando você chegar nas Seções 3 e 5, estes dois trechos são o mapa-múndi. Leia em voz alta: “ProductEntity <em>estende</em> Entity <em>de</em> ProductProps”. “O in-memory <em>estende</em> o repositório pesquisável <em>de</em> ProductEntity e <em>implementa</em> ProductRepository”.</p>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ProductEntity (Seção 3)</div>
+  <p>Arquivo: <code>src/products/domain/entities/product.entity.ts</code>. Aqui cabem class, extends, generic, constructor, props, super, private.</p>
+</div>
+<pre><code>export class ProductEntity extends Entity&lt;ProductProps&gt; {
+  constructor(props: ProductProps, id?: string) {
+    super({ ...props, isActive: props.isActive ?? true }, id)
+    this.validate()
+  }
+
+  private validate(): void { /* ... */ }
+
+  get sku(): string {
+    return this.props.sku
+  }
+
+  updatePrice(value: number): void {
+    if (value &lt;= this.costPrice) {
+      throw new Error('Price must be greater than cost price')
+    }
+    this.props.price = value
+    this.validate()
+  }
+}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — ProductInMemoryRepository (Seção 5)</div>
+  <p>Arquivo: <code>src/products/infrastructure/database/in-memory/product-in-memory.repository.ts</code>. <code>extends</code> ganha insert/search. <code>implements</code> obriga <code>findBySku</code>. O generic diz o que tem dentro da lista <code>this.items</code>.</p>
+</div>
+<pre><code>export class ProductInMemoryRepository
+  extends InMemorySearchableRepository&lt;ProductEntity&gt;
+  implements ProductRepository
+{
+  sortableFields: string[] = ['name', 'price', 'createdAt']
+
+  async findBySku(sku: string): Promise&lt;ProductEntity&gt; { /* ... */ }
+
+  protected async applyFilter(items: ProductEntity[], filter: string | null) {
+    if (!filter) return items
+    return items.filter((item) =&gt;
+      item.name.toLowerCase().includes(filter.toLowerCase()),
+    )
+  }
+}
+</code></pre>
+
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TB
+  subgraph heranca["extends = herda codigo"]
+    Entity["abstract Entity"] --> ProductEntity["ProductEntity"]
+    IM["abstract InMemoryRepository"] --> IMS["abstract InMemorySearchable"]
+    IMS --> PIM["ProductInMemoryRepository"]
+  end
+  subgraph contrato["implements = cumpre a lista"]
+    PR["interface ProductRepository"]
+    PIM2["ProductInMemoryRepository"]
+    PPR["ProductPrismaRepository"]
+    PR --> PIM2
+    PR --> PPR
+  end
+  </div>
+</div>
+
+<h3>Mapa — onde cada conceito aparece na StockFlow</h3>
+
+<p>Não é lista completa. É o “olho aqui primeiro” quando a palavra voltar no guia.</p>
+
+<table>
+  <tr>
+    <th>Conceito</th>
+    <th>Arquivo(s) típicos</th>
+    <th>O que você está vendo</th>
+  </tr>
+  <tr>
+    <td><code>class</code></td>
+    <td>Toda entidade, use case, controller, module, presenter</td>
+    <td>Peça instanciável (ou módulo Nest vazio que só agrupa providers)</td>
+  </tr>
+  <tr>
+    <td><code>constructor</code></td>
+    <td><code>product.entity.ts</code>, use cases, <code>prisma.service.ts</code></td>
+    <td>Montar entidade / receber dependências / ligar o adapter do Prisma</td>
+  </tr>
+  <tr>
+    <td><code>props</code></td>
+    <td><code>entity.ts</code> + <code>*Props</code> em cada entidade</td>
+    <td>Dados de negócio; getters leem; métodos de update escrevem</td>
+  </tr>
+  <tr>
+    <td><code>private</code></td>
+    <td><code>validate()</code> nas entidades; repositórios no use case</td>
+    <td>Esconde validação e dependências injetadas</td>
+  </tr>
+  <tr>
+    <td><code>protected</code></td>
+    <td><code>applyFilter</code> / <code>applySort</code> no in-memory searchable</td>
+    <td>Pai define o fluxo da busca; filha customiza o filtro</td>
+  </tr>
+  <tr>
+    <td><code>interface</code></td>
+    <td><code>EnvConfig</code>, <code>ProductRepository</code>, <code>UseCase&lt;I,O&gt;</code></td>
+    <td>Contrato do domínio (ou do Nest: Pipe, Filter, Interceptor)</td>
+  </tr>
+  <tr>
+    <td><code>implements</code></td>
+    <td><code>EnvConfigService</code>, <code>ProductPrismaRepository</code>, use cases, pipes</td>
+    <td>Esta classe é uma implementação daquele contrato</td>
+  </tr>
+  <tr>
+    <td><code>extends</code> (classe)</td>
+    <td><code>ProductEntity</code>, validadores, in-memory, <code>PrismaService</code>, <code>JwtStrategy</code>, erros</td>
+    <td>Reaproveita código do pai (<code>Entity</code>, <code>ZodValidatorFields</code>, <code>Error</code>, <code>PrismaClient</code>)</td>
+  </tr>
+  <tr>
+    <td><code>extends</code> (interface)</td>
+    <td><code>ProductRepository</code>, <code>SearchableRepositoryInterface</code></td>
+    <td>Junta listas de métodos — ainda sem código</td>
+  </tr>
+  <tr>
+    <td><code>super()</code></td>
+    <td>Construtor de toda entidade, de todo validador, PrismaService, erros</td>
+    <td>Inicializa o pai antes da lógica da filha</td>
+  </tr>
+  <tr>
+    <td><code>abstract</code></td>
+    <td><code>Entity</code>, <code>InMemoryRepository</code>, <code>InMemorySearchableRepository</code></td>
+    <td>Não instancie o pai; complete na filha (<code>applyFilter</code>)</td>
+  </tr>
+  <tr>
+    <td>generics</td>
+    <td><code>Entity&lt;Props&gt;</code>, repositórios <code>&lt;E&gt;</code>, <code>UseCase&lt;Input, Output&gt;</code></td>
+    <td>Uma implementação, quatro módulos (Product, Supplier, Stock, Pedido)</td>
+  </tr>
+</table>
+
+<h3>Como usar daqui até a Seção 6</h3>
+
+<ol>
+  <li><strong>Seção 2</strong> — <code>EnvConfigService implements EnvConfig</code>: primeiro <code>implements</code> “de verdade”.</li>
+  <li><strong>Seção 3</strong> — <code>abstract class Entity&lt;Props&gt;</code> + <code>ProductEntity extends</code> + <code>super</code> + <code>props</code> + <code>private validate</code>.</li>
+  <li><strong>Seção 4</strong> — <code>ProductValidator extends ZodValidatorFields&lt;...&gt;</code> e <code>super(productSchema)</code>.</li>
+  <li><strong>Seção 5</strong> — o combo <code>extends</code> + <code>implements</code> + generic + <code>abstract applyFilter</code>.</li>
+  <li><strong>Seção 6</strong> — <code>class UseCase implements UseCaseInterface&lt;Input, Output&gt;</code> e construtor com <code>private</code> nos repositórios.</li>
+</ol>
+
+<p>Se uma linha do guia parecer ruído (<code>E extends Entity&lt;any&gt;</code>), volte nesta seção. A regra de negócio (“SKU único”, “preço &gt; custo”) mora <em>dentro</em> desses molde — o TypeScript só é o idioma.</p>
+
 <!-- ══════════════════════════════ DDD EM LINGUAGEM SIMPLES ══════════════════════════════ -->
 <h2 id="ddd-simples">DDD — Entendendo as Camadas de Verdade</h2>
 
-<p>Antes de escrever qualquer código, você precisa entender <em>por que</em> o projeto está organizado dessa forma. Vamos usar uma analogia do mundo real para tornar isso concreto.</p>
+<p>Antes de escrever qualquer código, você precisa entender <em>por que</em> o projeto está organizado dessa forma. Vamos usar uma analogia do mundo real para tornar isso concreto. Se <code>class</code> / <code>implements</code> / <code>extends</code> ainda estiver vago, volte à seção <a href="#oop">TypeScript OOP</a> — DDD é o “porquê das pastas”; OOP é o “idioma do arquivo”.</p>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Aqui não se cria arquivo: é o modelo mental. O código começa na Seção 2.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>Leitura. Os snippets (controller misturado vs camadas) são anti-exemplo e exemplo — não cole no projeto.</td>
+    </tr>
+  </tbody>
+</table>
 
 <h3>A analogia da pizzaria</h3>
 
@@ -1324,6 +1896,10 @@
 
 <p>Veja o que acontece <strong>sem</strong> separação de camadas — algo muito comum em projetos iniciantes:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — exemplo do que NÃO fazer</div>
+  <p>Anti-exemplo: regra, SQL e HTTP no mesmo método. Você não cola isto no projeto — serve para ver por que as camadas existem.</p>
+</div>
 <pre><code>// ❌ Tudo misturado num controller — difícil de testar, de manter e de evoluir
 @Post('/purchase-orders/:id/deliver')
 async deliver(@Param('id') id: string) {
@@ -1356,6 +1932,10 @@ async deliver(@Param('id') id: string) {
 
 <p>Agora veja o mesmo cenário <strong>com</strong> separação de camadas:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — exemplo com camadas</div>
+  <p>O mesmo cenário separado: entidade valida status, use case orquestra, Prisma só persiste. Ainda é didático; os arquivos reais vêm nas seções seguintes.</p>
+</div>
 <pre><code>// ✅ Domínio — regra isolada, testável sem nada externo
 class PurchaseOrderEntity {
   markAsDelivered(): void {
@@ -1391,6 +1971,10 @@ class PurchaseOrderPrismaRepository {
 
 <h3>A regra de ouro — direção das dependências</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — direção das dependências</div>
+  <p>Regra de ouro: o domínio não importa Nest nem Prisma. Se <code>products/domain</code> importar <code>@nestjs</code>, a arquitetura quebrou.</p>
+</div>
 <pre><code>INFRAESTRUTURA  →  conhece  →  APLICAÇÃO  →  conhece  →  DOMÍNIO
     (NestJS)                  (Use Cases)               (Entidades)
 
@@ -1443,8 +2027,30 @@ INFRAESTRUTURA pode importar de todos
   <p>O curso ensina Clean Architecture e DDD aplicados a uma API. A ideia central é que o <strong>domínio</strong> (regras de negócio) não depende de nenhum framework — NestJS, Prisma, Express são detalhes de infraestrutura que podem ser trocados sem alterar a lógica do negócio.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. Ainda não se cria arquivo. A árvore de pastas vira disco de verdade na Seção 2.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Diagrama das camadas + árvore <code>src/</code></td>
+      <td>Nenhum</td>
+      <td>Mapa mental: domínio no centro, Nest/Prisma por fora. A pasta na Seção 2 deve copiar esta árvore.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>As camadas</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — diagrama das camadas</div>
+  <p>Mapa mental: HTTP/Prisma por fora, use cases no meio, entidades no centro. Dependência só de fora para dentro.</p>
+</div>
 <pre><code>┌──────────────────────────────────────────────────────────────┐
 │                    INFRAESTRUTURA (NestJS)                    │
 │  Controllers, DTOs, Guards, Filters, Prisma Repositories     │
@@ -1469,6 +2075,10 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 
 <h3>Traduzindo para pastas</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — árvore de pastas</div>
+  <p>O mesmo diagrama em pastas: cada módulo (products, suppliers…) tem domain / application / infrastructure. <code>shared/</code> é o que todos reutilizam.</p>
+</div>
 <pre><code class="tree"><span class="folder">src/</span>
 ├── <span class="folder">products/</span>               ← módulo de produtos
 │   ├── <span class="folder">domain/</span>              ← entidades, interfaces, validações
@@ -1509,6 +2119,40 @@ Regra de dependência: de fora para dentro. NUNCA de dentro para fora.
 <h2 id="entities">Mapa Completo de Entidades</h2>
 
 <p>Antes dos campos de cada classe: o sistema inteiro em desenhos <strong>Mermaid</strong>. Fornecedor abastece produto; produto nasce com estoque zerado; pedido de compra traz mercadoria e o estoque sobe.</p>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Os <code>interface …Props</code> abaixo são referência. A classe completa vem na Seção 3.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>product.entity.ts</code> (esboço)</td>
+      <td>Nenhum ainda</td>
+      <td>Campos do produto (SKU, preços em centavos, supplierId). Não crie o arquivo agora.</td>
+    </tr>
+    <tr>
+      <td><code>supplier.entity.ts</code> (esboço)</td>
+      <td>Nenhum ainda</td>
+      <td>Campos do fornecedor (CNPJ único).</td>
+    </tr>
+    <tr>
+      <td><code>stock.entity.ts</code> (esboço)</td>
+      <td>Nenhum ainda</td>
+      <td>Campos do estoque (quantity, minQuantity, location).</td>
+    </tr>
+    <tr>
+      <td><code>purchase-order.entity.ts</code> (esboço)</td>
+      <td>Nenhum ainda</td>
+      <td>Pedido + itens + status DRAFT / SENT / DELIVERED / CANCELLED.</td>
+    </tr>
+  </tbody>
+</table>
+
 <p style="color:var(--text-muted);font-size:14px;">Em cada mapa: arraste para mover, use o scroll para zoom, os botões <code>+</code> / <code>-</code> no canto, ou <strong>Resetar</strong>.</p>
 
 <h3>Quem fala com quem</h3>
@@ -1571,6 +2215,10 @@ flowchart TD
 <h3>Campos de cada entidade</h3>
 
 <h4>Product</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — product.entity.ts</div>
+  <p>Mapa dos campos do produto. Ainda não crie o arquivo — a classe completa (getters, regras, UUID) vem na Seção 3.</p>
+</div>
 <p class="file-path">src/products/domain/entities/product.entity.ts</p>
 <pre><code>// src/products/domain/entities/product.entity.ts
 
@@ -1589,6 +2237,10 @@ interface ProductProps {
 </code></pre>
 
 <h4>Supplier</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — supplier.entity.ts</div>
+  <p>Mapa dos campos do fornecedor. Implementação completa segue o mesmo padrão do Product na Seção 3.</p>
+</div>
 <p class="file-path">src/suppliers/domain/entities/supplier.entity.ts</p>
 <pre><code>// src/suppliers/domain/entities/supplier.entity.ts
 
@@ -1603,6 +2255,10 @@ interface SupplierProps {
 </code></pre>
 
 <h4>Stock</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — stock.entity.ts</div>
+  <p>Mapa dos campos do estoque (quantidade, mínimo, localização). A classe com <code>isCritical</code> e <code>addQuantity</code> vem na Seção 3.</p>
+</div>
 <p class="file-path">src/stock/domain/entities/stock.entity.ts</p>
 <pre><code>// src/stock/domain/entities/stock.entity.ts
 
@@ -1616,6 +2272,10 @@ interface StockProps {
 </code></pre>
 
 <h4>PurchaseOrder</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — purchase-order.entity.ts</div>
+  <p>Mapa do pedido e dos itens. Os status DRAFT → SENT → DELIVERED / CANCELLED e as transições ilegais vivem na entidade, não no controller.</p>
+</div>
 <p class="file-path">src/purchase-orders/domain/entities/purchase-order.entity.ts</p>
 <pre><code>// src/purchase-orders/domain/entities/purchase-order.entity.ts
 
@@ -1644,6 +2304,24 @@ interface PurchaseOrderProps {
   <div class="label">⚠️ Importante</div>
   <p>Estas regras devem viver na <strong>camada de domínio</strong> (dentro das entidades e dos use cases), nunca nos controllers ou no banco de dados. Essa é a essência da Clean Architecture.</p>
 </div>
+
+<p>Mapa do que você vai criar ou editar nesta seção. Nenhum arquivo. A tabela no fim da seção diz <em>onde</em> cada regra entra quando você for codar.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>SKU, margem, CNPJ, transições de status, estoque crítico. Implementação nas Seções 3 e 6.</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>Cada regra abaixo tem o fluxo em desenho. A tabela no final é o checklist de onde implementar.</p>
 
@@ -1816,12 +2494,70 @@ flowchart TB
   <p>Vamos fazer exatamente a mesma coisa, mas nossas variáveis de ambiente incluirão configurações de banco, Redis (se quiser cache), JWT e AWS.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Projeto Nest (<code>nest new</code>)</td>
+      <td>Novo</td>
+      <td>Esqueleto TypeScript, Jest e <code>src/</code> inicial. Sem a CLI você montaria tsconfig na mão.</td>
+    </tr>
+    <tr>
+      <td><code>package.json</code> (deps)</td>
+      <td>Editar</td>
+      <td>Instala <code>@nestjs/config</code>, Zod e class-transformer.</td>
+    </tr>
+    <tr>
+      <td><code>.env</code> + <code>.env.example</code> + <code>.gitignore</code></td>
+      <td>Novo</td>
+      <td>Segredos locais. O example documenta os nomes; o <code>.env</code> não vai para o Git.</td>
+    </tr>
+    <tr>
+      <td>Pastas <code>src/shared</code>, <code>products</code>, <code>suppliers</code>, <code>stock</code>, <code>purchase-orders</code>, <code>auth</code></td>
+      <td>Novo</td>
+      <td>A árvore <em>é</em> a arquitetura. Criar agora evita “onde eu coloco isto?”.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.interface.ts</code></td>
+      <td>Novo</td>
+      <td>Contrato: porta, banco, Auth0. Ninguém lê <code>process.env</code> solto.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.service.ts</code></td>
+      <td>Novo</td>
+      <td>Implementação que fala com o <code>ConfigService</code> do Nest.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.module.ts</code></td>
+      <td>Novo</td>
+      <td>Valida o <code>.env</code> na subida (Zod). Variável faltando = app não arranca.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.service.spec.ts</code></td>
+      <td>Novo</td>
+      <td>Testa os getters. Um typo em <code>PORT</code> aparece aqui.</td>
+    </tr>
+  </tbody>
+</table>
+
+
 <h3>Passo 1 — Instalar NestJS CLI e criar projeto</h3>
 
 <p>A CLI (Command Line Interface) do NestJS é uma ferramenta que roda no terminal e gera a estrutura inicial do projeto automaticamente. Sem ela, você teria que criar todos os arquivos de configuração manualmente. Com ela, um único comando já te dá um projeto funcional com TypeScript configurado, testes prontos e estrutura de pastas básica.</p>
 
 <p>O <code>--package-manager pnpm</code> diz para a CLI já configurar o projeto para usar pnpm em vez de npm — evita que ela instale as dependências com npm e você precise reinstalar com pnpm depois.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — criar o projeto Nest</div>
+  <p>Gera o esqueleto TypeScript + Jest. Sem a CLI você criaria tsconfig, nest-cli e pastas na mão.</p>
+</div>
 <pre><code># Instalar CLI global
 pnpm add -g @nestjs/cli
 
@@ -1844,6 +2580,10 @@ cd stockflow-api
 
 <p>O arquivo <code>.env.example</code> que você deve criar junto é um "template" — ele documenta quais variáveis o projeto precisa sem expor os valores reais. Quando outro desenvolvedor clonar o projeto, ele sabe exatamente o que precisa configurar.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — dependências de config e validação</div>
+  <p>Config lê o <code>.env</code>, Zod valida (env, DTO, entidade), class-transformer ajuda nos presenters.</p>
+</div>
 <pre><code># Zod para toda validação do projeto (env, DTOs, inputs)
 pnpm add @nestjs/config zod class-transformer
 pnpm add -D @types/node
@@ -1880,6 +2620,10 @@ JWT_EXPIRES_IN=15m
 
 <p>Antes de escrever qualquer código, crie toda a estrutura de diretórios.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — criar a árvore de pastas</div>
+  <p>A pasta <em>é</em> a arquitetura visível. Criar agora evita “onde eu coloco isto?” no meio do código.</p>
+</div>
 <pre><code># Na raiz do projeto, rode o comando abaixo para criar todas as pastas de uma vez:
 
 mkdir -p src/shared/domain/{entities,repositories,validators,errors}
@@ -1907,6 +2651,10 @@ mkdir -p src/auth
 
 <p>Depois de rodar, a estrutura ficará assim:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — árvore depois do mkdir</div>
+  <p>Confira se as pastas batem com este mapa. É o mesmo desenho da arquitetura, agora no disco.</p>
+</div>
 <pre><code class="tree"><span class="folder">src/</span>
 ├── <span class="folder">shared/</span>                         ← código reutilizado por todos os módulos
 │   ├── <span class="folder">domain/</span>
@@ -1955,7 +2703,11 @@ mkdir -p src/auth
 <div class="warning-card">
   <div class="label">⚠️ Pasta vazia no Git</div>
   <p>Git não rastreia pastas vazias. Para garantir que todas as pastas sejam commitadas, crie um arquivo <code>.gitkeep</code> dentro de cada uma:</p>
-  <pre><code>find src -type d -empty -exec touch {}/.gitkeep \;</code></pre>
+  <div class="mapping-card">
+  <div class="label">Propósito — gitkeep nas pastas vazias</div>
+  <p>Git não versiona pasta vazia. O <code>.gitkeep</code> segura a estrutura até existirem arquivos de verdade.</p>
+</div>
+<pre><code>find src -type d -empty -exec touch {}/.gitkeep \;</code></pre>
   <p>Conforme você for criando os arquivos reais, pode deletar os <code>.gitkeep</code>.</p>
 </div>
 
@@ -1979,6 +2731,10 @@ mkdir -p src/auth
   <li><strong>Module</strong> (<code>env-config.module.ts</code>) — registra o service no NestJS e configura o Zod para validar as variáveis assim que a aplicação iniciar</li>
 </ul>
 
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.interface.ts</div>
+  <p>Contrato: o resto da API pede porta, banco e Auth0 para este serviço — nunca lê <code>process.env</code> solto.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts</p>
 <pre><code>export interface EnvConfig {
   getPort(): number
@@ -1989,6 +2745,10 @@ mkdir -p src/auth
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.service.ts</div>
+  <p>Implementação do contrato. É o único lugar que fala com o <code>ConfigService</code> do Nest.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/env-config/env-config.service.ts</p>
 <pre><code>import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -2020,6 +2780,10 @@ export class EnvConfigService implements EnvConfig {
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.module.ts</div>
+  <p>Valida o <code>.env</code> na subida (Zod). Se faltar variável obrigatória, a API nem arranca.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/env-config/env-config.module.ts</p>
 <pre><code>import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
@@ -2062,6 +2826,10 @@ export class EnvConfigModule {}
 
 <h3>Passo 4 — Teste unitário do EnvConfigService</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — env-config.service.spec.ts</div>
+  <p>Garante que os getters devolvem o que está no ambiente de teste. Um typo em <code>PORT</code> aparece aqui, não em produção.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/env-config/__tests__/env-config.service.spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
 import { EnvConfigService } from '../env-config.service'
@@ -2118,6 +2886,45 @@ describe('EnvConfigService', () =&gt; {
   <p>Vamos criar a mesma estrutura, mas com <strong>Product</strong> como entidade principal (equivalente ao User do curso). Depois, você replicará o padrão para Supplier, Stock e PurchaseOrder.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. O guia detalha Product. O desafio no fim pede Supplier, Stock e PurchaseOrder no mesmo padrão.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>entity.ts</code></td>
+      <td>Novo</td>
+      <td>Classe base: UUID no domínio, sem banco. Toda entidade herda daqui.</td>
+    </tr>
+    <tr>
+      <td><code>product.entity.ts</code></td>
+      <td>Novo</td>
+      <td>Produto de verdade: getters, SKU imutável, price &gt; costPrice.</td>
+    </tr>
+    <tr>
+      <td><code>product-data-builder.ts</code></td>
+      <td>Novo</td>
+      <td>Props fake (Faker) para não copiar objeto gigante em todo spec.</td>
+    </tr>
+    <tr>
+      <td><code>product.entity.spec.ts</code></td>
+      <td>Novo</td>
+      <td>Testa a entidade sem Nest e sem banco.</td>
+    </tr>
+    <tr>
+      <td>Supplier / Stock / PurchaseOrder + builders + specs</td>
+      <td>Novo</td>
+      <td>Replicar o padrão do Product. Pedido: transições de status na entidade.</td>
+    </tr>
+  </tbody>
+</table>
+
+
 <h3>Passo 1 — Classe base Entity</h3>
 
 <p>Toda entidade do sistema (Product, Supplier, Stock, PurchaseOrder) tem algo em comum: precisa de um <strong>identificador único</strong>. Em vez de repetir esse código em cada entidade, criamos uma classe base abstrata que todas elas herdam.</p>
@@ -2125,6 +2932,10 @@ describe('EnvConfigService', () =&gt; {
 <p>Usamos <strong>UUID</strong> (Universally Unique Identifier) como ID em vez de um número auto-incremento do banco. Por quê? Porque o UUID é gerado na camada de domínio, sem precisar falar com o banco. Isso significa que você pode criar uma entidade, fazer validações e testes nela, sem que o banco de dados precise existir ainda. O ID do banco auto-incremento só existe depois de salvar — o UUID existe desde o momento da criação da entidade.</p>
 
 <p>O parâmetro opcional <code>id?</code> no construtor serve para quando você está <em>reconstruindo</em> uma entidade que já existia no banco — nesse caso, você passa o ID que já estava salvo em vez de gerar um novo.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — entity.ts</div>
+  <p>Classe base de toda entidade. Gera UUID no domínio (sem banco) e aceita um id existente na hora de reconstruir o que veio do Prisma.</p>
+</div>
 <p class="file-path">src/shared/domain/entities/entity.ts</p>
 <pre><code>import { v4 as uuidv4 } from 'uuid'
 
@@ -2154,6 +2965,10 @@ export abstract class Entity&lt;Props&gt; {
   <li><strong>Não existe <code>updateSku()</code>:</strong> isso é intencional. SKU é imutável após criação — é uma regra de negócio. A ausência do método <em>é</em> a regra.</li>
   <li><strong>Regra no <code>updatePrice()</code>:</strong> o método verifica se o novo preço é maior que o custo. Essa verificação mora aqui, não no controller, não no use case — ela está na entidade porque é uma invariante do negócio que deve sempre ser respeitada.</li>
 </ul>
+<div class="mapping-card">
+  <div class="label">Propósito — product.entity.ts</div>
+  <p>A entidade de produto: identidade, getters e regras de negócio (SKU imutável, preço de venda maior que o custo).</p>
+</div>
 <p class="file-path">src/products/domain/entities/product.entity.ts</p>
 <pre><code>import { Entity } from '@/shared/domain/entities/entity'
 
@@ -2278,7 +3093,15 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 <p>Por exemplo: se você quer testar a regra "preço deve ser maior que custo", você passa só <code>price</code> e <code>costPrice</code> — o resto do produto não importa para esse teste.</p>
 
 <p>Antes de criar os testes, instale o faker:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — instalar o Faker</div>
+  <p>Só em dev/teste: gera nome, SKU e preço fake para os DataBuilders. Não entra em produção.</p>
+</div>
 <pre><code>pnpm add -D @faker-js/faker</code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — product-data-builder.ts</div>
+  <p>Fábrica de props fake (Faker) para teste. Evita copiar objeto gigante em todo spec.</p>
+</div>
 <p class="file-path">src/products/domain/testing/helpers/product-data-builder.ts</p>
 <pre><code>import { faker } from '@faker-js/faker'
 import { ProductProps } from '../../entities/product.entity'
@@ -2306,6 +3129,10 @@ export function ProductDataBuilder(props: Partial&lt;ProductProps&gt; = {}): Pro
 <p>Repare na variável chamada <code>sut</code> (System Under Test — "sistema sendo testado"). É uma convenção de testes que deixa claro qual é o objeto principal sendo testado em cada bloco. Em vez de chamar de <code>product</code> ou <code>entity</code>, usar <code>sut</code> torna os testes mais padronizados e legíveis.</p>
 
 <p>O <code>beforeEach</code> recria a entidade antes de cada teste — assim os testes são independentes entre si. Se um teste modificar a entidade (ex: chamar <code>deactivate()</code>), isso não afeta o próximo teste.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — product.entity.spec.ts</div>
+  <p>Testa getters, SKU, margem de lucro e métodos da entidade — sem Nest e sem banco.</p>
+</div>
 <p class="file-path">src/products/domain/entities/product.entity.spec.ts</p>
 <pre><code>import { ProductEntity, ProductProps } from '../product.entity'
 import { ProductDataBuilder } from '../../testing/helpers/product-data-builder'
@@ -2411,11 +3238,64 @@ describe('ProductEntity', () =&gt; {
   <p>Mesma abordagem, mas as validações são diferentes: SKU precisa ter formato específico, price e costPrice devem ser inteiros positivos (centavos), a relação entre eles deve ser validada, etc.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>validator-fields.interface.ts</code></td>
+      <td>Novo</td>
+      <td>Contrato de qualquer validador: erros por campo + passou/não passou.</td>
+    </tr>
+    <tr>
+      <td><code>zod-validator-fields.ts</code></td>
+      <td>Novo</td>
+      <td>Implementação com Zod. Product, Supplier, Stock e Pedido só mudam o schema.</td>
+    </tr>
+    <tr>
+      <td><code>product.validator.ts</code></td>
+      <td>Novo</td>
+      <td>Schema Zod do produto. A entidade chama isto no construtor.</td>
+    </tr>
+    <tr>
+      <td><code>validation-error.ts</code></td>
+      <td>Novo</td>
+      <td>Erro de domínio. O filter HTTP depois vira 422 — o domínio não conhece Nest.</td>
+    </tr>
+    <tr>
+      <td><code>product.entity.ts</code></td>
+      <td>Editar</td>
+      <td>Passa a validar no construtor. Dado inválido não deixa a entidade nascer.</td>
+    </tr>
+    <tr>
+      <td><code>product.entity.spec.ts</code></td>
+      <td>Editar</td>
+      <td>Cobre name vazio, SKU inválido, preço negativo.</td>
+    </tr>
+    <tr>
+      <td>Validators de Supplier, Stock e PurchaseOrder</td>
+      <td>Novo</td>
+      <td>Mesmo fluxo: schema → Validator → <code>validate()</code> na entidade. Ver desafio no fim.</td>
+    </tr>
+  </tbody>
+</table>
+
+
 <h3>Passo 1 — Interface do validador</h3>
 
 <p>Antes de implementar a validação, definimos uma <strong>interface</strong> que descreve como qualquer validador deve se comportar. Isso segue o mesmo princípio do repositório: o domínio declara o contrato, a implementação concreta pode mudar.</p>
 
 <p>A interface tem três partes: <code>errors</code> (os erros encontrados, organizados por campo), <code>validatedData</code> (os dados válidos após a validação), e <code>validate()</code> (o método que executa a validação e retorna <code>true</code> ou <code>false</code>). Qualquer classe que implemente essa interface pode ser usada como validador — seja com Zod, seja com qualquer outra lib no futuro.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — validator-fields.interface.ts</div>
+  <p>Contrato de qualquer validador: lista erros por campo e diz se passou. Zod é um detalhe da implementação.</p>
+</div>
 <p class="file-path">src/shared/domain/validators/validator-fields.interface.ts</p>
 <pre><code>export type FieldsErrors = {
   [field: string]: string[]
@@ -2433,6 +3313,10 @@ export interface ValidatorFieldsInterface&lt;ValidatedProps&gt; {
 <p>Aqui criamos a implementação concreta da interface — a classe que de fato executa a validação usando Zod. Ela fica em <code>shared/domain/</code> porque <strong>todos os módulos vão reutilizá-la</strong> — Product, Supplier, Stock e PurchaseOrder usarão essa mesma classe base, só passando schemas Zod diferentes.</p>
 
 <p>O método <code>safeParse</code> do Zod é diferente de <code>parse</code>: em vez de lançar uma exceção quando encontra erro, ele retorna um objeto com <code>success: true/false</code>. Isso nos dá controle para formatar os erros do jeito que queremos antes de jogar para quem chamou.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — zod-validator-fields.ts</div>
+  <p>Validador reutilizável com Zod. Product, Supplier, Stock e Pedido só passam schemas diferentes.</p>
+</div>
 <p class="file-path">src/shared/domain/validators/zod-validator-fields.ts</p>
 <pre><code>import { ZodSchema, ZodError } from 'zod'
 import { FieldsErrors, ValidatorFieldsInterface } from './validator-fields.interface'
@@ -2476,6 +3360,10 @@ export class ZodValidatorFields&lt;ValidatedProps&gt;
 <p>Agora criamos o schema específico do Product — as regras de validação que definem o que é um produto válido. Repare na grande vantagem do Zod aqui: <code>export type ProductValidated = z.infer&lt;typeof productSchema&gt;</code> gera o tipo TypeScript automaticamente a partir das regras do schema. Você define as regras <strong>uma vez</strong> e o TypeScript já sabe os tipos de todos os campos — sem repetir interfaces.</p>
 
 <p>Cada regra tem uma mensagem de erro personalizada (segundo argumento de cada método). Isso significa que quando a validação falhar, o erro vai dizer exatamente o que está errado — "SKU must be 3-20 uppercase alphanumeric characters" é muito mais útil do que "invalid input".</p>
+<div class="mapping-card">
+  <div class="label">Propósito — product.validator.ts</div>
+  <p>Schema Zod do produto (SKU, centavos, price &gt; costPrice). A entidade chama isto no construtor.</p>
+</div>
 <p class="file-path">src/products/domain/validators/product.validator.ts</p>
 <pre><code>import { z } from 'zod'
 import { ZodValidatorFields } from '@/shared/domain/validators/zod-validator-fields'
@@ -2550,6 +3438,10 @@ export class ProductValidatorFactory {
 
 <p>Adicione o método <code>validate()</code> na <code>ProductEntity</code>:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product.entity.ts</div>
+  <p>A entidade passa a validar no construtor. Sem isso, dados inválidos só estouram no banco ou no HTTP.</p>
+</div>
 <p class="file-path">src/products/domain/entities/product.entity.ts  ← editar arquivo existente</p>
 <pre><code>// Adicionar dentro de product.entity.ts
 import { EntityValidationError } from '@/shared/domain/errors/validation-error'
@@ -2582,6 +3474,10 @@ export class ProductEntity extends Entity&lt;ProductProps&gt; {
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — validation-error.ts</div>
+  <p>Erro de domínio para validação. O filter HTTP depois traduz isso em 422 — o domínio não conhece Nest.</p>
+</div>
 <p class="file-path">src/shared/domain/errors/validation-error.ts</p>
 <pre><code>import { FieldsErrors } from '../validators/validator-fields.interface'
 
@@ -2595,6 +3491,10 @@ export class EntityValidationError extends Error {
 
 <h3>Passo 5 — Testes de validação</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product.entity.spec.ts (validação)</div>
+  <p>Agora cobre a validação Zod integrada: props inválidas não deixam a entidade nascer.</p>
+</div>
 <p class="file-path">src/products/domain/entities/product.entity.spec.ts</p>
 <pre><code>describe('ProductEntity validation', () =&gt; {
   it('should throw when name is empty', () =&gt; {
@@ -2692,6 +3592,49 @@ export class EntityValidationError extends Error {
   <p>O curso cria uma <strong>abstração de repositório</strong> (interface) na camada de domínio, depois implementa um repositório <strong>InMemory</strong> para testes. Inclui busca personalizada com filtro, ordenação e paginação. O repositório InMemory simula o banco de dados na memória — usado nos testes unitários dos use cases.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. Prisma (banco real) só na Seção 9. Aqui o contrato + o fake em memória.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>repository-contracts.ts</code></td>
+      <td>Novo</td>
+      <td>CRUD genérico + <code>search</code> paginado. Todo repositório de módulo estende isto.</td>
+    </tr>
+    <tr>
+      <td><code>product.repository.ts</code></td>
+      <td>Novo</td>
+      <td>Contrato de produto: CRUD + <code>skuExists</code> / <code>findBySku</code>. Prisma e InMemory cumprem o mesmo.</td>
+    </tr>
+    <tr>
+      <td><code>in-memory.repository.ts</code></td>
+      <td>Novo</td>
+      <td>Array em memória. Use cases unitários rodam sem Docker.</td>
+    </tr>
+    <tr>
+      <td><code>in-memory-searchable.repository.ts</code></td>
+      <td>Novo</td>
+      <td>Filtro, ordenação e paginação em cima do array.</td>
+    </tr>
+    <tr>
+      <td><code>product-in-memory.repository.ts</code></td>
+      <td>Novo</td>
+      <td>InMemory de produto. É o que os specs de use case recebem no construtor.</td>
+    </tr>
+    <tr>
+      <td>Interfaces + InMemory de Supplier, Stock e PurchaseOrder</td>
+      <td>Novo</td>
+      <td>Replicar o padrão. Stock precisa de <code>findBelowMinQuantity</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>Passo 1 — Interface base do repositório</h3>
 
 <p>O Repository Pattern resolve um problema de dependência: o domínio precisa salvar e buscar dados, mas não pode depender do Prisma (infraestrutura). A solução é o domínio <strong>declarar o que precisa</strong> através de uma interface — sem saber como vai ser implementado.</p>
@@ -2699,6 +3642,10 @@ export class EntityValidationError extends Error {
 <p>Pense assim: a interface é como um contrato de serviço. O domínio diz "preciso de alguém que saiba inserir, buscar por ID, listar todos, atualizar e deletar". Quem vai cumprir esse contrato? Pode ser o Prisma em produção, ou um array em memória nos testes. A interface não se importa.</p>
 
 <p>O <code>SearchableRepositoryInterface</code> estende o básico com um método <code>search</code> que aceita filtros, ordenação e paginação — usado nos endpoints de listagem com query params.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — repository-contracts.ts</div>
+  <p>Arquivo <code>src/shared/domain/repositories/repository-contracts.ts</code>: CRUD genérico + <code>search</code> paginado. Todo repositório de módulo estende isto.</p>
+</div>
 <pre><code>export interface RepositoryInterface&lt;E&gt; {
   insert(entity: E): Promise&lt;void&gt;
   findById(id: string): Promise&lt;E&gt;
@@ -2735,6 +3682,10 @@ export interface SearchableRepositoryInterface&lt;E&gt;
 <p>Além dos métodos genéricos de CRUD, o repositório de Product precisa de métodos específicos do negócio — como <code>findBySku</code> e <code>skuExists</code>. Esses métodos são declarados aqui, na interface de domínio, porque fazem parte do contrato que qualquer implementação (Prisma, InMemory) deve cumprir.</p>
 
 <p>Nota importante: a interface fica em <code>domain/repositories/</code> (domínio), mas as implementações (<code>ProductPrismaRepository</code>, <code>ProductInMemoryRepository</code>) ficam em <code>infrastructure/</code>. O domínio nunca vai saber como esses métodos são implementados.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — product.repository.ts</div>
+  <p>Contrato do repositório de produto (CRUD + SKU + fornecedor). Prisma e InMemory cumprem o mesmo contrato.</p>
+</div>
 <p class="file-path">src/products/domain/repositories/product.repository.ts</p>
 <pre><code>import { SearchableRepositoryInterface } from '@/shared/domain/repositories/repository-contracts'
 import { ProductEntity } from '../entities/product.entity'
@@ -2756,6 +3707,10 @@ export interface ProductRepository
 <p>Por que isso é valioso? Porque nos testes unitários dos use cases, você passa um <code>ProductInMemoryRepository</code> em vez do <code>ProductPrismaRepository</code>. Os testes rodam em milissegundos, sem precisar de Docker, sem banco, sem migrations. O use case não sabe a diferença — ele só fala com a interface, e ambas as implementações cumprem o mesmo contrato.</p>
 
 <p>O array <code>items</code> é público para facilitar verificações nos testes: você consegue inspecionar diretamente o que foi inserido com <code>expect(repository.items).toHaveLength(1)</code>.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — in-memory.repository.ts</div>
+  <p>Array em memória que implementa o contrato. Use cases unitários rodam em milissegundos, sem Docker.</p>
+</div>
 <p class="file-path">src/shared/domain/repositories/in-memory.repository.ts</p>
 <pre><code>import { Entity } from '../entities/entity'
 import { RepositoryInterface } from './repository-contracts'
@@ -2802,6 +3757,10 @@ export abstract class InMemoryRepository&lt;E extends Entity&lt;any&gt;&gt;
 
 <h3>Passo 4 — Repositório InMemory de Product</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product-in-memory.repository.ts</div>
+  <p>InMemory específico de produto (filtro por nome, skuExists). É o que os specs de use case recebem no construtor.</p>
+</div>
 <p class="file-path">src/products/infrastructure/database/in-memory/product-in-memory.repository.ts</p>
 <pre><code>import { InMemorySearchableRepository } from '@/shared/domain/repositories/in-memory-searchable.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
@@ -2859,8 +3818,50 @@ export class ProductInMemoryRepository
   <p>O curso implementa os use cases na camada de aplicação: Signup, GetUser, ListUsers, UpdateUser, UpdatePassword, DeleteUser e Signin. Cada use case recebe o repositório via injeção de dependência (interface, não implementação concreta) e contém a lógica de orquestração — validar, buscar, persistir.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. O guia detalha CreateProduct e ReceiveDelivery. A tabela no fim lista todos os outros.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>use-case.ts</code></td>
+      <td>Novo</td>
+      <td>Contrato: <code>execute(input) → output</code>. Todo caso de uso implementa isto.</td>
+    </tr>
+    <tr>
+      <td><code>create-product.usecase.ts</code></td>
+      <td>Novo</td>
+      <td>Orquestra criar produto: SKU único, margem, persiste. Fala com a interface, não com Prisma.</td>
+    </tr>
+    <tr>
+      <td><code>create-product.usecase.spec.ts</code></td>
+      <td>Novo</td>
+      <td>Prova SKU duplicado e preço inválido no InMemory, sem HTTP.</td>
+    </tr>
+    <tr>
+      <td><code>receive-delivery.usecase.ts</code></td>
+      <td>Novo</td>
+      <td>Entrega: só SENT vira DELIVERED e o estoque sobe.</td>
+    </tr>
+    <tr>
+      <td>Get / List / Update / Delete de Product + use cases de Supplier, Stock e Pedido</td>
+      <td>Novo</td>
+      <td>Mesmo namespace (Input, Output, UseCase) + spec com InMemory. Ver tabela no fim da seção.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>Interface base de Use Case</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — use-case.ts</div>
+  <p>Contrato de todo caso de uso: <code>execute(input) → output</code>. Padroniza a camada de aplicação.</p>
+</div>
 <p class="file-path">src/shared/application/usecases/use-case.ts</p>
 <pre><code>export interface UseCase&lt;Input, Output&gt; {
   execute(input: Input): Promise&lt;Output&gt;
@@ -2877,6 +3878,10 @@ export class ProductInMemoryRepository
   <li><strong>Sequência de operações:</strong> primeiro verifica o SKU (regra de unicidade), depois verifica o preço, depois cria a entidade (que roda suas próprias validações Zod), depois persiste. Se qualquer passo falhar, os seguintes não executam.</li>
   <li><strong>Output é um objeto simples:</strong> não retornamos a entidade diretamente. Retornamos um objeto com apenas os campos que fazem sentido expor. Isso desacopla o que o caso de uso entrega do que a entidade contém internamente.</li>
 </ul>
+<div class="mapping-card">
+  <div class="label">Propósito — create-product.usecase.ts</div>
+  <p>Orquestra criar produto: SKU único, margem, persiste. Não sabe se o banco é Prisma — só fala com a interface.</p>
+</div>
 <p class="file-path">src/products/application/usecases/create-product.usecase.ts</p>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
@@ -2946,6 +3951,10 @@ export namespace CreateProductUseCase {
 
 <h3>ReceiveDelivery — o use case mais complexo da POC</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — receive-delivery.usecase.ts</div>
+  <p>Orquestra a entrega: só SENT vira DELIVERED e o estoque sobe. Regra de status está na entidade; este arquivo coordena.</p>
+</div>
 <p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.ts</p>
 <pre><code>import { UseCase } from '@/shared/application/usecases/use-case'
 import { PurchaseOrderRepository } from '../../domain/repositories/purchase-order.repository'
@@ -3004,6 +4013,10 @@ export namespace ReceiveDeliveryUseCase {
 
 <h3>Teste unitário do CreateProduct</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — create-product.usecase.spec.ts</div>
+  <p>Prova as regras do create sem HTTP: SKU duplicado, preço inválido, persistência no InMemory.</p>
+</div>
 <p class="file-path">src/products/application/usecases/create-product.usecase.spec.ts</p>
 <pre><code>import { CreateProductUseCase } from '../create-product.usecase'
 import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
@@ -3092,8 +4105,55 @@ describe('CreateProductUseCase', () =&gt; {
   <p>O curso registra os use cases como providers no módulo NestJS, cria DTOs de request, implementa o controller com todas as rotas, e escreve testes unitários para cada método do controller. O NestJS fica na camada mais externa — é um detalhe de infraestrutura.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. O guia detalha Products. O desafio no fim replica Suppliers, Stock e PurchaseOrders.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>zod-validation.pipe.ts</code></td>
+      <td>Novo</td>
+      <td>Pipe HTTP: body inválido vira 400 antes do use case.</td>
+    </tr>
+    <tr>
+      <td><code>create-product.dto.ts</code> / update / list</td>
+      <td>Novo</td>
+      <td>Contrato da borda HTTP. SKU não entra no PUT.</td>
+    </tr>
+    <tr>
+      <td><code>product.presenter.ts</code></td>
+      <td>Novo</td>
+      <td>Primeira versão do JSON que o cliente vê. A Seção 13 completa collection/paginação.</td>
+    </tr>
+    <tr>
+      <td><code>products.controller.ts</code></td>
+      <td>Novo</td>
+      <td>Rotas: DTO → use case → presenter. Sem regra de SKU aqui.</td>
+    </tr>
+    <tr>
+      <td><code>products.module.ts</code></td>
+      <td>Novo</td>
+      <td>O Nest monta repositório + use cases no <code>useFactory</code>.</td>
+    </tr>
+    <tr>
+      <td>Controllers, DTOs e Modules de Supplier, Stock e Pedido</td>
+      <td>Novo</td>
+      <td>Mesmo fluxo. Stock: GET :id, PUT :id, GET /critical. Ver tabela do desafio.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>Passo 1 — ZodValidationPipe (shared)</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — zod-validation.pipe.ts</div>
+  <p>Pipe HTTP: body/query inválidos viram 400 antes do use case. O Zod do DTO roda aqui, não no domínio.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/pipes/zod-validation.pipe.ts</p>
 <pre><code>import { PipeTransform, BadRequestException } from '@nestjs/common'
 import { ZodSchema } from 'zod'
@@ -3119,6 +4179,10 @@ export class ZodValidationPipe implements PipeTransform {
 
 <h3>Passo 2 — DTOs com Zod</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — create-product.dto.ts</div>
+  <p>Contrato do POST /products na borda HTTP. Campos a mais ou tipos errados morrem no pipe, antes do use case.</p>
+</div>
 <p class="file-path">src/products/infrastructure/dto/create-product.dto.ts</p>
 <pre><code>import { z } from 'zod'
 
@@ -3135,6 +4199,10 @@ export const createProductSchema = z.object({
 export type CreateProductDto = z.infer&lt;typeof createProductSchema&gt;
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — update-product.dto.ts</div>
+  <p>Contrato do PUT. SKU e supplierId não entram — são imutáveis.</p>
+</div>
 <p class="file-path">src/products/infrastructure/dto/update-product.dto.ts</p>
 <pre><code>import { z } from 'zod'
 
@@ -3149,6 +4217,10 @@ export const updateProductSchema = z.object({
 export type UpdateProductDto = z.infer&lt;typeof updateProductSchema&gt;
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — list-products.dto.ts</div>
+  <p>Query da listagem (página, filtro, ordem). Vira <code>SearchParams</code> no use case.</p>
+</div>
 <p class="file-path">src/products/infrastructure/dto/list-products.dto.ts</p>
 <pre><code>import { z } from 'zod'
 
@@ -3165,6 +4237,10 @@ export type ListProductsDto = z.infer&lt;typeof listProductsSchema&gt;
 
 <h3>Passo 3 — Presenter</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product.presenter.ts</div>
+  <p>Primeira versão: escolhe o JSON que o cliente vê. O use case não formata HTTP.</p>
+</div>
 <p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
 <pre><code>import { ListProductsUseCase } from '@/products/application/usecases/list-products.usecase'
 
@@ -3205,6 +4281,10 @@ export class ProductCollectionPresenter {
 
 <h3>Passo 4 — Controller</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.controller.ts</div>
+  <p>Porta HTTP do módulo: rota → DTO → use case → presenter. Sem regra de SKU ou preço aqui.</p>
+</div>
 <p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
 <pre><code>import {
   Controller, Get, Post, Put, Delete,
@@ -3279,6 +4359,10 @@ export class ProductsController {
 
 <h3>Passo 5 — Module (registrar todos os providers)</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.module.ts</div>
+  <p>O Nest monta o quebra-cabeça: repositório Prisma no token, use case no factory. Sem isto o construtor fica <code>undefined</code>.</p>
+</div>
 <p class="file-path">src/products/infrastructure/products.module.ts</p>
 <pre><code>import { Module } from '@nestjs/common'
 import { ProductsController } from './controllers/products.controller'
@@ -3379,8 +4463,55 @@ export class ProductsModule {}
   <p>O curso configura Docker Compose com PostgreSQL, instala o Prisma, define o schema, roda migrations e implementa o <code>PrismaService</code> que estende o PrismaClient do NestJS.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>docker-compose.yml</code></td>
+      <td>Novo</td>
+      <td>Sobe o PostgreSQL local. Sem isto não existe banco na porta 5432.</td>
+    </tr>
+    <tr>
+      <td><code>.env</code> (POSTGRES_* + DATABASE_URL)</td>
+      <td>Editar</td>
+      <td>Credenciais que o Compose e o Prisma leem. Não vai para o Git.</td>
+    </tr>
+    <tr>
+      <td><code>prisma/schema.prisma</code></td>
+      <td>Novo</td>
+      <td>Mapa das tabelas. Migration nasce daqui.</td>
+    </tr>
+    <tr>
+      <td><code>prisma.config.ts</code></td>
+      <td>Editar</td>
+      <td>Diz como rodar a seed (<code>tsx prisma/seed.ts</code>).</td>
+    </tr>
+    <tr>
+      <td><code>prisma/seed.ts</code></td>
+      <td>Novo</td>
+      <td>Dados iniciais de dev. Nunca rode no banco de teste.</td>
+    </tr>
+    <tr>
+      <td><code>prisma.service.ts</code></td>
+      <td>Novo</td>
+      <td>Client Nest: connect no boot, disconnect no shutdown. Os repositórios Prisma recebem isto.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>Passo 1 — Docker Compose</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — docker-compose.yml</div>
+  <p>Sobe o PostgreSQL local com volume. Sem este arquivo não existe banco na porta 5432.</p>
+</div>
 <p class="file-path">docker-compose.yml</p>
 <pre><code>version: '3.8'
 
@@ -3406,6 +4537,10 @@ volumes:
   <p>O Docker Compose lê automaticamente o arquivo <code>.env</code> da raiz do projeto. As variáveis <code>${POSTGRES_USER}</code> etc. são substituídas em tempo de execução — o arquivo <code>docker-compose.yml</code> não contém nenhuma senha e pode ir para o Git com segurança.</p>
 </div>
 
+<div class="mapping-card">
+  <div class="label">Propósito — .env</div>
+  <p>Credenciais locais do Postgres (e URL do Prisma). Não vai para o Git — o Compose lê daqui.</p>
+</div>
 <p class="file-path">.env</p>
 <pre><code>POSTGRES_USER=stockflow
 POSTGRES_PASSWORD=stockflow123
@@ -3428,6 +4563,10 @@ pnpm add @prisma/client
 npx prisma init
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — schema.prisma</div>
+  <p>Mapa das tabelas. É a fonte da verdade do banco; a migration nasce daqui.</p>
+</div>
 <p class="file-path">prisma/schema.prisma</p>
 <pre><code>generator client {
   provider = "prisma-client-js"
@@ -3526,6 +4665,10 @@ model PurchaseOrderItem {
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — primeira migration</div>
+  <p>Cria as tabelas no Postgres a partir do schema e gera a pasta <code>prisma/migrations</code>.</p>
+</div>
 <pre><code># Rodar migration
 npx prisma migrate dev --name init
 </code></pre>
@@ -3588,10 +4731,18 @@ npx prisma migrate dev --name init
   <p>O Prisma executa a seed com <code>npx prisma db seed</code> e sabe qual arquivo rodar pela configuração no <code>prisma.config.ts</code>.</p>
 </div>
 
+<div class="mapping-card">
+  <div class="label">Propósito — instalar tsx para a seed</div>
+  <p>Roda TypeScript direto (<code>seed.ts</code>) sem compile. Só desenvolvimento.</p>
+</div>
 <pre><code># Instalar tsx (necessário para rodar TypeScript diretamente)
 pnpm add -D tsx
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — prisma.config.ts — adicionar seed ao bloco migrations</div>
+  <p>Diz ao Prisma como rodar <code>npx prisma db seed</code> (tsx + seed.ts).</p>
+</div>
 <p class="file-path">prisma.config.ts — adicionar seed ao bloco migrations</p>
 <pre><code>import 'dotenv/config'
 import { defineConfig, env } from 'prisma/config'
@@ -3608,6 +4759,10 @@ export default defineConfig({
 })
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — seed.ts</div>
+  <p>Dados iniciais para desenvolver (fornecedor, produto). Não substitui migration nem teste.</p>
+</div>
 <p class="file-path">prisma/seed.ts</p>
 <pre><code>import { PrismaClient } from '@prisma/client'
 
@@ -3671,6 +4826,10 @@ main()
   <p>O seed usa <code>upsert</code> (update + insert) para fornecedores e produtos — se o registro já existir (ex: ao rodar o seed pela segunda vez), ele não recria. Para o pedido de compra usamos <code>create</code> porque cada execução pode gerar um pedido novo.</p>
 </div>
 
+<div class="mapping-card">
+  <div class="label">Propósito — popular o banco</div>
+  <p>Executa <code>prisma/seed.ts</code>. Use depois da migration, no banco de <em>dev</em> — nunca no de teste.</p>
+</div>
 <pre><code># Rodar a seed
 npx prisma db seed
 </code></pre>
@@ -3685,6 +4844,39 @@ npx prisma db seed
   <p>O curso implementa o <code>UserPrismaRepository</code> — a versão concreta do repositório que usa Prisma para acessar o banco real. Inclui um <code>ModelMapper</code> para converter entre modelo do Prisma e entidade do domínio, e testes de integração para cada método.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. O InMemory da Seção 5 continua nos testes unitários. Em runtime o Nest injeta o Prisma.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>product-model.mapper.ts</code></td>
+      <td>Novo</td>
+      <td>Linha do Prisma → <code>ProductEntity</code> (reusa o UUID do banco).</td>
+    </tr>
+    <tr>
+      <td><code>product-prisma.repository.ts</code></td>
+      <td>Novo</td>
+      <td>Implementa o contrato com SQL. O use case não muda.</td>
+    </tr>
+    <tr>
+      <td><code>products.module.ts</code></td>
+      <td>Editar</td>
+      <td>Troca o factory: token <code>ProductRepository</code> passa a usar a classe Prisma.</td>
+    </tr>
+    <tr>
+      <td>Mapper + PrismaRepository de Supplier, Stock e Pedido</td>
+      <td>Novo</td>
+      <td>Mesmo par mapper/repositório. O módulo de cada um aponta para a classe Prisma.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>ModelMapper — traduz Prisma ↔ Domínio</h3>
 
 <p>Aqui temos um problema interessante: o Prisma retorna objetos do tipo <code>Product</code> (modelo do banco), mas o use case espera receber um <code>ProductEntity</code> (entidade do domínio). São dois objetos diferentes — o modelo do Prisma é um objeto plano com dados do banco, a entidade tem comportamentos e validações.</p>
@@ -3692,6 +4884,10 @@ npx prisma db seed
 <p>O <code>ModelMapper</code> é o tradutor entre esses dois mundos. Ele pega um objeto Prisma e constrói uma <code>ProductEntity</code> a partir dele. Note o detalhe crítico: passamos o <code>model.id</code> como segundo argumento — isso diz para a entidade "use este ID que já existe no banco" em vez de gerar um novo UUID.</p>
 
 <p>Esse arquivo fica na camada de infraestrutura porque ele conhece os dois lados: sabe o formato do Prisma e sabe construir a entidade do domínio.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — product-model.mapper.ts</div>
+  <p>Traduz linha do Prisma → <code>ProductEntity</code> (reusa o UUID do banco). Use case nunca vê o model cru.</p>
+</div>
 <p class="file-path">src/products/infrastructure/database/prisma/product-model.mapper.ts</p>
 <pre><code>import { Product as ProductModel } from '@prisma/client'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
@@ -3723,6 +4919,10 @@ export class ProductModelMapper {
 <p>Esta é a implementação concreta do contrato <code>ProductRepository</code> que usa o Prisma para falar com o PostgreSQL. Repare que a classe <strong>implementa a interface</strong> (<code>implements ProductRepository</code>) — o TypeScript vai reclamar se você esquecer de implementar algum método do contrato.</p>
 
 <p>Compare o <code>findById</code> aqui com o mesmo método no InMemory: o comportamento é idêntico do ponto de vista do use case (retorna uma entidade ou lança <code>NotFoundError</code>), mas a implementação é completamente diferente. É exatamente isso que o padrão Repository permite — trocar a implementação sem mudar quem usa.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — product-prisma.repository.ts</div>
+  <p>Implementação real do contrato: SQL via Prisma. Em produção o Nest injeta esta classe, não o InMemory.</p>
+</div>
 <p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.ts</p>
 <pre><code>import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
@@ -3897,10 +5097,57 @@ export class ProductPrismaRepository implements ProductRepository {
   <p>O <code>cleanDatabase()</code> apaga <strong>todas as tabelas</strong> antes de cada teste. Se rodar contra o banco de dev (<code>stockflow_db</code>), você perde todos os seus dados de seed. A solução é um banco separado exclusivo para testes.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.env.test</code></td>
+      <td>Novo</td>
+      <td>URL do banco só de teste. O <code>cleanDatabase</code> apaga tudo — nunca o de dev.</td>
+    </tr>
+    <tr>
+      <td>Database <code>stockflow_test_db</code> no Docker</td>
+      <td>Novo</td>
+      <td>Segundo banco no mesmo Postgres. Seed de dev fica intacto.</td>
+    </tr>
+    <tr>
+      <td><code>package.json</code> (<code>migrate:test</code>, <code>test:integration</code>)</td>
+      <td>Editar</td>
+      <td>Scripts que apontam para <code>.env.test</code> e rodam os specs Prisma em série.</td>
+    </tr>
+    <tr>
+      <td><code>setup-prisma-tests.ts</code></td>
+      <td>Novo</td>
+      <td>Carrega <code>.env.test</code> e expõe o client + <code>cleanDatabase</code>.</td>
+    </tr>
+    <tr>
+      <td><code>product-prisma.repository.spec.ts</code></td>
+      <td>Novo</td>
+      <td>Insert/find/search contra PostgreSQL de verdade.</td>
+    </tr>
+    <tr>
+      <td>Specs Prisma de Supplier, Stock e Pedido</td>
+      <td>Novo</td>
+      <td>Mesmo setup. Cada spec limpa o banco no <code>beforeEach</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>Passo 1 — Criar o arquivo <code>.env.test</code></h3>
 
 <p>Crie na raiz do projeto um arquivo <code>.env.test</code> apontando para um banco separado:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — .env.test</div>
+  <p>URL do banco <em>só de teste</em>. O <code>cleanDatabase</code> apaga tudo — nunca aponte para o banco de dev.</p>
+</div>
 <p class="file-path">.env.test</p>
 <pre><code>DATABASE_URL="postgresql://stockflow:stockflow123@localhost:5432/stockflow_test_db?schema=public"
 </code></pre>
@@ -3914,6 +5161,10 @@ export class ProductPrismaRepository implements ProductRepository {
 
 <p>Com o container do Docker rodando (<code>docker compose up -d</code>), crie o banco de teste:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — criar o banco de teste</div>
+  <p>Segundo database no mesmo Docker. Testes apagam dados; o de dev (seed) fica intacto.</p>
+</div>
 <pre><code>docker exec -it stockflow-db psql -U stockflow -d stockflow_db -c "CREATE DATABASE stockflow_test_db;"
 </code></pre>
 
@@ -3923,9 +5174,17 @@ export class ProductPrismaRepository implements ProductRepository {
 
 <p>O banco de teste precisa ter as mesmas tabelas que o banco de desenvolvimento. O script <code>migrate:test</code> usa o <code>dotenv-cli</code> para injetar o <code>.env.test</code> diretamente no processo do Prisma — sem que o <code>prisma.config.ts</code> interfira:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — schema no banco de teste</div>
+  <p>Aplica o Prisma no <code>stockflow_test_db</code> usando <code>.env.test</code>.</p>
+</div>
 <pre><code>pnpm migrate:test
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — package.json (trecho)</div>
+  <p>Script que aplica o schema no banco de teste (<code>.env.test</code>), sem tocar no banco de desenvolvimento.</p>
+</div>
 <p class="file-path">package.json (trecho)</p>
 <pre><code>"migrate:test": "DOTENV_FILE=.env.test npx prisma db push"
 </code></pre>
@@ -3941,6 +5200,10 @@ export class ProductPrismaRepository implements ProductRepository {
 
 <p>O arquivo de setup instancia o Prisma com o adapter correto (Prisma 7) e exporta o utilitário <code>cleanDatabase</code>:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — setup-prisma-tests.ts</div>
+  <p>Carrega <code>.env.test</code> e expõe o client + <code>cleanDatabase</code>. Todo spec de integração começa daqui.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/database/prisma/testing/setup-prisma-tests.ts</p>
 <pre><code>import { config } from 'dotenv'
 import { PrismaClient } from '@prisma/client'
@@ -3971,6 +5234,10 @@ export { prisma }
 
 <p>Adicione o script no <code>package.json</code>:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — package.json (trecho)</div>
+  <p>Script Jest só dos specs de repositório Prisma, em série (<code>--runInBand</code>) para não brigar no mesmo banco.</p>
+</div>
 <p class="file-path">package.json (trecho)</p>
 <pre><code>"test:integration": "jest --testPathPattern=prisma.repository.spec --runInBand"
 </code></pre>
@@ -3981,6 +5248,10 @@ export { prisma }
 </div>
 
 <p>Para rodar:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — rodar testes de integração</div>
+  <p>Jest só dos repositórios Prisma. Docker + banco de teste precisam estar no ar.</p>
+</div>
 <pre><code>pnpm test:integration
 </code></pre>
 
@@ -4013,6 +5284,10 @@ export { prisma }
 
 <h3>Teste de integração do repositório</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product-prisma.repository.spec.ts</div>
+  <p>Testa insert/find/search contra PostgreSQL de verdade. Pega mapeamento e constraint que o InMemory não pega.</p>
+</div>
 <p class="file-path">src/products/infrastructure/database/prisma/product-prisma.repository.spec.ts</p>
 <pre><code>import { cleanDatabase, prisma } from '@/shared/infrastructure/database/prisma/testing/setup-prisma-tests'
 import { ProductPrismaRepository } from '../product-prisma.repository'
@@ -4143,10 +5418,58 @@ describe('ProductPrismaRepository integration tests', () =&gt; {
 
 <p>E2E usa o <strong>mesmo banco de teste</strong> da seção 10/11 (<code>stockflow_test_db</code> + <code>cleanDatabase()</code>). Docker precisa estar no ar e <code>pnpm migrate:test</code> já ter rodado.</p>
 
+<p>Mapa do que você vai criar ou editar nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>wrapper-data.interceptor.ts</code></td>
+      <td>Novo</td>
+      <td>Envolve sucesso em <code>{ data: ... }</code>. E2E e Postman leem <code>body.data</code>.</td>
+    </tr>
+    <tr>
+      <td><code>not-found-error.filter.ts</code> (+ conflict, se ainda não tiver)</td>
+      <td>Novo</td>
+      <td>Erro de domínio vira HTTP 404/409. O use case lança; o Nest traduz.</td>
+    </tr>
+    <tr>
+      <td><code>global-config.ts</code></td>
+      <td>Novo</td>
+      <td>Aplica pipe, interceptor e filters. A app de teste precisa ser igual à de produção.</td>
+    </tr>
+    <tr>
+      <td><code>test/jest-e2e.json</code> + script <code>test:e2e</code></td>
+      <td>Novo / editar</td>
+      <td>Jest dos <code>*.e2e-spec.ts</code>, em série no mesmo banco de teste.</td>
+    </tr>
+    <tr>
+      <td><code>test/products/products.e2e-spec.ts</code></td>
+      <td>Novo</td>
+      <td>Sobe a API e dispara POST/GET/PUT/DELETE de verdade.</td>
+    </tr>
+    <tr>
+      <td>E2E de Supplier, Stock e Pedido</td>
+      <td>Novo</td>
+      <td>Mesmo padrão. Auth0 entra na Seção 14 — aqui as rotas ainda podem estar abertas.</td>
+    </tr>
+  </tbody>
+</table>
+
+
 <h3>Passo 1 — Interceptor <code>WrapperData</code></h3>
 
 <p>O curso envolve toda resposta de sucesso em <code>{ data: ... }</code>. Sem isso, o teste espera <code>res.body.data.id</code> e recebe <code>res.body.id</code>.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — wrapper-data.interceptor.ts</div>
+  <p>Envolve sucesso em <code>{ data: ... }</code>. Postman, Swagger e E2E leem <code>body.data</code> por causa disto.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/interceptors/wrapper-data.interceptor.ts</p>
 <pre><code>import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
 import { Observable, map } from 'rxjs'
@@ -4176,6 +5499,10 @@ export class WrapperDataInterceptor implements NestInterceptor {
   <tr><td><code>BadRequestException</code> (Zod)</td><td>400</td><td>Body inválido — o <code>ZodValidationPipe</code> já lança isso</td></tr>
 </table>
 
+<div class="mapping-card">
+  <div class="label">Propósito — not-found-error.filter.ts</div>
+  <p>Erro de domínio <code>NotFoundError</code> vira HTTP 404. O use case lança; o Nest traduz.</p>
+</div>
 <p class="file-path">src/shared/infrastructure/exception-filters/not-found-error.filter.ts</p>
 <pre><code>import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common'
 import { Response } from 'express'
@@ -4205,6 +5532,10 @@ export class NotFoundErrorFilter implements ExceptionFilter {
 
 <p>Pipes, filters e interceptors precisam estar na app de produção <em>e</em> na app do teste. Se o teste não aplicar a mesma config, o E2E passa um comportamento que o servidor real não tem.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — global-config.ts</div>
+  <p>Aplica pipe, interceptor e filters na app (prod e E2E). Sem isto o teste sobe uma app “nua”.</p>
+</div>
 <p class="file-path">src/global-config.ts</p>
 <pre><code>import { INestApplication } from '@nestjs/common'
 import { WrapperDataInterceptor } from '@/shared/infrastructure/interceptors/wrapper-data.interceptor'
@@ -4219,6 +5550,10 @@ export function applyGlobalConfig(app: INestApplication) {
 
 <p>Chame em <code>main.ts</code> <strong>e</strong> no <code>beforeAll</code> do E2E:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — ligar a config global no E2E</div>
+  <p>A app de teste precisa dos mesmos pipe/interceptor/filters da produção. Sem isto o E2E testa outra API.</p>
+</div>
 <pre><code>app = module.createNestApplication()
 applyGlobalConfig(app)
 await app.init()
@@ -4228,6 +5563,10 @@ await app.init()
 
 <p>O <code>test/jest-e2e.json</code> gerado pelo Nest não entende o alias <code>@/</code>. Sem o mapper, o import de <code>@/app.module</code> quebra.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — jest-e2e.json</div>
+  <p>Config Jest dos testes HTTP. Aponta para <code>*.e2e-spec.ts</code> e o mesmo path alias do <code>src</code>.</p>
+</div>
 <p class="file-path">test/jest-e2e.json</p>
 <pre><code>{
   "moduleFileExtensions": ["js", "json", "ts"],
@@ -4256,6 +5595,10 @@ await app.init()
 
 <p>O teste sobe o <code>AppModule</code> inteiro, limpa o banco a cada caso e fala HTTP. Product depende de Supplier (FK) — crie o fornecedor pela própria API antes do produto.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.e2e-spec.ts</div>
+  <p>Sobe a API de verdade e dispara POST/GET/PUT/DELETE. Valida o caminho inteiro até o JSON.</p>
+</div>
 <p class="file-path">test/products/products.e2e-spec.ts</p>
 <pre><code>import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication } from '@nestjs/common'
@@ -4382,6 +5725,10 @@ describe('ProductsController e2e tests', () =&gt; {
 </code></pre>
 
 <p>Para rodar:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — rodar os testes E2E</div>
+  <p>Sobe a app Nest e bate nas rotas. Banco de teste + migrate já precisam existir.</p>
+</div>
 <pre><code>pnpm test:e2e
 </code></pre>
 
@@ -4445,6 +5792,38 @@ describe('ProductsController e2e tests', () =&gt; {
   <p>Isso permite esconder campos internos, formatar valores (centavos → reais, Date → ISO) e mudar a resposta sem tocar no use case.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. A primeira versão do presenter veio na Seção 7. Aqui ela fica completa (item + lista + paginação).</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>product.presenter.ts</code> (type + classe + collection)</td>
+      <td>Editar</td>
+      <td>JSON estável. Type local (sem importar use case) + <code>ProductCollectionPresenter</code> na listagem.</td>
+    </tr>
+    <tr>
+      <td><code>products.controller.ts</code></td>
+      <td>Editar</td>
+      <td>Instancia o presenter. O cliente não recebe a entidade crua.</td>
+    </tr>
+    <tr>
+      <td>Presenters de Supplier, Stock e Pedido</td>
+      <td>Editar / novo</td>
+      <td>Mesmo par item + collection nas listagens paginadas.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mapping-card">
+  <div class="label">Propósito — fluxo presenter</div>
+  <p>Didático: quem formata JSON é o presenter, não o use case. Não é um arquivo para criar.</p>
+</div>
 <pre><code>Cliente HTTP
     ↑ JSON
 Controller  →  new ProductPresenter(output)
@@ -4458,6 +5837,10 @@ Repository  →  banco
 
 <p>O presenter define o próprio contrato de entrada. Qualquer use case que devolver esses campos pode ser usado — sem importar <code>CreateProductUseCase.Output</code>.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product.presenter.ts</div>
+  <p>Tipos locais do presenter (sem importar use case) + classe com os campos da resposta.</p>
+</div>
 <p class="file-path">src/products/infrastructure/presenters/product.presenter.ts</p>
 <pre><code>export type ProductOutput = {
   id: string
@@ -4491,6 +5874,10 @@ export type ProductCollectionOutput = {
 
 <p>É uma <strong>classe</strong>, não um type: o NestJS serializa instâncias de classe como JSON automaticamente. Os campos declarados aqui são exatamente o que o cliente recebe. Para esconder <code>costPrice</code>, basta removê-lo daqui — sem mudar o use case.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — ProductPresenter (classe)</div>
+  <p>A classe que o controller instancia. Os campos daqui são o JSON. Esconder um campo = apagar daqui, sem mexer no use case.</p>
+</div>
 <pre><code>export class ProductPresenter {
   id: string
   name: string
@@ -4524,6 +5911,10 @@ export type ProductCollectionOutput = {
 
 <p>Converte cada item em <code>ProductPresenter</code> e inclui os metadados de paginação.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — ProductCollectionPresenter</div>
+  <p>Lista + metadados de página no mesmo JSON. O GET /products usa isto, não um array cru.</p>
+</div>
 <pre><code>export class ProductCollectionPresenter {
   items: ProductPresenter[]
   total: number
@@ -4543,6 +5934,10 @@ export type ProductCollectionOutput = {
 
 <h3>Passo 4 — Usar no controller</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.controller.ts</div>
+  <p>O controller instancia o presenter. O cliente recebe JSON estável, não a entidade crua.</p>
+</div>
 <p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
 <pre><code>@Get(':id')
 async findOne(@Param('id') id: string) {
@@ -4641,6 +6036,53 @@ async search(
   <p>Neste POC o caminho principal é <strong>M2M</strong>. MFA e reset de senha só entram se você criar também uma Regular Web App e logar pelo Universal Login.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. O Auth0 (tenant, API, app M2M) é no dashboard — não é arquivo do repo. Abaixo é o que entra no código.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.env</code> / <code>.env.example</code> / <code>.env.test</code></td>
+      <td>Editar</td>
+      <td>Domain, audience e (só no test) client id/secret M2M. Secret não vai para o Git público.</td>
+    </tr>
+    <tr>
+      <td><code>env-config.*</code> (getters Auth0)</td>
+      <td>Editar</td>
+      <td>A JwtStrategy pede domain/audience daqui, não de <code>process.env</code>.</td>
+    </tr>
+    <tr>
+      <td><code>jwt.strategy.ts</code></td>
+      <td>Novo</td>
+      <td>Valida o Bearer com JWKS do Auth0. Não gera login.</td>
+    </tr>
+    <tr>
+      <td><code>auth.module.ts</code> + <code>app.module.ts</code></td>
+      <td>Novo / editar</td>
+      <td>Registra Passport e importa na raiz. Sem isto o guard não existe.</td>
+    </tr>
+    <tr>
+      <td>Controllers (Products, Suppliers, Stock, Pedidos)</td>
+      <td>Editar</td>
+      <td><code>@UseGuards(AuthGuard('jwt'))</code>. Health <code>GET /</code> fica público.</td>
+    </tr>
+    <tr>
+      <td>Specs E2E (<code>getAccessToken</code>)</td>
+      <td>Editar</td>
+      <td>Pedem client_credentials no Auth0. Sem isto o E2E toma 401.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="mapping-card">
+  <div class="label">Propósito — fluxo do token Auth0</div>
+  <p>Didático: M2M pede token no Auth0; a API só valida JWKS. Não cole isto como código Nest.</p>
+</div>
 <pre><code>Postman / E2E  →  POST https://{AUTH0_DOMAIN}/oauth/token
                     grant_type=client_credentials + audience
                  ←  access token (JWT RS256)
@@ -4686,6 +6128,10 @@ GET /products
 
 <p>O <a href="https://auth0.com/docs/quickstart/backend/nodejs" target="_blank" rel="noopener">quickstart de API Node</a> usa só Domain + Audience. Derive o issuer e o JWKS no código — assim os dois não divergem. Tire <code>JWT_SECRET</code> / <code>JWT_EXPIRES_IN</code> do schema Zod do <code>EnvConfigModule</code>.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — .env.example</div>
+  <p>Domain e audience do Auth0. Sem isto a JwtStrategy não sabe de qual tenant confiar.</p>
+</div>
 <p class="file-path">.env / .env.example</p>
 <pre><code># Auth0 — Domain do tenant (Applications → sua app → Settings)
 AUTH0_DOMAIN=dev-xxxxx.us.auth0.com
@@ -4714,6 +6160,10 @@ getAuth0Audience(): string {
 
 <h3>Passo 3 — Instalar dependências</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — dependências Auth0/JWT</div>
+  <p>Passport + estratégia JWT + JWKS (chave pública do Auth0). Sem bcrypt local — quem autentica é o Auth0.</p>
+</div>
 <pre><code>pnpm add passport @nestjs/passport passport-jwt jwks-rsa
 pnpm add -D @types/passport-jwt
 </code></pre>
@@ -4729,6 +6179,10 @@ pnpm add -D @types/passport-jwt
 
 <p>Extrai o Bearer, busca a chave no JWKS e checa <code>audience</code> + <code>issuer</code>. Se qualquer check falhar, a API deve responder <strong>401</strong> (<a href="https://auth0.com/docs/secure/tokens/access-tokens/validate-access-tokens" target="_blank" rel="noopener">Validate Access Tokens</a>).</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — jwt.strategy.ts</div>
+  <p>Valida o Bearer com a chave pública JWKS do Auth0 (assinatura, issuer, audience). Não gera login.</p>
+</div>
 <p class="file-path">src/auth/infrastructure/jwt.strategy.ts</p>
 <pre><code>import { Injectable } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
@@ -4774,6 +6228,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
 <h3>Passo 5 — <code>AuthModule</code></h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — auth.module.ts</div>
+  <p>Registra Passport + JwtStrategy e exporta o guard para os outros módulos.</p>
+</div>
 <p class="file-path">src/auth/infrastructure/auth.module.ts</p>
 <pre><code>import { Module } from '@nestjs/common'
 import { PassportModule } from '@nestjs/passport'
@@ -4793,6 +6251,10 @@ export class AuthModule {}
 
 <p>Importe no <code>AppModule</code>:</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — AuthModule no AppModule</div>
+  <p>Importa o módulo de auth na raiz. Sem isto o AuthGuard não existe nos controllers.</p>
+</div>
 <pre><code>imports: [
   AuthModule,
   ProductsModule,
@@ -4806,6 +6268,10 @@ export class AuthModule {}
 
 <p>O guard vem pronto do Passport: <code>AuthGuard('jwt')</code>. Não precisa do <code>AuthGuard</code> manual com <code>JwtService.verifyAsync</code>.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.controller.ts</div>
+  <p>AuthGuard em cada rota. Sem Bearer válido, o use case nem roda.</p>
+</div>
 <p class="file-path">src/products/infrastructure/controllers/products.controller.ts</p>
 <pre><code>import { UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
@@ -4846,6 +6312,10 @@ export class ProductsController {
 
 <p>Não chame <code>POST /login</code> local. Peça o token no endpoint oficial, com <code>application/x-www-form-urlencoded</code> (não JSON):</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — helper de token no E2E</div>
+  <p>Pede client_credentials no Auth0 e grava o Bearer. Sem isto o E2E toma 401 em toda rota.</p>
+</div>
 <pre><code>const getAccessToken = async (): Promise&lt;string&gt; =&gt; {
   const res = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
     method: 'POST',
@@ -4920,12 +6390,59 @@ await request(server).get('/products').expect(401)
   <p><strong>Swagger</strong> descreve a API (o que cada rota espera e devolve). <strong>Postman</strong> dispara as rotas de verdade, com token Auth0. Os dois usam o mesmo JWT. O pipe Zod já existe — não recrie.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. Postman não é arquivo do repo: collection, variáveis e a checklist de requests nesta seção.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>package.json</code> (<code>@nestjs/swagger</code>)</td>
+      <td>Editar</td>
+      <td>Pacote oficial. Sem ele não existe <code>/docs</code>.</td>
+    </tr>
+    <tr>
+      <td><code>main.ts</code></td>
+      <td>Editar</td>
+      <td>Liga o Swagger em <code>/docs</code> com Bearer (<code>addBearerAuth</code>).</td>
+    </tr>
+    <tr>
+      <td>DTOs (<code>@ApiProperty</code>)</td>
+      <td>Editar</td>
+      <td>O schema Zod continua validando. A classe só desenha o body no Swagger.</td>
+    </tr>
+    <tr>
+      <td>Controllers (<code>@ApiTags</code>, <code>@ApiBearerAuth</code>)</td>
+      <td>Editar</td>
+      <td>O browser em <code>/docs</code> agrupa rotas e pede o JWT.</td>
+    </tr>
+    <tr>
+      <td>Presenters (<code>@ApiProperty</code>)</td>
+      <td>Editar</td>
+      <td>Sem isto o Swagger mostra a rota mas não o JSON de resposta.</td>
+    </tr>
+    <tr>
+      <td>Collection Postman + bodies desta seção</td>
+      <td>Novo (fora do Git, ou na pasta que você preferir)</td>
+      <td>Catálogo executável. Token M2M + variáveis <code>{{product_id}}</code> etc.</td>
+    </tr>
+  </tbody>
+</table>
+
 <!-- ── SWAGGER ── -->
 <h3>Parte 1 — Swagger</h3>
 
 <p>Com a API no ar, abra <code>http://localhost:3000/docs</code>. Sem <code>addBearerAuth</code>, o botão <strong>Authorize</strong> não aparece e as rotas protegidas falham com 401 no browser.</p>
 
 <h4>Passo 1 — Instalar</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — instalar Swagger</div>
+  <p>Pacote oficial. Sem ele não existe <code>/docs</code> nem <code>@ApiProperty</code>.</p>
+</div>
 <pre><code>pnpm add @nestjs/swagger
 </code></pre>
 
@@ -4933,6 +6450,10 @@ await request(server).get('/products').expect(401)
 
 <p>O <code>ZodValidationPipe</code> já está em <code>src/shared/infrastructure/pipes/</code>. Aqui só entra o Swagger no <code>main.ts</code>. Mantenha o <code>applyGlobalConfig</code> e o <code>PORT</code> do env.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — main.ts</div>
+  <p>Bootstrap: cria a app, aplica config global e liga o Swagger em <code>/docs</code> com Bearer.</p>
+</div>
 <p class="file-path">src/main.ts</p>
 <pre><code>import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
@@ -4968,6 +6489,10 @@ void bootstrap()
 
 <p>O schema Zod continua sendo a fonte da verdade no request. A classe com <code>@ApiProperty</code> só existe para o Swagger desenhar o body. Não apague o schema. Inclua <code>location</code> e <code>minQuantity</code> no POST de produto — o estoque nasce aí.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — create-product.dto.ts</div>
+  <p>Mesmo schema Zod + <code>@ApiProperty</code> para o Swagger documentar o body do POST.</p>
+</div>
 <p class="file-path">src/products/infrastructure/dto/create-product.dto.ts  ← editar</p>
 <pre><code>import { ApiProperty } from '@nestjs/swagger'
 import { z } from 'zod'
@@ -5022,6 +6547,10 @@ export class CreateProductBody {
 
 <p>O pipe nas rotas já está. Falta o Swagger saber que o módulo existe e que precisa de token. <code>GET /</code> fica sem <code>@ApiBearerAuth</code>.</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — products.controller.ts</div>
+  <p>Decorators Swagger nas rotas: tag, Bearer, códigos. O browser em <code>/docs</code> lê isto.</p>
+</div>
 <p class="file-path">src/products/infrastructure/controllers/products.controller.ts  ← editar</p>
 <pre><code>import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
@@ -5040,6 +6569,10 @@ export class ProductsController {
 
 <p>Sem <code>@ApiProperty</code> no presenter, o Swagger mostra a rota mas não o JSON de resposta. Anote os campos da classe (não o type <code>ProductOutput</code>).</p>
 
+<div class="mapping-card">
+  <div class="label">Propósito — product.presenter.ts (Swagger)</div>
+  <p><code>@ApiProperty</code> em cada campo para o Swagger mostrar o exemplo do JSON de resposta.</p>
+</div>
 <p class="file-path">src/products/infrastructure/presenters/product.presenter.ts  ← editar</p>
 <pre><code>import { ApiProperty } from '@nestjs/swagger'
 
@@ -5116,6 +6649,10 @@ export class ProductPresenter {
 </table>
 
 <p>Nos POSTs, um test script grava o <code>id</code> da resposta em variável de environment:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — Tests do Postman (salvar id)</div>
+  <p>Script da aba Tests: pega o id da resposta e guarda na variável da collection. Não é TypeScript do Nest.</p>
+</div>
 <pre><code>const json = pm.response.json()
 const id = json &amp;&amp; json.data &amp;&amp; json.data.id
 if (id) pm.environment.set('supplier_id', id)
@@ -5390,6 +6927,10 @@ if (id) pm.environment.set('supplier_id', id)
 
 <h5>Opcional — entrega de verdade e DELETE com FK</h5>
 <p>Não existe rota para SENT. Para ver o estoque subir, rode no Postgres (Docker) e depois o receive-delivery no pedido A:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — SQL auxiliar no Postgres</div>
+  <p>Consulta/ajuste manual no banco de dev. Útil para conferir seed ou FK — não faz parte da API.</p>
+</div>
 <pre><code>docker exec stockflow-db psql -U stockflow -d stockflow_db -c "UPDATE purchase_orders SET status = 'SENT' WHERE id = 'COLE-O-UUID-DO-PEDIDO-A';"</code></pre>
 <table class="endpoint-check">
   <tr><th></th><th>Request</th><th>Status</th><th>Resultado esperado</th></tr>
@@ -5440,6 +6981,10 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>DELETE</code></td><td><code>/suppliers/:id</code></td><td>204 se não tiver produto. Com produto ligado: 500 (FK)</td></tr>
 </table>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body POST /suppliers</div>
+  <p>JSON de exemplo para criar fornecedor no Postman. Não é arquivo do repo — cole no body.</p>
+</div>
 <p class="file-path">Body — POST /suppliers</p>
 <pre><code>{
   "name": "Distribuidora ABC",
@@ -5449,6 +6994,10 @@ if (id) pm.environment.set('supplier_id', id)
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body PUT /suppliers/:id</div>
+  <p>JSON de exemplo para atualizar fornecedor. Cole no body do PUT. CNPJ não vai no body — é imutável.</p>
+</div>
 <p class="file-path">Body — PUT /suppliers/:id</p>
 <pre><code>{
   "name": "Distribuidora ABC Atualizada",
@@ -5467,6 +7016,10 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>DELETE</code></td><td><code>/products/:id</code></td><td>Hoje <strong>500</strong> se houver estoque/itens (FK). O 204 só viria sem vínculo</td></tr>
 </table>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body POST /products</div>
+  <p>JSON de exemplo para criar produto (inclui location/minQuantity do estoque inicial).</p>
+</div>
 <p class="file-path">Body — POST /products</p>
 <pre><code>{
   "name": "Whey Protein 1kg",
@@ -5481,6 +7034,10 @@ if (id) pm.environment.set('supplier_id', id)
 }
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body PUT /products/:id</div>
+  <p>JSON de exemplo para atualizar produto. Sem SKU — ele não muda.</p>
+</div>
 <p class="file-path">Body — PUT /products/:id</p>
 <pre><code>{
   "name": "Whey Protein 1kg Atualizado",
@@ -5499,6 +7056,10 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>PUT</code></td><td><code>/stocks/:id</code></td><td><code>productId</code> não vai no body</td></tr>
 </table>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body PUT /stocks/:id</div>
+  <p>JSON de exemplo para ajustar quantidade/mínimo/local. Depois do Redis, isto também invalida o cache de estoque.</p>
+</div>
 <p class="file-path">Body — PUT /stocks/:id</p>
 <pre><code>{
   "quantity": 50,
@@ -5518,6 +7079,10 @@ if (id) pm.environment.set('supplier_id', id)
   <tr><td><code>POST</code></td><td><code>/purchase-orders/:id/cancel</code></td><td><code>DRAFT</code> ou <code>SENT</code></td></tr>
 </table>
 
+<div class="mapping-card">
+  <div class="label">Propósito — Body POST /purchase-orders</div>
+  <p>JSON de exemplo do pedido (fornecedor + itens). Use as variáveis <code>{{supplier_id}}</code> e <code>{{product_id}}</code>.</p>
+</div>
 <p class="file-path">Body — POST /purchase-orders</p>
 <pre><code>{
   "supplierId": "{{supplier_id}}",
@@ -5693,6 +7258,7 @@ if (id) pm.environment.set('supplier_id', id)
   </tbody>
 </table>
 
+
 <h3>Passo 1 — Redis no Docker</h3>
 
 <p>A API já sobe o Postgres no <code>docker-compose.yml</code>. Acrescente o serviço Redis. Imagem oficial para local: <code>redis:7-alpine</code>. Porta padrão <strong>6379</strong> (a mesma da doc de install do MCP).</p>
@@ -5731,6 +7297,10 @@ volumes:
   redisdata:
 </code></pre>
 
+<div class="mapping-card">
+  <div class="label">Propósito — subir o Redis</div>
+  <p>Sobe só o serviço Redis e testa com PING. O Postgres pode já estar no ar.</p>
+</div>
 <pre><code>docker compose up -d redis
 docker exec stockflow-redis redis-cli PING
 # esperado: PONG
@@ -5879,6 +7449,10 @@ export class EnvConfigService implements EnvConfig {
 <p>O <a href="https://redis.io/docs/latest/integrate/redis-mcp/" target="_blank" rel="noopener">Redis MCP</a> deixa o agente ler e escrever no Redis em linguagem natural (“quantas chaves existem?”, “mostra <code>product:…</code>”). O servidor MCP é <strong>separado</strong> do Redis: primeiro o Redis no Docker (Passo 1), depois o MCP aponta para ele. Install: <a href="https://redis.io/docs/latest/integrate/redis-mcp/install/" target="_blank" rel="noopener">Install Redis MCP</a>. Repositório: <a href="https://github.com/redis/mcp-redis" target="_blank" rel="noopener">github.com/redis/mcp-redis</a>.</p>
 
 <p>O caminho recomendado pela Redis é o pacote PyPI via <code>uvx</code> (baixa na hora, ambiente temporário). Instale o <code>uv</code> se ainda não tiver: <a href="https://docs.astral.sh/uv/getting-started/installation/" target="_blank" rel="noopener">docs.astral.sh/uv</a>.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — testar o Redis MCP</div>
+  <p>Confere se o <code>uvx</code> existe e sobe o servidor MCP contra o Redis local. Não é código da API.</p>
+</div>
 <pre><code># conferir
 uvx --version
 
@@ -5887,6 +7461,10 @@ uvx --from redis-mcp-server@latest redis-mcp-server --url redis://localhost:6379
 </code></pre>
 
 <p>No Cursor o arquivo é <code>~/.cursor/mcp.json</code> (MCP global) <em>ou</em> <code>.cursor/mcp.json</code> só neste repo. A chave é <code>mcpServers</code> — igual ao exemplo da Redis para Claude Desktop / Augment. Cole o bloco <code>redis</code> <strong>junto</strong> dos servers que você já tem (Auth0, Figma, etc.), não apague o resto do JSON.</p>
+<div class="mapping-card">
+  <div class="label">Propósito — bloco redis no mcp.json</div>
+  <p>Liga o Cursor ao Redis. Cole <em>junto</em> dos outros servers — não apague Auth0/Figma.</p>
+</div>
 <pre><code>"redis": {
   "command": "uvx",
   "args": [
@@ -5948,6 +7526,10 @@ flowchart TD
 <pre><code>pnpm add redis
 </code></pre>
 <p>Conexão mínima da <a href="https://redis.io/docs/latest/develop/clients/nodejs/" target="_blank" rel="noopener">guia Node.js</a> (você vai encapsular isso no Passo 5b — não cole isso solto no <code>main.ts</code>):</p>
+<div class="mapping-card">
+  <div class="label">Propósito — createClient (node-redis)</div>
+  <p>Conexão mínima da doc oficial. No Nest isto vive dentro de redis-cache.provider.ts, não no main.ts.</p>
+</div>
 <pre><code>import { createClient } from 'redis'
 
 const client = createClient({
@@ -6266,6 +7848,10 @@ export class RedisCacheProvider
 }
 </code></pre>
 <p>Se o TypeScript reclamar de <code>RedisClientType</code> (o pacote <code>redis</code> v5 às vezes exporta o tipo de outro jeito), troque a linha do campo por:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — tipo alternativo do client Redis</div>
+  <p>Plano B se o TypeScript não achar <code>RedisClientType</code>. Mesmo provider, só o tipo do campo muda.</p>
+</div>
 <pre><code>private readonly client: ReturnType&lt;typeof createClient&gt;
 </code></pre>
 
@@ -6579,6 +8165,10 @@ export namespace ListProductsUseCase {
 }
 </code></pre>
 <p>No <code>list-products.usecase.spec.ts</code>, só mude o <code>beforeEach</code> (importe o in-memory cache):</p>
+<div class="mapping-card">
+  <div class="label">Propósito — ajuste do spec da listagem</div>
+  <p>O construtor agora pede cache. Passe <code>InMemoryCacheProvider</code> para os testes antigos continuarem verdes.</p>
+</div>
 <pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 // dentro do beforeEach:
@@ -6612,6 +8202,10 @@ flowchart LR
 <pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
 </code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do create-product</div>
+  <p>O create já recebia produto+estoque; agora recebe também o CacheProvider.</p>
+</div>
 <pre><code>  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
     constructor(
       private productRepository: ProductRepository,
@@ -6620,13 +8214,25 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
     ) {}
 </code></pre>
 <p>No JSDoc, acrescente no fluxo:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: JSDoc do create</div>
+  <p>Atualize o fluxo no comentário do use case — documenta a invalidação junto com as regras.</p>
+</div>
 <pre><code> *  8. Invalida o cache das listagens de produto e do estoque crítico
 </code></pre>
 <p>No final do <code>execute</code>, <strong>depois</strong> do <code>stockRepository.insert(stock)</code> e <strong>antes</strong> do <code>return</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: invalidar no create</div>
+  <p>Depois de gravar produto+estoque no Postgres, apaga lista de produtos e estoque crítico.</p>
+</div>
 <pre><code>      await this.cache.delByPrefix(CachePrefix.productsList)
       await this.cache.del(CacheKeys.stocksCritical())
 </code></pre>
 <p>No spec, o construtor ganha o terceiro argumento:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — ajuste do spec de create</div>
+  <p>Terceiro argumento: cache in-memory. Sem isto o TypeScript (e o runtime) quebram no construtor.</p>
+</div>
 <pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 sut = new CreateProductUseCase.UseCase(
@@ -6650,9 +8256,17 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
     ) {}
 </code></pre>
 <p>Depois de <code>await this.productRepository.update(product)</code> e antes do <code>return</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: invalidar no update</div>
+  <p>Depois do UPDATE no banco, apaga o GET daquele id e todas as listagens.</p>
+</div>
 <pre><code>      await this.cache.del(CacheKeys.product(product.id))
       await this.cache.delByPrefix(CachePrefix.productsList)
 </code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: spec do update</div>
+  <p>O construtor agora pede cache. InMemory nos testes — sem Docker.</p>
+</div>
 <pre><code>sut = new UpdateProductUseCase.UseCase(
   repository,
   new InMemoryCacheProvider(),
@@ -6673,9 +8287,17 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
     ) {}
 </code></pre>
 <p>Depois de <code>await this.productRepository.delete(input.id)</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: invalidar no delete</div>
+  <p>Produto sumiu do banco: apague a chave do GET e o prefixo das listas.</p>
+</div>
 <pre><code>      await this.cache.del(CacheKeys.product(input.id))
       await this.cache.delByPrefix(CachePrefix.productsList)
 </code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: spec do delete</div>
+  <p>Segundo argumento: InMemoryCacheProvider, igual aos outros writes.</p>
+</div>
 <pre><code>sut = new DeleteProductUseCase.UseCase(
   repository,
   new InMemoryCacheProvider(),
@@ -6942,16 +8564,28 @@ export namespace ListCriticalStockUseCase {
 <pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do create-product</div>
+  <p>O create já recebia produto+estoque; agora recebe também o CacheProvider.</p>
+</div>
 <pre><code>    constructor(
       private stockRepository: StockRepository,
       private cache: CacheProvider,
     ) {}
 </code></pre>
 <p>Depois de <code>await this.stockRepository.update(stock)</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: invalidar no create</div>
+  <p>Depois de gravar produto+estoque no Postgres, apaga lista de produtos e estoque crítico.</p>
+</div>
 <pre><code>      await this.cache.del(CacheKeys.stock(stock.id))
       await this.cache.del(CacheKeys.stocksCritical())
 </code></pre>
 <p>Specs de estoque — mesmo padrão do produto, último argumento <code>new InMemoryCacheProvider()</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: specs de estoque</div>
+  <p>Get, listagem crítica e update ganham o cache in-memory no construtor.</p>
+</div>
 <pre><code>sut = new GetStockUseCase.UseCase(repository, new InMemoryCacheProvider())
 sut = new ListCriticalStockUseCase.UseCase(
   repository,
@@ -7023,6 +8657,10 @@ export class StockModule {}
 <pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do receive-delivery</div>
+  <p>Terceiro parâmetro cache. Só este use case de pedido mexe em estoque.</p>
+</div>
 <pre><code>    constructor(
       private purchaseOrderRepo: PurchaseOrderRepository,
       private stockRepo: StockRepository,
@@ -7030,6 +8668,10 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
     ) {}
 </code></pre>
 <p>No loop, você já tem o <code>stock</code> atualizado. Acumule os ids e, <strong>depois</strong> de <code>await this.purchaseOrderRepo.update(order)</code>, apague o cache:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: invalidar no create</div>
+  <p>Depois de gravar produto+estoque no Postgres, apaga lista de produtos e estoque crítico.</p>
+</div>
 <pre><code>      const touchedStockIds: string[] = []
 
       for (const item of order.items) {
@@ -7054,6 +8696,10 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </code></pre>
 <p>O <code>for</code> que já existe permanece — só acrescente <code>touchedStockIds.push(stock.id)</code> depois do <code>update</code> de cada estoque, e o bloco de invalidação depois do update do pedido.</p>
 <p>Spec:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — ajuste do spec de receive-delivery</div>
+  <p>Terceiro argumento: cache. O spec continua InMemory; só o construtor mudou.</p>
+</div>
 <pre><code>sut = new ReceiveDeliveryUseCase.UseCase(
   purchaseOrderRepo,
   stockRepo,
@@ -7139,8 +8785,50 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
   <p>O curso faz deploy no Render e cria workflows no GitHub Actions para CI. Na POC, faremos o mesmo CI, mas o deploy será na <strong>AWS</strong> usando EC2 + RDS PostgreSQL.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. RDS e EC2 são no console AWS (não são arquivos). Os YAML abaixo entram no repo.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.github/workflows/ci.yml</code></td>
+      <td>Novo</td>
+      <td>A cada push/PR: install, testes unitários, Postgres de serviço, integração/E2E.</td>
+    </tr>
+    <tr>
+      <td>RDS PostgreSQL 15 (console AWS)</td>
+      <td>Novo (nuvem)</td>
+      <td>Banco de produção. <code>DATABASE_URL</code> da API aponta para o endpoint.</td>
+    </tr>
+    <tr>
+      <td>EC2 Amazon Linux (console AWS)</td>
+      <td>Novo (nuvem)</td>
+      <td>Onde o Node roda. Mesma VPC do RDS; security group com SSH + porta da API.</td>
+    </tr>
+    <tr>
+      <td><code>.env</code> na EC2</td>
+      <td>Novo (servidor)</td>
+      <td>Produção: URL do RDS, Auth0, porta. Não commitar.</td>
+    </tr>
+    <tr>
+      <td><code>.github/workflows/deploy.yml</code></td>
+      <td>Novo</td>
+      <td>Depois do CI verde: SSH na EC2, pull, build, PM2.</td>
+    </tr>
+  </tbody>
+</table>
+
 <h3>GitHub Actions — CI</h3>
 
+<div class="mapping-card">
+  <div class="label">Propósito — ci.yml</div>
+  <p>CI no GitHub: instala, testa unitário e sobe Postgres para integração/E2E a cada push/PR.</p>
+</div>
 <p class="file-path">.github/workflows/ci.yml</p>
 <pre><code>name: CI
 
@@ -7195,6 +8883,10 @@ jobs:
 <h3>Deploy na AWS — Passo a passo</h3>
 
 <h4>1. Criar o banco de dados (RDS)</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — criar o RDS</div>
+  <p>Checklist no console AWS: Postgres gerenciado. A API na EC2 aponta o <code>DATABASE_URL</code> para este endpoint.</p>
+</div>
 <pre><code># Via AWS Console ou CLI:
 # - Engine: PostgreSQL 15
 # - Instance: db.t3.micro (free tier)
@@ -7210,6 +8902,10 @@ jobs:
 </code></pre>
 
 <h4>2. Criar a instância EC2</h4>
+<div class="mapping-card">
+  <div class="label">Propósito — criar a EC2</div>
+  <p>Máquina onde o Node roda. Security group libera SSH (você) e a porta da API; mesma VPC do RDS.</p>
+</div>
 <pre><code># - AMI: Amazon Linux 2023
 # - Instance type: t3.micro (free tier)
 # - Key pair: criar nova (stockflow-key.pem)
@@ -7258,6 +8954,10 @@ pm2 startup  # configura auto-start no reboot
 
 <h4>4. Workflow de deploy automático</h4>
 
+<div class="mapping-card">
+  <div class="label">Propósito — deploy.yml</div>
+  <p>Depois do CI verde, conecta na EC2 e atualiza o código (pull, build, PM2).</p>
+</div>
 <p class="file-path">.github/workflows/deploy.yml</p>
 <pre><code>name: Deploy to AWS
 
@@ -7300,6 +9000,24 @@ jobs:
   <p>A StockFlow vai virar um <strong>SaaS</strong>. Uma das ofertas futuras é IA no sistema: o lojista conversa com o produto (chat ou assistente) e recebe ajuda sobre estoque, pedidos e o que repor. Esta seção existe só para não esquecer. Nada disso entra no código agora.</p>
 </div>
 
+<p>Mapa do que você vai criar ou editar nesta seção. Zero arquivo agora. Auth, Swagger, Postman, Redis e deploy fecham o POC.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Arquivo</th>
+      <th>Novo?</th>
+      <th>Propósito</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>—</td>
+      <td>Nenhum</td>
+      <td>Chat / assistente no SaaS futuro. Não implemente nesta API.</td>
+    </tr>
+  </tbody>
+</table>
+
 <p>Quando o produto comercial existir, vale pensar em:</p>
 <ul>
   <li><strong>Chat no painel</strong> — perguntas em linguagem simples (“o que está acabando esta semana?”) com resposta baseada nos dados da loja.</li>
@@ -7321,6 +9039,7 @@ jobs:
 
 <table>
   <tr><th>#</th><th>Tarefa</th><th>Seção</th></tr>
+  <tr><td>☐</td><td>Ler vocabulário OOP (class, implements, extends, generics, abstract, private, constructor, props, super)</td><td>OOP</td></tr>
   <tr><td>☐</td><td>Criar projeto NestJS + configuração de ambiente</td><td>2</td></tr>
   <tr><td>☐</td><td>Classe base Entity + ProductEntity com testes</td><td>3</td></tr>
   <tr><td>☐</td><td>SupplierEntity com testes</td><td>3</td></tr>
@@ -7393,6 +9112,7 @@ jobs:
   const STORAGE_KEY = 'stockflow-progress-v1'
 
   const groups = {
+    oop:   { total: 4 },
     sec2:  { total: 5 },
     sec3:  { total: 5 },
     sec4:  { total: 4 },
