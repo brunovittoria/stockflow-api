@@ -86,6 +86,154 @@
       color: var(--accent);
     }
 
+    .sidebar-header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: var(--bg-card);
+      padding-bottom: 8px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-search {
+      position: relative;
+      margin: 0 16px 12px;
+    }
+
+    .sidebar-search input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 9px 36px 9px 12px;
+      outline: none;
+    }
+
+    .sidebar-search-results a .sidebar-search-snippet {
+      display: block;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      margin-top: 4px;
+    }
+
+    .sidebar-search-results a .sidebar-search-snippet mark {
+      background: rgba(108, 92, 231, 0.35);
+      color: var(--accent-light);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    .search-hit {
+      outline: 2px solid var(--accent-light);
+      outline-offset: 6px;
+      border-radius: 6px;
+      animation: search-hit-flash 1.8s ease;
+    }
+
+    @keyframes search-hit-flash {
+      0% { background-color: rgba(108, 92, 231, 0.28); }
+      100% { background-color: transparent; }
+    }
+
+    .sidebar-search input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .sidebar-search input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.18);
+    }
+
+    .sidebar-search kbd {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      pointer-events: none;
+    }
+
+    .sidebar-search input:focus + kbd,
+    .sidebar-search.is-active kbd {
+      display: none;
+    }
+
+    .sidebar-search-results {
+      margin: 0 16px 8px;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+    }
+
+    .sidebar-search-results[hidden] {
+      display: none;
+    }
+
+    .sidebar-search-results a,
+    .sidebar-search-results .sidebar-search-empty {
+      display: block;
+      padding: 8px 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      border-left: none !important;
+    }
+
+    .sidebar-search-results a {
+      color: var(--text);
+    }
+
+    .sidebar-search-results a:hover,
+    .sidebar-search-results a.is-focused {
+      background: rgba(108, 92, 231, 0.14);
+      color: var(--accent-light);
+    }
+
+    .sidebar-search-results a small {
+      display: block;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 2px;
+    }
+
+    .sidebar-search-empty {
+      color: var(--text-muted);
+    }
+
+    .sidebar a.nav-hidden,
+    .sidebar .section-label.nav-hidden {
+      display: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     /* ── Main Content ── */
     .main {
       margin-left: 320px;
@@ -314,6 +462,50 @@
 
     .challenge-card li {
       margin-bottom: 4px;
+    }
+
+    .recap-card {
+      background: rgba(129, 236, 236, 0.06);
+      border: 1px solid rgba(129, 236, 236, 0.28);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 32px 0 40px;
+    }
+
+    .recap-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cyan);
+      margin-bottom: 10px;
+    }
+
+    .recap-card h4 {
+      margin: 16px 0 8px;
+      font-size: 15px;
+    }
+
+    .recap-card p {
+      color: var(--text-muted);
+      margin: 0 0 8px;
+    }
+
+    .recap-card ul {
+      margin: 6px 0 10px;
+      padding-left: 22px;
+    }
+
+    .recap-card li {
+      margin-bottom: 4px;
+    }
+
+    .recap-card .mermaid-wrap {
+      margin-bottom: 0;
+    }
+
+    .mermaid-wrap.recap .mermaid {
+      height: 300px;
     }
 
     /* ── Tables ── */
@@ -845,7 +1037,23 @@
 
 <!-- ══════════════════════════════════════════ SIDEBAR ══════════════════════════════════════════ -->
 <nav class="sidebar">
-  <div class="sidebar-title">📦 StockFlow API</div>
+  <div class="sidebar-header">
+    <div class="sidebar-title">📦 StockFlow API</div>
+    <div class="sidebar-search" id="sidebar-search">
+      <label class="visually-hidden" for="doc-search">Buscar no guia</label>
+      <input
+        type="search"
+        id="doc-search"
+        placeholder="Buscar texto ou código…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-controls="doc-search-results"
+        aria-expanded="false"
+      >
+      <kbd>/</kbd>
+    </div>
+    <div id="doc-search-results" class="sidebar-search-results" hidden role="listbox" aria-label="Resultados da busca"></div>
+  </div>
 
   <a href="#progresso" class="sidebar-progress-pill" id="sidebar-pill">
     <span id="sidebar-pill-text">0% concluído</span>
@@ -1470,6 +1678,44 @@
   <tr><td>AWS (EC2 + RDS)</td><td>Deploy em produção</td></tr>
 </table>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Introdução</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>A StockFlow é uma API de gestão de loja: produtos, fornecedores, estoque e pedidos de compra.</li>
+    <li>O POC aplica Clean Architecture + DDD com NestJS, Prisma, PostgreSQL, Auth0, Swagger e testes.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Nenhum arquivo ainda — só o mapa do produto, da stack e do que o curso vira neste domínio.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Tudo que vem depois (entidade, use case, controller, Prisma, cache, deploy) é uma fatia desta mesma API. O cliente fala HTTP; o núcleo do negócio não sabe de Nest nem de Postgres.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  U["Lojista / Postman"] --> API["NestJS HTTP"]
+  API --> UC["Use cases"]
+  UC --> ENT["Entidades"]
+  UC --> REPO["Repositórios"]
+  REPO --> PG["PostgreSQL"]
+style U fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style API fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style ENT fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style REPO fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ TYPESCRIPT OOP ══════════════════════════════ -->
 <h2 id="oop">TypeScript OOP — o vocabulário deste projeto</h2>
 
@@ -1975,6 +2221,42 @@ flowchart TB
 
 <p>Se uma linha do guia parecer ruído (<code>E extends Entity&lt;any&gt;</code>), volte nesta seção. A regra de negócio (“SKU único”, “preço &gt; custo”) mora <em>dentro</em> desses molde — o TypeScript só é o idioma.</p>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — TypeScript OOP</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>class, constructor, super, extends, implements, abstract, generics, private e props são o idioma dos arquivos da StockFlow.</li>
+    <li>constructor monta a peça; super chama o pai (Entity, validador, repositório in-memory).</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Vocabulário e mapa de onde cada palavra aparece no código — sem criar módulo novo.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Sem isso a Seção 3 (ProductEntity extends Entity) e a Seção 5 (repositório implements interface) ficam ilegíveis. OOP é o idioma; DDD é o porquê das pastas.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart TB
+  Entity["abstract Entity&lt;Props&gt;"] --> PE["ProductEntity"]
+  UCInt["interface UseCase&lt;In,Out&gt;"] --> CUP["CreateProductUseCase"]
+  RepoInt["interface ProductRepository"] --> IM["InMemory / Prisma"]
+style Entity fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PE fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style UCInt fill:#14352c,stroke:#00b894,color:#e1e4ed
+style CUP fill:#14352c,stroke:#00b894,color:#e1e4ed
+style RepoInt fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style IM fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ DDD EM LINGUAGEM SIMPLES ══════════════════════════════ -->
 <h2 id="ddd-simples">DDD — Entendendo as Camadas de Verdade</h2>
 
@@ -2205,6 +2487,42 @@ INFRAESTRUTURA pode importar de todos
   <p>Quando for escrever um código e não souber onde colocar, se pergunte: <strong>"Isso é uma regra do negócio ou um detalhe técnico?"</strong> Regra do negócio (ex: "não pode deletar fornecedor com pedidos ativos") → domínio. Detalhe técnico (ex: "salvar no PostgreSQL", "receber via HTTP POST") → infraestrutura. Coordenar os dois → aplicação.</p>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — DDD em linguagem simples</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Domínio = regras do negócio. Aplicação = orquestra. Infra = HTTP, Nest, Prisma, Redis.</li>
+    <li>A pergunta-guia: regra de negócio ou detalhe técnico?</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Modelo mental das três camadas — ainda sem pastas no disco.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Quando você criar ProductEntity (domínio), CreateProductUseCase (aplicação) e ProductsController (infra), cada um mora numa camada. Trocar Prisma por outro ORM não deve mexer na entidade.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  HTTP["Controller HTTP"] --> UC["Use case"]
+  UC --> ENT["Entidade + regras"]
+  UC --> IF["interface Repository"]
+  IMPL["Prisma / InMemory"] -.->|"implements"| IF
+style HTTP fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style ENT fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style IF fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style IMPL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ ARCHITECTURE ══════════════════════════════ -->
 <h2 id="architecture">Clean Architecture e DDD — O Modelo Mental</h2>
 
@@ -2307,6 +2625,46 @@ flowchart TB
 <div class="mapping-card">
   <div class="label">🔗 Mapeamento curso → POC</div>
   <p>No curso, tudo fica dentro de <code>src/users/</code>. Na POC, você vai replicar a mesma estrutura para cada módulo (<code>products/</code>, <code>suppliers/</code>, etc.), mas o código compartilhado fica em <code>src/shared/</code>. Isso ensina a lidar com <strong>múltiplos módulos</strong> — algo que o curso com um único módulo não cobre.</p>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Clean Architecture — pastas</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Cada módulo (products, suppliers, stock, purchase-orders) tem domain / application / infrastructure.</li>
+    <li>shared/ guarda Entity, UseCase, repositório base, env, Prisma, pipes e cache.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Árvore de pastas e o mapeamento curso (um módulo users) → POC (vários módulos + shared).</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O request entra em infrastructure, desce para application e toca o domain. Infra implementa o que o domain só declara (repositório). Auth e Redis também nascem em shared/infrastructure.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart TB
+  subgraph mod["products / suppliers / stock / orders"]
+    D["domain/"]
+    A["application/"]
+    I["infrastructure/"]
+  end
+  S["shared/"] --> D
+  S --> A
+  S --> I
+style D fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style A fill:#14352c,stroke:#00b894,color:#e1e4ed
+style I fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style S fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style mod fill:#161822,stroke:#2a2d3e,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ ENTITIES MAP ══════════════════════════════ -->
@@ -2543,6 +2901,42 @@ interface PurchaseOrderProps {
   updatedAt?: Date
 }
 </code></pre>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Mapa de entidades</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Quatro agregados: Supplier, Product, Stock, PurchaseOrder (com items).</li>
+    <li>Produto nasce com estoque zerado; pedido entregue sobe quantidade.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Referência visual das relações — as classes completas vêm na Seção 3.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Toda rota da API lê ou muda uma dessas entidades. Use cases cruzam módulos (CreateProduct também cria Stock; ReceiveDelivery muda pedido e estoque).</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  SUP["Supplier"] --> PRO["Product"]
+  PRO --> STK["Stock"]
+  SUP --> PO["PurchaseOrder"]
+  PRO --> PO
+  PO -->|"DELIVERED"| STK
+style SUP fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PRO fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style STK fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PO fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════ RULES ══════════════════════════════ -->
 <h2 id="rules">Regras de Negócio</h2>
@@ -2882,6 +3276,39 @@ flowchart TB
   <tr><td>7</td><td>DELIVERED atualiza estoque automaticamente</td><td>UseCase ReceiveDelivery</td></tr>
   <tr><td>8</td><td>totalCost é calculado (soma de quantity × unitCost)</td><td>Entidade PurchaseOrder</td></tr>
 </table>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Regras de negócio</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>SKU único, preço &gt; custo, CNPJ único, estoque crítico, transições DRAFT/SENT/DELIVERED/CANCELLED.</li>
+    <li>Regra mora na entidade ou no use case — nunca no controller.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Catálogo das regras que os testes e o Postman vão exercitar depois.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O controller só recebe HTTP. Se o preço for menor que o custo, quem recusa é o CreateProductUseCase. Se o pedido já foi entregue, quem recusa o cancel é a entidade.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  C["Controller"] -->|"sem regra"| UC["Use case"]
+  UC -->|"orquestra"| E["Entidade"]
+  E -->|"invariantes"| E
+style C fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style E fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════ FLOW DE USECASES ══════════════════════════════ -->
 <h2 id="usecase-flow">Flow de Usecases</h2>
@@ -4378,6 +4805,44 @@ style usuario fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
   <p>Não há use case HTTP para marcar o pedido como <code>SENT</code> (só o método <code>send()</code> na entidade). Sem isso, <code>receive-delivery</code> não roda em pedidos recém-criados (nascem DRAFT). Também não há use case de venda — o estoque só sobe na entrega; não desce por venda ao cliente.</p>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Flow de use cases</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>O pipeline comum: Guard → Pipe Zod → Controller → Use case → Entidade → Repositório → Presenter → WrapperData.</li>
+    <li>Em teste, o módulo troca Prisma por InMemory — o use case não muda.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Diagramas por rota (produto, estoque, pedido). É o mapa de leitura do resto do guia.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Cada seção seguinte preenche um nó deste pipeline: 3–4 domínio, 5–6 persistência abstrata e orquestração, 7 HTTP, 8–9 banco, 12–15 testes, auth e docs, Redis um atalho no GET.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  G["AuthGuard"] --> P["Zod Pipe"]
+  P --> C["Controller"]
+  C --> UC["Use case"]
+  UC --> R["Repository"]
+  UC --> PR["Presenter"]
+style G fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style P fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style C fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style R fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PR fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 2 ══════════════════════════════ -->
 <h2 id="sec2">Seção 2 — Criando o Projeto</h2>
 
@@ -4770,6 +5235,40 @@ describe('EnvConfigService', () =&gt; {
   <p>Vantagem: type inference automática com <code>z.infer&lt;typeof schema&gt;</code> — você define o schema uma vez e o TypeScript infere o tipo. Zero duplicação de tipos.</p>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 2 — Projeto e env</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>NestJS sobe a app; EnvConfigModule centraliza variáveis; Zod valida o .env na subida.</li>
+    <li>Um único lugar para PORT, DATABASE_URL, Auth0, Redis.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Projeto Nest, EnvConfigService + testes, schema Zod de ambiente.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Toda infra (Prisma, Auth0, Redis) lê config daqui. Sem isso cada módulo inventaria process.env solto.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  ENV[".env"] --> ZOD["schema Zod"]
+  ZOD --> CFG["EnvConfigService"]
+  CFG --> APP["AppModule / Prisma / Auth / Redis"]
+style ENV fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style ZOD fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style CFG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style APP fill:#14352c,stroke:#00b894,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 3 ══════════════════════════════ -->
 <h2 id="sec3">Seção 3 — Implementando Entidades</h2>
 
@@ -5120,6 +5619,42 @@ describe('ProductEntity', () =&gt; {
     <li><code>DRAFT → CANCELLED</code> ou <code>SENT → CANCELLED</code>: método <code>cancel()</code> — não pode cancelar se já foi entregue</li>
     <li><code>totalCost</code> é calculado automaticamente no construtor: soma de <code>quantity × unitCost</code> de cada item</li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 3 — Entidades</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Entity base gera UUID e guarda props. ProductEntity (e as outras) estende e expõe getters + métodos de mudança.</li>
+    <li>Regras de ciclo de vida do pedido e isCritical do estoque moram na entidade.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>entity.ts + ProductEntity + specs; desafio: Supplier, Stock, PurchaseOrder.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Use cases só chamam métodos da entidade e persistem. O controller nunca instancia ProductEntity direto com dados HTTP crus — passa pelo use case.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart TB
+  BASE["shared Entity&lt;Props&gt;"] --> P["ProductEntity"]
+  BASE --> S["SupplierEntity"]
+  BASE --> K["StockEntity"]
+  BASE --> O["PurchaseOrderEntity"]
+style BASE fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style P fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style S fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style K fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style O fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 4 ══════════════════════════════ -->
@@ -5481,6 +6016,40 @@ export class EntityValidationError extends Error {
   </ol>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 4 — Validação no domínio</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Zod no domínio (não class-validator). Schema + Validator + Factory por entidade.</li>
+    <li>validate() no constructor e em todo update — dado inválido não entra na entidade.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>ProductValidator integrado; desafio: validators de Supplier, Stock e PurchaseOrder.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Há duas portas de validação: DTO/Zod na borda HTTP (Seção 7) e schema da entidade no domínio. A HTTP protege o formato do request; a do domínio protege o estado do negócio mesmo se o use case for chamado sem HTTP (teste, outro entrypoint).</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  HTTP["DTO Zod no pipe"] --> UC["Use case"]
+  UC --> ENT["Entidade"]
+  ENT --> V["XxxValidator / schema Zod"]
+style HTTP fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style ENT fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style V fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 5 ══════════════════════════════ -->
 <h2 id="sec5">Seção 5 — Repository Pattern</h2>
 
@@ -5705,6 +6274,40 @@ export class ProductInMemoryRepository
 <div class="mapping-card">
   <div class="label">🏋️ Seu desafio</div>
   <p>Crie os repositórios InMemory para <code>SupplierEntity</code>, <code>StockEntity</code> e <code>PurchaseOrderEntity</code>, seguindo o mesmo padrão. Cada um terá métodos específicos (ex: <code>SupplierRepository.findByCnpj()</code>, <code>StockRepository.findCriticalStock()</code>).</p>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 5 — Repository Pattern</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>O domínio declara a interface. InMemory implementa para teste. Prisma (Seção 9) implementa para produção.</li>
+    <li>SearchParams / SearchResult padronizam lista paginada.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Contratos + InMemorySearchable + ProductInMemoryRepository; desafio: os outros três.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O use case depende só da interface. No teste unitário injeta InMemory; no Nest de verdade injeta Prisma. Mesma regra de SKU único nos dois mundos.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  UC["CreateProductUseCase"] --> IF["ProductRepository"]
+  IM["InMemory"] -.-> IF
+  PR["Prisma — Seção 9"] -.-> IF
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style IF fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style IM fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PR fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 6 ══════════════════════════════ -->
@@ -5992,6 +6595,44 @@ describe('CreateProductUseCase', () =&gt; {
     <tr><td>Stock</td><td>GetStock, UpdateStock, ListCriticalStock</td></tr>
     <tr><td>PurchaseOrders</td><td>CreatePurchaseOrder, GetPurchaseOrder, ListPurchaseOrders, CancelPurchaseOrder, ReceiveDelivery</td></tr>
   </table>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 6 — Casos de uso</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Use case = uma ação do lojista. Recebe Input, devolve Output, orquestra repositórios e entidades.</li>
+    <li>CreateProduct também cria Stock; ReceiveDelivery altera pedido e estoque.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>CreateProduct (+ specs); tabela de todos os use cases dos quatro módulos.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>É o miolo da API. Controller (7) só chama execute(). Auth (14) só deixa entrar. Cache (Redis) só evita repetir um GET que já passou daqui.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  IN["Input"] --> UC["UseCase.execute"]
+  UC --> E["Entidade"]
+  UC --> R1["ProductRepo"]
+  UC --> R2["StockRepo"]
+  UC --> OUT["Output"]
+style IN fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style E fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style R1 fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style R2 fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style OUT fill:#14352c,stroke:#00b894,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 7 ══════════════════════════════ -->
@@ -6350,6 +6991,42 @@ export class ProductsModule {}
     <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
     <li>O Presenter define seu próprio type local (não depende do type de um use case específico)</li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 7 — NestJS (HTTP)</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Controller, DTO Zod, ZodValidationPipe, Module com useFactory + inject do repositório.</li>
+    <li>Nest é detalhe: o use case não importa @Controller.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Camada HTTP de Products (DTOs, controller, module, presenters); desafio: os outros módulos.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>É a porta de entrada. Postman e Swagger (15) descrevem estas rotas. O Guard (14) senta na frente delas. O use case que você já escreveu não muda.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  REQ["HTTP"] --> PIPE["ZodValidationPipe"]
+  PIPE --> CTL["ProductsController"]
+  CTL --> UC["CreateProductUseCase"]
+  MOD["ProductsModule"] -->|"inject Repo"| UC
+style REQ fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style PIPE fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style CTL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style MOD fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 8 ══════════════════════════════ -->
@@ -6733,6 +7410,40 @@ npx prisma db seed
 
 <p>Após rodar, abra o DBeaver, clique com o botão direito na tabela <strong>suppliers</strong> → <strong>Refresh</strong> e verá os dados inseridos.</p>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 8 — Prisma + PostgreSQL</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Docker sobe o banco. schema.prisma é o contrato das tabelas. PrismaService é o client no Nest.</li>
+    <li>Seed popula fornecedor, produto (com stock) e um pedido DRAFT.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>docker-compose, schema, migration, PrismaService, seed.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Ainda ninguém lê o banco pelos use cases — isso é a Seção 9. Aqui o disco (Postgres) passa a existir para a infra plugar.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  DC["docker-compose"] --> PG["PostgreSQL"]
+  SCH["schema.prisma"] -->|"migrate"| PG
+  PS["PrismaService"] --> PG
+style DC fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style SCH fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PS fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 9 ══════════════════════════════ -->
 <h2 id="sec9">Seção 9 — Repositório Prisma</h2>
 
@@ -6979,6 +7690,44 @@ export class ProductPrismaRepository implements ProductRepository {
     <li>No <code>StockPrismaRepository</code>, o método <code>findBelowMinQuantity</code> usa um filtro Prisma com campo calculado — use <code>prisma.$queryRaw</code> ou compare campos diretamente: <code>where: { quantity: { lt: prisma.stock.fields.minQuantity } }</code> não funciona; o mais simples é buscar todos e filtrar em memória, ou usar <code>prisma.$queryRaw</code></li>
     <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 9 — Repositório Prisma</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>ModelMapper: linha do Prisma → entidade de domínio (com o id que a entidade já tinha).</li>
+    <li>Em runtime o Module injeta PrismaRepository no lugar do InMemory.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>ProductPrismaRepository + mapper; desafio: Supplier, Stock, PurchaseOrder.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Fecha o ciclo da Seção 5: a interface não mudou. Teste unitário continua InMemory. E2E e a API real usam Postgres. O use case não importa Prisma.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  UC["Use case"] --> IF["XxxRepository"]
+  PR["XxxPrismaRepository"] -.-> IF
+  PR --> MAP["ModelMapper.toEntity"]
+  MAP --> ENT["Entidade"]
+  PR --> PG["PostgreSQL"]
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style IF fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PR fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style MAP fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style ENT fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÕES 10-11 ══════════════════════════════ -->
@@ -7276,6 +8025,40 @@ describe('ProductPrismaRepository integration tests', () =&gt; {
     <li>O <code>setup-prisma-tests.ts</code> precisa usar o <code>PrismaPg</code> adapter (Prisma 7) — assim como o <code>PrismaService</code></li>
     <li>A ordem do <code>cleanDatabase</code> importa: delete <code>purchaseOrderItem</code> → <code>purchaseOrder</code> → <code>stock</code> → <code>product</code> → <code>supplier</code> (respeitando FKs)</li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seções 10 e 11 — Integração Prisma</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Teste de integração fala com Postgres de verdade. cleanDatabase no beforeEach, ordem das FKs.</li>
+    <li>Cobre insert/find/update e findBy* do contrato.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>setup-prisma-tests + specs do ProductPrismaRepository; desafio: os outros repositórios.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Garante que o mapper e o SQL não mentem. O use case unitário não pega bug de include: items. O E2E (12) ainda sobe HTTP por cima disto.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  J["Jest"] --> SPEC["*.prisma.repository.spec"]
+  SPEC --> REPO["PrismaRepository"]
+  REPO --> TDB["stockflow_test_db"]
+style J fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style SPEC fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style REPO fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style TDB fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 12 ══════════════════════════════ -->
@@ -7675,6 +8458,42 @@ describe('ProductsController e2e tests', () =&gt; {
   </ul>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 12 — Testes E2E</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Supertest bate na app Nest completa: pipe, filter, interceptor, Prisma.</li>
+    <li>applyGlobalConfig deixa o teste igual à produção (WrapperData, exceptions).</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>E2E de products; desafio: suppliers, stock, purchase-orders.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>É o teste do sistema como o Postman vê. Auth (14) vai exigir token (ou mock do Guard no CI). Redis não precisa estar no E2E para a API responder.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  ST["Supertest"] --> APP["Nest app"]
+  APP --> CTL["Controller"]
+  CTL --> UC["Use case"]
+  UC --> PG["Postgres teste"]
+style ST fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style APP fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style CTL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style PG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 13 ══════════════════════════════ -->
 <h2 id="sec13">Seção 13 — Presenters</h2>
 
@@ -7904,6 +8723,40 @@ async search(
     <li>No Stock, deixe os campos de paginação opcionais (<code>?</code>) para a lista crítica funcionar no mesmo <code>StockCollectionPresenter</code></li>
     <li>Use sempre <code>@/</code> nos imports — nunca caminhos relativos com <code>../</code></li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 13 — Presenters</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Presenter escolhe o JSON do cliente. CollectionPresenter + PaginationPresenter nas listas.</li>
+    <li>Nunca devolver a entidade nem o Output cru do use case.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>ProductPresenter / CollectionPresenter; desafio: os outros módulos.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Fecha a saída do pipeline: use case → presenter → WrapperData { data }. Swagger (15) documenta esses campos com @ApiProperty no presenter.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  UC["Use case Output"] --> PR["XxxPresenter"]
+  PR --> W["WrapperData"]
+  W --> JSON["JSON HTTP"]
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style PR fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style W fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style JSON fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 14 ══════════════════════════════ -->
@@ -8272,6 +9125,42 @@ await request(server).get('/products').expect(401)
     <li>O interceptor <code>WrapperData</code> continua igual — Auth0 não devolve <code>accessToken</code> pela sua API</li>
     <li>Use sempre <code>@/</code> nos imports</li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 14 — Auth0</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>A API é resource server: valida JWT (JWKS, issuer, audience). Auth0 emite o token.</li>
+    <li>Não há POST /login nem bcrypt neste POC (fluxo M2M / Client Credentials).</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>JwtStrategy, AuthModule, @UseGuards nas rotas de negócio; E2E/Postman com token.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O Guard é o primeiro nó do pipeline. Sem token válido o use case nem roda. Health fica de fora. Redis e Prisma não conhecem Auth0.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  CL["Postman"] --> A0["Auth0 /oauth/token"]
+  A0 --> JWT["access_token"]
+  JWT --> G["AuthGuard JWT"]
+  G --> CTL["Controllers"]
+style CL fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style A0 fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style JWT fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style G fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style CTL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 15 ══════════════════════════════ -->
@@ -9038,6 +9927,41 @@ if (id) pm.environment.set('supplier_id', id)
     <li>Client secret só no environment, tipo secret</li>
     <li>Use <code>@/</code> nos imports do <code>main.ts</code></li>
   </ul>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 15 — Swagger + Postman</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Swagger em /docs descreve a API. Postman é o catálogo executável (OAuth + pastas).</li>
+    <li>Ordem de teste: health → 401 → supplier → product → stock → order.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>DocumentBuilder, @ApiProperty, collection e environment StockFlow Local.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>Não muda regra de negócio. Só torna visível e repetível o que as Seções 7–14 já fizeram. O checklist de endpoints é o roteiro manual do E2E.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  DEV["Você"] --> SW["/docs Swagger"]
+  DEV --> PM["Collection Postman"]
+  SW --> API["Mesmas rotas Nest"]
+  PM --> API
+style DEV fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style SW fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style PM fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style API fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ REDIS ══════════════════════════════ -->
@@ -10722,6 +11646,46 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </div>
 
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Redis — Cache</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>Cache-aside: GET tenta Redis; miss vai no Postgres e SET com TTL. Write faz DEL / SCAN do prefixo.</li>
+    <li>CacheProvider no application; implementação na infra. Redis caído não derruba a API.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Docker Redis, env, node-redis, cache nos GETs de produto/estoque, invalidação nos writes, testes do segundo GET.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>É um atalho na frente do repositório, não um banco novo. O use case continua dono da regra. Auth e presenter não mudam. MCP só inspeciona chaves (PING, TTL, GET).</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  GET["GET /products/:id"] --> CACHE["CacheProvider"]
+  CACHE -->|"hit"| OUT["Presenter"]
+  CACHE -->|"miss"| REPO["ProductRepository"]
+  REPO --> PG["PostgreSQL"]
+  PG --> CACHE
+  W["PUT / DELETE"] --> DEL["invalidate keys"]
+style GET fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style CACHE fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style OUT fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style REPO fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+style PG fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style W fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style DEL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ SEÇÃO 16 ══════════════════════════════ -->
 <h2 id="sec16">Seção 16 — CI/CD e Deploy na AWS</h2>
 
@@ -10937,6 +11901,42 @@ jobs:
   <p>Vá em <strong>Settings → Secrets and Variables → Actions</strong> do repositório e adicione: <code>EC2_HOST</code> (IP público da EC2) e <code>EC2_SSH_KEY</code> (conteúdo do arquivo .pem). Nunca commite credenciais.</p>
 </div>
 
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Seção 16 — CI/CD + AWS</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>CI no GitHub Actions (lint/test). Deploy na EC2 + RDS; migrate deploy; PM2.</li>
+    <li>Secrets (SSH, host) ficam no GitHub — nunca no repo.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Workflows de CI e deploy; Postgres de produção no RDS (Redis de prod é decisão posterior).</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O mesmo binário Nest que você testou no E2E sobe na AWS. Auth0 e Swagger continuam iguais; só mudam URLs e env. Cache Redis em prod é o mesmo padrão da seção anterior, outro host.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  GH["push main"] --> CI["GitHub Actions"]
+  CI --> SSH["EC2 via SSH"]
+  SSH --> APP["Nest + PM2"]
+  APP --> RDS["RDS PostgreSQL"]
+style GH fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style CI fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style SSH fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style APP fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+style RDS fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ BÔNUS — IA ══════════════════════════════ -->
 <h2 id="sec-bonus-ia">Bônus — IA no produto (SaaS)</h2>
 
@@ -10973,6 +11973,38 @@ jobs:
 <div class="warning-card">
   <div class="label">⚠️ Escopo</div>
   <p>Auth, Swagger, Postman e deploy fecham o POC. IA fica para o produto comercial: dado do cliente, custo por conversa e o que a IA pode ou não fazer. Detalhe técnico, outro momento.</p>
+</div>
+
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — Bônus — IA no SaaS</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>IA no produto (chat / assistente de estoque) é oferta futura, não deste POC.</li>
+    <li>Quando existir, deve falar com os mesmos use cases — não furar Prisma direto.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Só o lembrete no guia. Zero arquivo agora.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>O lojista do futuro pergunta “o que repor?”; a resposta passa por ListCriticalStock e pedidos, não por um SQL solto. Auth, cache e regras já estarão prontos.</p>
+  <div class="diagram-legend" aria-label="Legenda das camadas">
+    <span class="dl-user">CLIENTE</span>
+    <span class="dl-infra">INFRA</span>
+    <span class="dl-app">APLICAÇÃO</span>
+    <span class="dl-domain">DOMÍNIO</span>
+  </div>
+  <div class="mermaid-wrap recap short">
+    <div class="mermaid">
+flowchart LR
+  CHAT["Chat / assistente"] --> UC["Use cases existentes"]
+  UC --> DOM["Estoque e pedidos"]
+style CHAT fill:#2a2438,stroke:#a29bfe,color:#e1e4ed
+style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+style DOM fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════ CHECKLIST FINAL ══════════════════════════════ -->
@@ -11311,6 +12343,231 @@ jobs:
       }, 1800)
     })
   })
+
+  // ── Busca no guia ──
+  const searchInput = document.getElementById('doc-search')
+  const searchWrap = document.getElementById('sidebar-search')
+  const searchResults = document.getElementById('doc-search-results')
+  if (!searchInput || !searchWrap || !searchResults) {
+    /* busca indisponível */
+  } else {
+  const navItems = Array.from(document.querySelectorAll('.sidebar > a[href^="#"]:not(.sidebar-progress-pill), .sidebar .section-label ~ a[href^="#"]'))
+    .filter(a => !a.classList.contains('sidebar-progress-pill'))
+  const navLabels = Array.from(document.querySelectorAll('.sidebar .section-label'))
+
+  const normalizeSearch = (value) =>
+    (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
+  const escapeHtml = (value) =>
+    String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+
+  const blockKind = (el) => {
+    if (el.tagName === 'H2') return 'Seção'
+    if (el.tagName === 'H3' || el.tagName === 'H4') return 'Tópico'
+    if (el.tagName === 'PRE' || el.classList.contains('file-path')) return 'Código'
+    return 'Texto'
+  }
+
+  const contentIndex = []
+  let currentSectionId = ''
+  let currentSectionTitle = 'Guia'
+  document.querySelectorAll('.main h2, .main h3, .main h4, .main p, .main li, .main td, .main .file-path, .main pre').forEach((el) => {
+    if (el.closest('.mermaid-wrap')) return
+    if (el.tagName === 'H2') {
+      currentSectionId = el.id || ''
+      currentSectionTitle = (el.textContent || '').replace(/\s+/g, ' ').trim() || 'Guia'
+    }
+    const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()
+    if (text.length < 2) return
+    contentIndex.push({
+      el,
+      id: el.id || currentSectionId,
+      sectionId: currentSectionId,
+      section: currentSectionTitle,
+      text,
+      norm: normalizeSearch(text),
+      kind: blockKind(el),
+    })
+  })
+
+  const snippetAround = (text, query) => {
+    const norm = normalizeSearch(text)
+    const idx = norm.indexOf(query)
+    if (idx < 0) return escapeHtml(text.slice(0, 140))
+    const start = Math.max(0, idx - 42)
+    const end = Math.min(text.length, idx + query.length + 56)
+    const slice = `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`
+    const safe = escapeHtml(slice)
+    const raw = text.slice(start, end)
+    const rawNorm = normalizeSearch(raw)
+    const local = rawNorm.indexOf(query)
+    if (local < 0) return safe
+    const before = escapeHtml(raw.slice(0, local))
+    const match = escapeHtml(raw.slice(local, local + query.length))
+    const after = escapeHtml(raw.slice(local + query.length))
+    return `${start > 0 ? '…' : ''}${before}<mark>${match}</mark>${after}${end < text.length ? '…' : ''}`
+  }
+
+  const findMatches = (query) => {
+    if (query.length < 2) return []
+    const scored = []
+    contentIndex.forEach((item) => {
+      const pos = item.norm.indexOf(query)
+      if (pos < 0) return
+      let score = 40
+      if (item.kind === 'Seção') score = 100
+      else if (item.kind === 'Tópico') score = 90
+      else if (item.kind === 'Código') score = 70
+      if (pos === 0) score += 8
+      scored.push({ item, pos, score })
+    })
+    scored.sort((a, b) => b.score - a.score || a.pos - b.pos)
+    const seen = new Set()
+    return scored.filter(({ item }) => {
+      if (seen.has(item.el)) return false
+      seen.add(item.el)
+      return true
+    }).slice(0, 25)
+  }
+
+  let focusedResult = -1
+
+  const setSearchOpen = (open) => {
+    searchWrap.classList.toggle('is-active', open)
+    searchInput.setAttribute('aria-expanded', open ? 'true' : 'false')
+  }
+
+  const clearNavFilter = () => {
+    navItems.forEach((link) => link.classList.remove('nav-hidden'))
+    navLabels.forEach((label) => label.classList.remove('nav-hidden'))
+  }
+
+  const filterNav = (query, matches) => {
+    if (!query) {
+      clearNavFilter()
+      return
+    }
+    const sectionIds = new Set((matches || []).map(({ item }) => item.sectionId).filter(Boolean))
+    navItems.forEach((link) => {
+      const hrefId = (link.getAttribute('href') || '').slice(1)
+      const match = normalizeSearch(link.textContent).includes(query) || sectionIds.has(hrefId)
+      link.classList.toggle('nav-hidden', !match)
+    })
+    navLabels.forEach((label) => {
+      let next = label.nextElementSibling
+      let hasVisible = false
+      while (next && !next.classList.contains('section-label')) {
+        if (next.matches('a[href^="#"]') && !next.classList.contains('nav-hidden') && !next.classList.contains('sidebar-progress-pill')) {
+          hasVisible = true
+          break
+        }
+        next = next.nextElementSibling
+      }
+      label.classList.toggle('nav-hidden', !hasVisible)
+    })
+  }
+
+  const renderSearchResults = (query) => {
+    focusedResult = -1
+    if (!query) {
+      searchResults.hidden = true
+      searchResults.innerHTML = ''
+      setSearchOpen(false)
+      return []
+    }
+
+    const matches = findMatches(query)
+
+    if (!matches.length) {
+      searchResults.hidden = false
+      searchResults.innerHTML = '<div class="sidebar-search-empty">Nenhum resultado</div>'
+      setSearchOpen(true)
+      return matches
+    }
+
+    searchResults.hidden = false
+    searchResults.innerHTML = matches.map(({ item }, index) => {
+      const label = `${item.kind} · ${escapeHtml(item.section)}`
+      const title = item.kind === 'Seção' || item.kind === 'Tópico'
+        ? escapeHtml(item.text)
+        : snippetAround(item.text, query)
+      return `<a role="option" data-index="${index}" href="#">` +
+        `<small>${label}</small>${title}</a>`
+    }).join('')
+
+    searchResults.querySelectorAll('a').forEach((link) => {
+      const { item } = matches[Number(link.dataset.index)]
+      link.addEventListener('click', (event) => {
+        event.preventDefault()
+        document.querySelectorAll('.search-hit').forEach((hit) => hit.classList.remove('search-hit'))
+        const target = item.el.closest('.code-block') || item.el
+        target.classList.add('search-hit')
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (item.id) {
+          history.replaceState(null, '', '#' + item.id)
+        }
+      })
+    })
+    setSearchOpen(true)
+    return matches
+  }
+
+  const resultLinks = () => Array.from(searchResults.querySelectorAll('a'))
+
+  const moveFocus = (delta) => {
+    const links = resultLinks()
+    if (!links.length) return
+    focusedResult = (focusedResult + delta + links.length) % links.length
+    links.forEach((link, i) => link.classList.toggle('is-focused', i === focusedResult))
+    links[focusedResult].scrollIntoView({ block: 'nearest' })
+  }
+
+  searchInput.addEventListener('input', () => {
+    const query = normalizeSearch(searchInput.value)
+    const matches = renderSearchResults(query)
+    filterNav(query, matches)
+  })
+
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveFocus(1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveFocus(-1)
+    } else if (event.key === 'Enter') {
+      const links = resultLinks()
+      const target = links[focusedResult] || links[0]
+      if (target) {
+        event.preventDefault()
+        target.click()
+      }
+    } else if (event.key === 'Escape') {
+      searchInput.value = ''
+      document.querySelectorAll('.search-hit').forEach((hit) => hit.classList.remove('search-hit'))
+      filterNav('')
+      renderSearchResults('')
+      searchInput.blur()
+    }
+  })
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
+    const tag = (event.target && event.target.tagName) || ''
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return
+    event.preventDefault()
+    searchInput.focus()
+    searchInput.select()
+  })
+  }
 </script>
 
 </body>
