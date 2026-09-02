@@ -2,14 +2,17 @@ import { ListCriticalStockUseCase } from '@/stock/application/usecases/list-crit
 import { StockInMemoryRepository } from '@/stock/infrastructure/database/in-memory/stock-in-memory.repository'
 import { StockDataBuilder } from '@/stock/domain/testing/helpers/stock-data-builder'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('ListCriticalStockUseCase', () => {
   let sut: ListCriticalStockUseCase.UseCase
   let repository: StockInMemoryRepository
+  let cache: InMemoryCacheProvider
 
   beforeEach(() => {
     repository = new StockInMemoryRepository()
-    sut = new ListCriticalStockUseCase.UseCase(repository)
+    cache = new InMemoryCacheProvider()
+    sut = new ListCriticalStockUseCase.UseCase(repository, cache)
   })
 
   it('should return empty list when no critical stocks exist', async () => {
@@ -70,5 +73,20 @@ describe('ListCriticalStockUseCase', () => {
     expect(item).toHaveProperty('isCritical')
     expect(item).not.toHaveProperty('props')
     expect(item).not.toHaveProperty('addQuantity')
+  })
+
+  it('should not call the repository on the second execute (cache hit)', async () => {
+    await repository.insert(
+      new StockEntity(StockDataBuilder({ quantity: 1, minQuantity: 10 })),
+    )
+    const findBelowMinQuantitySpy = jest.spyOn(
+      repository,
+      'findBelowMinQuantity',
+    )
+
+    await sut.execute({})
+    await sut.execute({})
+
+    expect(findBelowMinQuantitySpy).toHaveBeenCalledTimes(1)
   })
 })

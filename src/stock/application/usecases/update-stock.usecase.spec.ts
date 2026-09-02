@@ -3,6 +3,7 @@ import { StockInMemoryRepository } from '@/stock/infrastructure/database/in-memo
 import { StockDataBuilder } from '@/stock/domain/testing/helpers/stock-data-builder'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('UpdateStockUseCase', () => {
   let sut: UpdateStockUseCase.UseCase
@@ -10,7 +11,10 @@ describe('UpdateStockUseCase', () => {
 
   beforeEach(() => {
     repository = new StockInMemoryRepository()
-    sut = new UpdateStockUseCase.UseCase(repository)
+    sut = new UpdateStockUseCase.UseCase(
+      repository,
+      new InMemoryCacheProvider(),
+    )
   })
 
   it('should update all editable fields of a stock', async () => {

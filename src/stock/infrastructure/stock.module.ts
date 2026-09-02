@@ -8,6 +8,10 @@ import {
   ListCriticalStockUseCase,
 } from '@/stock/application/usecases'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
 
 @Module({
   controllers: [StocksController],
@@ -20,20 +24,21 @@ import { StockRepository } from '@/stock/domain/repositories/stock.repository'
     },
     {
       provide: GetStockUseCase.UseCase,
-      useFactory: (repo: StockRepository) => new GetStockUseCase.UseCase(repo),
-      inject: ['StockRepository'],
+      useFactory: (repo: StockRepository, cache: CacheProvider) =>
+        new GetStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
     },
     {
       provide: UpdateStockUseCase.UseCase,
-      useFactory: (repo: StockRepository) =>
-        new UpdateStockUseCase.UseCase(repo),
-      inject: ['StockRepository'],
+      useFactory: (repo: StockRepository, cache: CacheProvider) =>
+        new UpdateStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
     },
     {
       provide: ListCriticalStockUseCase.UseCase,
-      useFactory: (repo: StockRepository) =>
-        new ListCriticalStockUseCase.UseCase(repo),
-      inject: ['StockRepository'],
+      useFactory: (repo: StockRepository, cache: CacheProvider) =>
+        new ListCriticalStockUseCase.UseCase(repo, cache),
+      inject: ['StockRepository', CACHE_PROVIDER],
     },
   ],
 })

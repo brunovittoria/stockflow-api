@@ -10147,7 +10147,7 @@ style API fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   <p>Esta seção é um tutorial: o código <strong>não</strong> está no repositório. Você copia do guia para o projeto.</p>
   <ul>
     <li><strong>Arquivo NOVO</strong> — o snippet é o arquivo inteiro. Crie o caminho e cole.</li>
-    <li><strong>Arquivo que JÁ EXISTE</strong> — o snippet é a versão <em>depois</em> da alteração (arquivo completo), para você não ter que adivinhar imports e construtores.</li>
+    <li><strong>Arquivo que JÁ EXISTE</strong> — o snippet é <em>só o trecho que muda</em> (imports, construtor, fluxo de cache). O resto do arquivo permanece como está.</li>
     <li>Cada arquivo tem um bloco <strong>Propósito</strong>: por que ele existe, em uma frase. Leia isso antes de colar.</li>
     <li>Depois de cada grupo de arquivos, rode os testes daquele pedaço (<code>pnpm test -- get-product</code>, etc.).</li>
   </ul>
@@ -10230,9 +10230,20 @@ style API fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
       <td>O Nest não “adivinha” o construtor. O <code>useFactory</code> precisa injetar o cache junto com o repositório.</td>
     </tr>
     <tr>
-      <td><code>*.usecase.spec.ts</code> + spec do cache in-memory</td>
+      <td>
+        <code>get-product.usecase.spec.ts</code>,
+        <code>list-products.usecase.spec.ts</code>,
+        <code>create-product.usecase.spec.ts</code>,
+        <code>update-product.usecase.spec.ts</code>,
+        <code>delete-product.usecase.spec.ts</code>,
+        <code>get-stock.usecase.spec.ts</code>,
+        <code>list-critical-stock.usecase.spec.ts</code>,
+        <code>update-stock.usecase.spec.ts</code>,
+        <code>receive-delivery.usecase.spec.ts</code>
+        + spec novo do cache in-memory
+      </td>
       <td>Editar / novo</td>
-      <td>Construtor agora pede cache: passe <code>InMemoryCacheProvider</code>. Extra: segundo GET não chama o banco.</td>
+      <td>Construtor agora pede cache: passe <code>InMemoryCacheProvider</code>. Nos GETs (produto, estoque, crítico): segundo <code>execute</code> não chama o repositório.</td>
     </tr>
   </tbody>
 </table>
@@ -10247,23 +10258,8 @@ style API fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   <p>Orquestra processos na sua máquina. O serviço <code>postgres</code> já existia (disco, fonte da verdade). O serviço <code>redis</code> é o processo em RAM. O volume <code>redisdata</code> guarda o dump se você reiniciar o container — útil no estudo; em produção o cache pode ser efêmero.</p>
 </div>
 
-<p class="file-path">docker-compose.yml — arquivo completo depois da alteração</p>
-<pre><code>version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: stockflow-db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - '${POSTGRES_PORT}:5432'
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  redis:
+<p class="file-path">docker-compose.yml — trecho novo (serviço redis + volume)</p>
+<pre><code>  redis:
     image: redis:7-alpine
     container_name: stockflow-redis
     ports:
@@ -10272,9 +10268,9 @@ services:
       - redisdata:/data
 
 volumes:
-  pgdata:
   redisdata:
 </code></pre>
+<p>O serviço <code>postgres</code> e o volume <code>pgdata</code> não mudam. Só acrescente o bloco <code>redis</code> em <code>services</code> e <code>redisdata</code> em <code>volumes</code>.</p>
 
 <div class="mapping-card">
   <div class="label">Propósito — subir o Redis</div>
@@ -10301,113 +10297,43 @@ REDIS_PORT=6379
   <div class="label">Propósito — env-config.interface.ts</div>
   <p>Contrato: “quem implementa configuração precisa saber devolver host e porta do Redis”. O use case de cache não importa Zod nem <code>process.env</code>.</p>
 </div>
-<p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts — arquivo completo</p>
-<pre><code>export interface EnvConfig {
-  getPort(): number
-  getNodeEnv(): string
-  getDatabaseUrl(): string
-  getAuth0Domain(): string
-  getAuth0Audience(): string
-  getRedisHost(): string
+<p class="file-path">src/shared/infrastructure/env-config/env-config.interface.ts — trechos</p>
+<pre><code>  getRedisHost(): string
   getRedisPort(): number
-}
 </code></pre>
+<p>Acrescente esses dois métodos no final da interface. Os getters de porta, Node, banco e Auth0 não mudam.</p>
 
 <div class="mapping-card">
   <div class="label">Propósito — env-config.module.ts</div>
   <p>Valida o <code>.env</code> na subida da API. Se faltar <code>DATABASE_URL</code> o app nem arranca. <code>REDIS_HOST</code> e <code>REDIS_PORT</code> têm default (<code>localhost</code> / <code>6379</code>) para o clone local não exigir linha extra — mas você ainda deve colocá-las nos arquivos, para ficar explícito.</p>
 </div>
-<p class="file-path">src/shared/infrastructure/env-config/env-config.module.ts — arquivo completo</p>
-<pre><code>import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { EnvConfigService } from '@/shared/infrastructure/env-config/env-config.service'
-import { z } from 'zod'
-
-const envSchema = z.object({
-  PORT: z.coerce.number().default(3000),
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
-  DATABASE_URL: z.string().url(),
-  AUTH0_DOMAIN: z.string().min(1),
-  AUTH0_AUDIENCE: z.string().url(),
-  REDIS_HOST: z.string().min(1).default('localhost'),
+<p class="file-path">src/shared/infrastructure/env-config/env-config.module.ts — trechos</p>
+<pre><code>  REDIS_HOST: z.string().min(1).default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
-})
-
-export type EnvVars = z.infer&lt;typeof envSchema&gt;
-
-@Module({
-  imports: [
-    ConfigModule.forRoot({
-      validate: (config: Record&lt;string, unknown&gt;) =&gt; {
-        const parsed = envSchema.safeParse(config)
-
-        if (!parsed.success) {
-          const errors = parsed.error.format()
-          throw new Error(
-            `Invalid environment variables: ${JSON.stringify(errors)}`,
-          )
-        }
-
-        return parsed.data
-      },
-    }),
-  ],
-  providers: [EnvConfigService],
-  exports: [EnvConfigService],
-})
-export class EnvConfigModule {}
 </code></pre>
+<p>Acrescente as duas chaves no <code>envSchema</code> que já existe. O <code>@Module</code> e o <code>validate</code> não mudam.</p>
 
 <div class="mapping-card">
   <div class="label">Propósito — env-config.service.ts</div>
   <p>Implementação do contrato. É daqui que o <code>RedisCacheProvider</code> pergunta host e porta, em vez de espalhar <code>process.env.REDIS_HOST</code>.</p>
 </div>
-<p class="file-path">src/shared/infrastructure/env-config/env-config.service.ts — arquivo completo</p>
-<pre><code>import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { EnvConfig } from '@/shared/infrastructure/env-config/env-config.interface'
-
-@Injectable()
-export class EnvConfigService implements EnvConfig {
-  constructor(private configService: ConfigService) {}
-
-  getPort(): number {
-    return Number(this.configService.getOrThrow&lt;number&gt;('PORT'))
-  }
-
-  getNodeEnv(): string {
-    return this.configService.getOrThrow&lt;string&gt;('NODE_ENV')
-  }
-
-  getDatabaseUrl(): string {
-    return this.configService.getOrThrow&lt;string&gt;('DATABASE_URL')
-  }
-
-  getAuth0Domain(): string {
-    return this.configService.getOrThrow&lt;string&gt;('AUTH0_DOMAIN')
-  }
-
-  getAuth0Audience(): string {
-    return this.configService.getOrThrow&lt;string&gt;('AUTH0_AUDIENCE')
-  }
-
-  getRedisHost(): string {
+<p class="file-path">src/shared/infrastructure/env-config/env-config.service.ts — trechos</p>
+<pre><code>  getRedisHost(): string {
     return this.configService.getOrThrow&lt;string&gt;('REDIS_HOST')
   }
 
   getRedisPort(): number {
     return Number(this.configService.getOrThrow&lt;number&gt;('REDIS_PORT'))
   }
-}
 </code></pre>
+<p>Acrescente os dois getters na classe. Os outros métodos não mudam.</p>
 
 <div class="mapping-card">
   <div class="label">Propósito — env-config.service.spec.ts</div>
   <p>Garante que os getters existem e leem o que está no <code>.env.test</code>. Sem isso, um typo em <code>REDIS_HOST</code> só aparece quando a API sobe.</p>
 </div>
 <p>No spec que já existe, acrescente dois testes (não apague os outros):</p>
+<p class="file-path">src/shared/infrastructure/env-config/__tests__/env-config.service.spec.ts — trechos</p>
 <pre><code>  it('should return the Redis host', () =&gt; {
     expect(sut.getRedisHost()).toBe('localhost')
   })
@@ -10893,31 +10819,17 @@ export class RedisModule {}
   <div class="label">Propósito — app.module.ts (import do RedisModule)</div>
   <p>A raiz da aplicação. Sem este import, o token <code>CACHE_PROVIDER</code> não existe e o Nest quebra na hora de construir os use cases.</p>
 </div>
-<p class="file-path">src/app.module.ts — arquivo completo</p>
-<pre><code>import { Module } from '@nestjs/common'
-import { AppController } from '@/app.controller'
-import { AppService } from '@/app.service'
-import { AuthModule } from '@/auth/infrastructure/auth.module'
-import { ProductsModule } from '@/products/infrastructure/products.module'
-import { SuppliersModule } from '@/suppliers/infrastructure/suppliers.module'
-import { StockModule } from '@/stock/infrastructure/stock.module'
-import { PurchaseOrderModule } from '@/purchase-orders/infrastructure/purchase-order.module'
-import { RedisModule } from '@/shared/infrastructure/cache/redis.module'
+<p class="file-path">src/app.module.ts — trechos</p>
+<pre><code>import { RedisModule } from '@/shared/infrastructure/cache/redis.module'
 
 @Module({
   imports: [
     RedisModule,
     AuthModule,
-    ProductsModule,
-    SuppliersModule,
-    StockModule,
-    PurchaseOrderModule,
+    // ... os outros módulos que já existem
   ],
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule {}
 </code></pre>
+<p>Só o import e a primeira linha de <code>imports</code>. Controllers e providers do <code>AppModule</code> não mudam.</p>
 
 <h3>Passo 6 — Cache-aside no GetProduct e na lista</h3>
 
@@ -10933,21 +10845,12 @@ export class AppModule {}
   <div class="label">Propósito — get-product.usecase.ts</div>
   <p>Continua sendo a regra “buscar produto por id”. O cache é um atalho <em>depois</em> que o contrato da aplicação já está certo. O repositório continua a fonte da verdade no miss.</p>
 </div>
-<p class="file-path">src/products/application/usecases/get-product.usecase.ts — arquivo completo</p>
-<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
-import { ProductRepository } from '@/products/domain/repositories/product.repository'
-import { NotFoundError } from '@/shared/domain/errors/not-found-error'
-import { CacheProvider } from '@/shared/application/cache/cache-provider'
+<p class="file-path">src/products/application/usecases/get-product.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
-
-/**
- * GetProductUseCase
- *
- * Obtém os dados completos de um produto pelo seu ID.
- *
- * Regras de negócio aplicadas:
- *  - Lança NotFoundError se o produto não for encontrado
- *  - 404 não é gravado no cache
+</code></pre>
+<p>No JSDoc, acrescente a regra do 404 e o fluxo com cache:</p>
+<pre><code> *  - 404 não é gravado no cache
  *
  * Fluxo:
  *  1. Tenta ler product:{id} no cache
@@ -10955,117 +10858,61 @@ import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
  *  3. Miss → busca o produto pelo ID no repositório
  *  4. Lança NotFoundError se não existir
  *  5. Grava no cache com TTL e retorna os dados completos
- */
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace GetProductUseCase {
-  export interface Input {
-    id: string
-  }
-
-  export interface Output {
-    id: string
-    name: string
-    description: string
-    sku: string
-    price: number
-    costPrice: number
-    category: string
-    supplierId: string
-    isActive: boolean
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
-    constructor(
+</code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do get-product</div>
+  <p>O GET já recebia o repositório; agora recebe também o CacheProvider.</p>
+</div>
+<pre><code>    constructor(
       private productRepository: ProductRepository,
       private cache: CacheProvider,
     ) {}
-
-    async execute(input: Input): Promise&lt;Output&gt; {
-      const cacheKey = CacheKeys.product(input.id)
+</code></pre>
+<p>No início do <code>execute</code>, <strong>antes</strong> do <code>findById</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: hit no get-product</div>
+  <p>Se a chave existir, devolve e nem abre o Postgres.</p>
+</div>
+<pre><code>      const cacheKey = CacheKeys.product(input.id)
       const cached = await this.cache.get&lt;Output&gt;(cacheKey)
       if (cached) {
         return cached
       }
-
-      const product = await this.productRepository.findById(input.id)
-
-      if (!product) {
-        throw new NotFoundError(`Product not found for id ${input.id}`)
-      }
-
-      const output: Output = {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        sku: product.sku,
-        price: product.price,
-        costPrice: product.costPrice,
-        category: product.category,
-        supplierId: product.supplierId,
-        isActive: product.isActive,
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-      }
-
-      await this.cache.set(cacheKey, output, CacheTtl.product)
+</code></pre>
+<p>O <code>findById</code>, o <code>NotFoundError</code> e o mapeamento para <code>output</code> ficam iguais. Depois de montar o <code>output</code> e <strong>antes</strong> do <code>return</code>:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: miss no get-product</div>
+  <p>Grava o JSON com TTL. 404 nunca chega aqui — o throw já saiu.</p>
+</div>
+<pre><code>      await this.cache.set(cacheKey, output, CacheTtl.product)
       return output
-    }
-  }
-}
 </code></pre>
 
 <div class="mapping-card">
   <div class="label">Propósito — get-product.usecase.spec.ts</div>
   <p>Os testes antigos continuam válidos: o cache in-memory começa vazio, então o primeiro <code>execute</code> ainda vai no repositório. O teste novo prova o hit: o segundo <code>execute</code> <strong>não</strong> chama <code>findById</code>.</p>
 </div>
-<p class="file-path">src/products/application/usecases/get-product.usecase.spec.ts — arquivo completo</p>
-<pre><code>import { GetProductUseCase } from '@/products/application/usecases/get-product.usecase'
-import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
-import { NotFoundError } from '@/shared/domain/errors/not-found-error'
-import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
-import { ProductEntity } from '@/products/domain/entities/product.entity'
-import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
-
-describe('GetProductUseCase', () =&gt; {
-  let sut: GetProductUseCase.UseCase
-  let repository: ProductInMemoryRepository
-  let cache: InMemoryCacheProvider
+<p class="file-path">src/products/application/usecases/get-product.usecase.spec.ts — trechos</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+</code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: beforeEach do get-product spec</div>
+  <p>O construtor agora pede cache. In-memory: os testes antigos continuam verdes sem Docker.</p>
+</div>
+<pre><code>  let cache: InMemoryCacheProvider
 
   beforeEach(() =&gt; {
     repository = new ProductInMemoryRepository()
     cache = new InMemoryCacheProvider()
     sut = new GetProductUseCase.UseCase(repository, cache)
   })
-
-  it('should return a product by id', async () =&gt; {
-    const entity = new ProductEntity(ProductDataBuilder({}))
-    await repository.insert(entity)
-
-    const output = await sut.execute({ id: entity.id })
-
-    expect(output.id).toBe(entity.id)
-    expect(output.name).toBe(entity.name)
-    expect(output.description).toBe(entity.description)
-    expect(output.sku).toBe(entity.sku)
-    expect(output.price).toBe(entity.price)
-    expect(output.costPrice).toBe(entity.costPrice)
-    expect(output.category).toBe(entity.category)
-    expect(output.supplierId).toBe(entity.supplierId)
-    expect(output.isActive).toBe(entity.isActive)
-    expect(output.createdAt).toEqual(entity.createdAt)
-    expect(output.updatedAt).toEqual(entity.updatedAt)
-  })
-
-  it('should throw NotFoundError when product does not exist', async () =&gt; {
-    await expect(sut.execute({ id: 'non-existent-id' })).rejects.toThrow(
-      NotFoundError,
-    )
-  })
-
-  it('should not call the repository on the second execute (cache hit)', async () =&gt; {
+</code></pre>
+<p>Os testes de retorno e de NotFoundError não mudam. Acrescente um teste novo:</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: teste de cache hit</div>
+  <p>Prova o atalho: o segundo <code>execute</code> não chama <code>findById</code>.</p>
+</div>
+<pre><code>  it('should not call the repository on the second execute (cache hit)', async () =&gt; {
     const entity = new ProductEntity(ProductDataBuilder({}))
     await repository.insert(entity)
     const findByIdSpy = jest.spyOn(repository, 'findById')
@@ -11075,108 +10922,49 @@ describe('GetProductUseCase', () =&gt; {
 
     expect(findByIdSpy).toHaveBeenCalledTimes(1)
   })
-})
 </code></pre>
 
 <div class="mapping-card">
   <div class="label">Propósito — list-products.usecase.ts</div>
   <p>Mesma ideia do GET por id, mas a chave inclui os params da busca. TTL mais curto (60 s) porque a listagem muda o tempo todo (create/update/delete). Qualquer write de produto apaga o prefixo <code>products:list:</code>.</p>
 </div>
-<p class="file-path">src/products/application/usecases/list-products.usecase.ts — arquivo completo</p>
-<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
-import { ProductRepository } from '@/products/domain/repositories/product.repository'
-import {
-  SearchParams,
-  SearchResult,
-} from '@/shared/domain/repositories/repository-contracts'
-import { ProductEntity } from '@/products/domain/entities/product.entity'
-import { CacheProvider } from '@/shared/application/cache/cache-provider'
+<p class="file-path">src/products/application/usecases/list-products.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
-
-/**
- * ListProductsUseCase
- *
- * Lista produtos com suporte a filtro por nome, ordenação e paginação.
- *
- * Fluxo:
+</code></pre>
+<p>No JSDoc, atualize o fluxo:</p>
+<pre><code> * Fluxo:
  *  1. Monta a chave products:list:{params}
  *  2. Hit no cache → devolve sem ir ao repositório
  *  3. Miss → search() no repositório
  *  4. Mapeia entidades para output, grava no cache (TTL curto) e retorna
- */
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace ListProductsUseCase {
-  export type Input = SearchParams
-
-  export type ProductOutput = {
-    id: string
-    name: string
-    description: string
-    sku: string
-    price: number
-    costPrice: number
-    category: string
-    supplierId: string
-    isActive: boolean
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  export type Output = Omit&lt;SearchResult&lt;ProductOutput&gt;, 'items'&gt; &amp; {
-    items: ProductOutput[]
-  }
-
-  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
-    constructor(
+</code></pre>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do list-products</div>
+  <p>O list já recebia o repositório; agora recebe também o CacheProvider.</p>
+</div>
+<pre><code>    constructor(
       private productRepository: ProductRepository,
       private cache: CacheProvider,
     ) {}
-
-    async execute(input: Input): Promise&lt;Output&gt; {
-      const cacheKey = CacheKeys.productsList(input)
+</code></pre>
+<p>No início do <code>execute</code>, antes do <code>search</code>:</p>
+<pre><code>      const cacheKey = CacheKeys.productsList(input)
       const cached = await this.cache.get&lt;Output&gt;(cacheKey)
       if (cached) {
         return cached
       }
-
-      const result = await this.productRepository.search(input)
-
-      const output: Output = {
-        items: result.items.map((entity) =&gt; this.toOutput(entity)),
-        total: result.total,
-        currentPage: result.currentPage,
-        perPage: result.perPage,
-        lastPage: result.lastPage,
-      }
-
-      await this.cache.set(cacheKey, output, CacheTtl.productsList)
+</code></pre>
+<p>O <code>search</code> e o <code>toOutput</code> não mudam. Depois de montar o <code>output</code>:</p>
+<pre><code>      await this.cache.set(cacheKey, output, CacheTtl.productsList)
       return output
-    }
-
-    private toOutput(entity: ProductEntity): ProductOutput {
-      return {
-        id: entity.id,
-        name: entity.name,
-        description: entity.description,
-        sku: entity.sku,
-        price: entity.price,
-        costPrice: entity.costPrice,
-        category: entity.category,
-        supplierId: entity.supplierId,
-        isActive: entity.isActive,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      }
-    }
-  }
-}
 </code></pre>
 <p>No <code>list-products.usecase.spec.ts</code>, só mude o <code>beforeEach</code> (importe o in-memory cache):</p>
 <div class="mapping-card">
-  <div class="label">Propósito — ajuste do spec da listagem</div>
+  <div class="label">Propósito — list-products.usecase.spec.ts</div>
   <p>O construtor agora pede cache. Passe <code>InMemoryCacheProvider</code> para os testes antigos continuarem verdes.</p>
 </div>
+<p class="file-path">src/products/application/usecases/list-products.usecase.spec.ts — trechos</p>
 <pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 // dentro do beforeEach:
@@ -11257,9 +11045,10 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
 </code></pre>
 <p>No spec, o construtor ganha o terceiro argumento:</p>
 <div class="mapping-card">
-  <div class="label">Propósito — ajuste do spec de create</div>
+  <div class="label">Propósito — create-product.usecase.spec.ts</div>
   <p>Terceiro argumento: cache in-memory. Sem isto o TypeScript (e o runtime) quebram no construtor.</p>
 </div>
+<p class="file-path">src/products/application/usecases/create-product.usecase.spec.ts — trechos</p>
 <pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 sut = new CreateProductUseCase.UseCase(
@@ -11291,9 +11080,10 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
       await this.cache.delByPrefix(CachePrefix.productsList)
 </code></pre>
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: spec do update</div>
+  <div class="label">Propósito — update-product.usecase.spec.ts</div>
   <p>O construtor agora pede cache. InMemory nos testes — sem Docker.</p>
 </div>
+<p class="file-path">src/products/application/usecases/update-product.usecase.spec.ts — trechos</p>
 <pre><code>sut = new UpdateProductUseCase.UseCase(
   repository,
   new InMemoryCacheProvider(),
@@ -11322,9 +11112,10 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
       await this.cache.delByPrefix(CachePrefix.productsList)
 </code></pre>
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: spec do delete</div>
+  <div class="label">Propósito — delete-product.usecase.spec.ts</div>
   <p>Segundo argumento: InMemoryCacheProvider, igual aos outros writes.</p>
 </div>
+<p class="file-path">src/products/application/usecases/delete-product.usecase.spec.ts — trechos</p>
 <pre><code>sut = new DeleteProductUseCase.UseCase(
   repository,
   new InMemoryCacheProvider(),
@@ -11335,42 +11126,14 @@ import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
   <div class="label">Propósito — products.module.ts</div>
   <p>Aqui o Nest <em>monta</em> cada use case. O construtor mudou: agora pede <code>CacheProvider</code>. Se você alterar o use case e esquecer o <code>inject</code>, a API sobe com <code>undefined</code> no cache e explode no primeiro GET. O token é <code>CACHE_PROVIDER</code> (o RedisModule já exportou globalmente — não precisa importar RedisModule aqui).</p>
 </div>
-<p class="file-path">src/products/infrastructure/products.module.ts — arquivo completo</p>
-<pre><code>import { Module } from '@nestjs/common'
-import { ProductsController } from './controllers/products.controller'
-import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
-import { ProductPrismaRepository } from './database/prisma/product-prisma.repository'
-import { StockPrismaRepository } from '@/stock/infrastructure/database/prisma/stock-prisma.repository'
-import {
-  CreateProductUseCase,
-  GetProductUseCase,
-  ListProductsUseCase,
-  UpdateProductUseCase,
-  DeleteProductUseCase,
-} from '@/products/application/usecases'
-import { ProductRepository } from '@/products/domain/repositories/product.repository'
-import { StockRepository } from '@/stock/domain/repositories/stock.repository'
-import {
+<p class="file-path">src/products/infrastructure/products.module.ts — trechos</p>
+<pre><code>import {
   CACHE_PROVIDER,
   CacheProvider,
 } from '@/shared/application/cache/cache-provider'
-
-@Module({
-  controllers: [ProductsController],
-  providers: [
-    PrismaService,
-    {
-      provide: 'ProductRepository',
-      useFactory: (prisma: PrismaService) =&gt;
-        new ProductPrismaRepository(prisma),
-      inject: [PrismaService],
-    },
-    {
-      provide: 'StockRepository',
-      useFactory: (prisma: PrismaService) =&gt; new StockPrismaRepository(prisma),
-      inject: [PrismaService],
-    },
-    {
+</code></pre>
+<p>Em cada <code>useFactory</code> dos use cases, acrescente <code>cache: CacheProvider</code> no construtor e <code>CACHE_PROVIDER</code> no <code>inject</code>. O create já tinha dois repositórios — o cache é o terceiro:</p>
+<pre><code>    {
       provide: CreateProductUseCase.UseCase,
       useFactory: (
         productRepo: ProductRepository,
@@ -11385,28 +11148,8 @@ import {
         new GetProductUseCase.UseCase(repo, cache),
       inject: ['ProductRepository', CACHE_PROVIDER],
     },
-    {
-      provide: ListProductsUseCase.UseCase,
-      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
-        new ListProductsUseCase.UseCase(repo, cache),
-      inject: ['ProductRepository', CACHE_PROVIDER],
-    },
-    {
-      provide: UpdateProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
-        new UpdateProductUseCase.UseCase(repo, cache),
-      inject: ['ProductRepository', CACHE_PROVIDER],
-    },
-    {
-      provide: DeleteProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository, cache: CacheProvider) =&gt;
-        new DeleteProductUseCase.UseCase(repo, cache),
-      inject: ['ProductRepository', CACHE_PROVIDER],
-    },
-  ],
-})
-export class ProductsModule {}
 </code></pre>
+<p>Repita o padrão Get (repo + cache) em List, Update e Delete. PrismaService e os providers de repositório não mudam.</p>
 <p>Rode: <code>pnpm test -- products/application</code></p>
 
 <h3>Passo 8 — Estoque (GET :id e critical) + invalidar no update</h3>
@@ -11417,170 +11160,118 @@ export class ProductsModule {}
   <div class="label">Propósito — get-stock.usecase.ts</div>
   <p>Idem GetProduct: atalho de leitura. 404 não vai para o Redis.</p>
 </div>
-<p class="file-path">src/stock/application/usecases/get-stock.usecase.ts — arquivo completo</p>
-<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
-import { StockRepository } from '@/stock/domain/repositories/stock.repository'
-import { NotFoundError } from '@/shared/domain/errors'
-import { CacheProvider } from '@/shared/application/cache/cache-provider'
+<p class="file-path">src/stock/application/usecases/get-stock.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
-
-/**
- * GetStockUseCase
- *
- * Obtém os dados completos de um estoque existente.
- *
- * Regras de negócio aplicadas:
- *  - Lança NotFoundError se o estoque não for encontrado
- *  - 404 não é gravado no cache
- *
- * Fluxo:
- *  1. Tenta ler stock:{id} no cache
- *  2. Hit → devolve sem ir ao repositório
- *  3. Miss → busca no repositório
- *  4. Lança NotFoundError se não existir
- *  5. Grava no cache com TTL e retorna
- */
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace GetStockUseCase {
-  export interface Input {
-    id: string
-  }
-
-  export interface Output {
-    id: string
-    productId: string
-    location: string
-    quantity: number
-    minQuantity: number
-    isActive: boolean
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
-    constructor(
+</code></pre>
+<p>No JSDoc, acrescente a regra do 404 e o fluxo com cache (igual ao GetProduct, com chave <code>stock:{id}</code>).</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do get-stock</div>
+  <p>O GET já recebia o repositório; agora recebe também o CacheProvider.</p>
+</div>
+<pre><code>    constructor(
       private stockRepository: StockRepository,
       private cache: CacheProvider,
     ) {}
-
-    async execute(input: Input): Promise&lt;Output&gt; {
-      const cacheKey = CacheKeys.stock(input.id)
+</code></pre>
+<p>No início do <code>execute</code>, <strong>antes</strong> do <code>findById</code>:</p>
+<pre><code>      const cacheKey = CacheKeys.stock(input.id)
       const cached = await this.cache.get&lt;Output&gt;(cacheKey)
       if (cached) {
         return cached
       }
-
-      const stock = await this.stockRepository.findById(input.id)
-
-      if (!stock) {
-        throw new NotFoundError(`Stock not found for id ${input.id}`)
-      }
-
-      const output: Output = {
-        id: stock.id,
-        productId: stock.productId,
-        location: stock.location,
-        quantity: stock.quantity,
-        minQuantity: stock.minQuantity,
-        isActive: stock.isActive,
-        createdAt: stock.createdAt,
-        updatedAt: stock.updatedAt,
-      }
-
-      await this.cache.set(cacheKey, output, CacheTtl.stock)
+</code></pre>
+<p>O <code>findById</code>, o <code>NotFoundError</code> e o mapeamento para <code>output</code> ficam iguais. Depois de montar o <code>output</code>:</p>
+<pre><code>      await this.cache.set(cacheKey, output, CacheTtl.stock)
       return output
-    }
-  }
-}
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">Propósito — get-stock.usecase.spec.ts</div>
+  <p>Os testes antigos continuam válidos com cache vazio. O teste novo prova o hit: o segundo <code>execute</code> não chama <code>findById</code>.</p>
+</div>
+<p class="file-path">src/stock/application/usecases/get-stock.usecase.spec.ts — trechos</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+</code></pre>
+<pre><code>  let cache: InMemoryCacheProvider
+
+  beforeEach(() =&gt; {
+    repository = new StockInMemoryRepository()
+    cache = new InMemoryCacheProvider()
+    sut = new GetStockUseCase.UseCase(repository, cache)
+  })
+</code></pre>
+<pre><code>  it('should not call the repository on the second execute (cache hit)', async () =&gt; {
+    const entity = new StockEntity(StockDataBuilder({}))
+    await repository.insert(entity)
+    const findByIdSpy = jest.spyOn(repository, 'findById')
+
+    await sut.execute({ id: entity.id })
+    await sut.execute({ id: entity.id })
+
+    expect(findByIdSpy).toHaveBeenCalledTimes(1)
+  })
 </code></pre>
 
 <div class="mapping-card">
   <div class="label">Propósito — list-critical-stock.usecase.ts</div>
   <p>Uma chave só (<code>stocks:critical</code>), porque não tem paginação. Barata de invalidar: qualquer write de quantidade dá <code>DEL</code> nela.</p>
 </div>
-<p class="file-path">src/stock/application/usecases/list-critical-stock.usecase.ts — arquivo completo</p>
-<pre><code>import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
-import { StockRepository } from '@/stock/domain/repositories/stock.repository'
-import { StockEntity } from '@/stock/domain/entities/stock.entity'
-import { CacheProvider } from '@/shared/application/cache/cache-provider'
+<p class="file-path">src/stock/application/usecases/list-critical-stock.usecase.ts — trechos</p>
+<pre><code>import { CacheProvider } from '@/shared/application/cache/cache-provider'
 import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
-
-/**
- * ListCriticalStockUseCase
- *
- * Lista todos os estoques cujo quantity &lt; minQuantity (estoque crítico).
- *
- * Regras de negócio aplicadas:
- *  - Estoque crítico é aquele onde quantity &lt; minQuantity
- *
- * Fluxo:
- *  1. Tenta ler stocks:critical no cache
- *  2. Hit → devolve
- *  3. Miss → findBelowMinQuantity(), mapeia, grava com TTL curto, retorna
- */
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace ListCriticalStockUseCase {
-  export type Input = Record&lt;string, never&gt;
-
-  export type StockOutput = {
-    id: string
-    productId: string
-    quantity: number
-    minQuantity: number
-    location: string
-    isActive: boolean
-    isCritical: boolean
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  export interface Output {
-    items: StockOutput[]
-    total: number
-  }
-
-  export class UseCase implements UseCaseInterface&lt;Input, Output&gt; {
-    constructor(
+</code></pre>
+<p>No JSDoc, atualize o fluxo (hit → miss → <code>findBelowMinQuantity</code> → grava TTL curto).</p>
+<div class="mapping-card">
+  <div class="label">Propósito — trecho: construtor do list-critical</div>
+  <p>O list crítico já recebia o repositório; agora recebe também o CacheProvider.</p>
+</div>
+<pre><code>    constructor(
       private stockRepository: StockRepository,
       private cache: CacheProvider,
     ) {}
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async execute(_input: Input): Promise&lt;Output&gt; {
-      const cacheKey = CacheKeys.stocksCritical()
+</code></pre>
+<p>No início do <code>execute</code>, antes do <code>findBelowMinQuantity</code>:</p>
+<pre><code>      const cacheKey = CacheKeys.stocksCritical()
       const cached = await this.cache.get&lt;Output&gt;(cacheKey)
       if (cached) {
         return cached
       }
-
-      const items = await this.stockRepository.findBelowMinQuantity()
-
-      const output: Output = {
-        items: items.map((entity) =&gt; this.toOutput(entity)),
-        total: items.length,
-      }
-
-      await this.cache.set(cacheKey, output, CacheTtl.stocksCritical)
+</code></pre>
+<p>O mapeamento <code>toOutput</code> não muda. Depois de montar o <code>output</code>:</p>
+<pre><code>      await this.cache.set(cacheKey, output, CacheTtl.stocksCritical)
       return output
-    }
+</code></pre>
 
-    private toOutput(entity: StockEntity): StockOutput {
-      return {
-        id: entity.id,
-        productId: entity.productId,
-        quantity: entity.quantity,
-        minQuantity: entity.minQuantity,
-        location: entity.location,
-        isActive: entity.isActive,
-        isCritical: entity.isCritical,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
-      }
-    }
-  }
-}
+<div class="mapping-card">
+  <div class="label">Propósito — list-critical-stock.usecase.spec.ts</div>
+  <p>Construtor com cache in-memory. Teste novo: o segundo <code>execute</code> não chama <code>findBelowMinQuantity</code>.</p>
+</div>
+<p class="file-path">src/stock/application/usecases/list-critical-stock.usecase.spec.ts — trechos</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+</code></pre>
+<pre><code>  let cache: InMemoryCacheProvider
+
+  beforeEach(() =&gt; {
+    repository = new StockInMemoryRepository()
+    cache = new InMemoryCacheProvider()
+    sut = new ListCriticalStockUseCase.UseCase(repository, cache)
+  })
+</code></pre>
+<pre><code>  it('should not call the repository on the second execute (cache hit)', async () =&gt; {
+    await repository.insert(
+      new StockEntity(StockDataBuilder({ quantity: 1, minQuantity: 10 })),
+    )
+    const findBelowMinQuantitySpy = jest.spyOn(
+      repository,
+      'findBelowMinQuantity',
+    )
+
+    await sut.execute({})
+    await sut.execute({})
+
+    expect(findBelowMinQuantitySpy).toHaveBeenCalledTimes(1)
+  })
 </code></pre>
 
 <div class="mapping-card">
@@ -11592,65 +11283,52 @@ export namespace ListCriticalStockUseCase {
 import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </code></pre>
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: construtor do create-product</div>
-  <p>O create já recebia produto+estoque; agora recebe também o CacheProvider.</p>
+  <div class="label">Propósito — trecho: construtor do update-stock</div>
+  <p>O update já recebia o repositório; agora recebe também o CacheProvider.</p>
 </div>
 <pre><code>    constructor(
       private stockRepository: StockRepository,
       private cache: CacheProvider,
     ) {}
 </code></pre>
-<p>Depois de <code>await this.stockRepository.update(stock)</code>:</p>
+<p>No JSDoc, acrescente no fluxo: invalidar <code>stock:{id}</code> e <code>stocks:critical</code> depois de persistir.</p>
+<p>Depois de <code>await this.stockRepository.update(stock)</code> e antes do <code>return</code>:</p>
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: invalidar no create</div>
-  <p>Depois de gravar produto+estoque no Postgres, apaga lista de produtos e estoque crítico.</p>
+  <div class="label">Propósito — trecho: invalidar no update-stock</div>
+  <p>Depois do UPDATE no banco, apaga o GET daquele estoque e o painel crítico.</p>
 </div>
 <pre><code>      await this.cache.del(CacheKeys.stock(stock.id))
       await this.cache.del(CacheKeys.stocksCritical())
 </code></pre>
-<p>Specs de estoque — mesmo padrão do produto, último argumento <code>new InMemoryCacheProvider()</code>:</p>
+
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: specs de estoque</div>
-  <p>Get, listagem crítica e update ganham o cache in-memory no construtor.</p>
+  <div class="label">Propósito — update-stock.usecase.spec.ts</div>
+  <p>O construtor agora pede cache. InMemory nos testes — sem Docker. Os testes de quantidade/NotFound não mudam.</p>
 </div>
-<pre><code>sut = new GetStockUseCase.UseCase(repository, new InMemoryCacheProvider())
-sut = new ListCriticalStockUseCase.UseCase(
-  repository,
-  new InMemoryCacheProvider(),
-)
-sut = new UpdateStockUseCase.UseCase(repository, new InMemoryCacheProvider())
+<p class="file-path">src/stock/application/usecases/update-stock.usecase.spec.ts — trechos</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+  beforeEach(() =&gt; {
+    repository = new StockInMemoryRepository()
+    sut = new UpdateStockUseCase.UseCase(
+      repository,
+      new InMemoryCacheProvider(),
+    )
+  })
 </code></pre>
 
 <div class="mapping-card">
   <div class="label">Propósito — stock.module.ts</div>
   <p>Mesmo papel do ProductsModule: o Nest precisa saber de onde sai o <code>cache</code> no construtor.</p>
 </div>
-<p class="file-path">src/stock/infrastructure/stock.module.ts — arquivo completo</p>
-<pre><code>import { Module } from '@nestjs/common'
-import { StocksController } from './controllers/stocks.controller'
-import { PrismaService } from '@/shared/infrastructure/database/prisma/prisma.service'
-import { StockPrismaRepository } from './database/prisma/stock-prisma.repository'
-import {
-  GetStockUseCase,
-  UpdateStockUseCase,
-  ListCriticalStockUseCase,
-} from '@/stock/application/usecases'
-import { StockRepository } from '@/stock/domain/repositories/stock.repository'
-import {
+<p class="file-path">src/stock/infrastructure/stock.module.ts — trechos</p>
+<pre><code>import {
   CACHE_PROVIDER,
   CacheProvider,
 } from '@/shared/application/cache/cache-provider'
-
-@Module({
-  controllers: [StocksController],
-  providers: [
-    PrismaService,
-    {
-      provide: 'StockRepository',
-      useFactory: (prisma: PrismaService) =&gt; new StockPrismaRepository(prisma),
-      inject: [PrismaService],
-    },
-    {
+</code></pre>
+<p>Em Get, Update e ListCritical, acrescente <code>cache</code> no factory e <code>CACHE_PROVIDER</code> no <code>inject</code>. PrismaService e o provider do repositório não mudam:</p>
+<pre><code>    {
       provide: GetStockUseCase.UseCase,
       useFactory: (repo: StockRepository, cache: CacheProvider) =&gt;
         new GetStockUseCase.UseCase(repo, cache),
@@ -11668,9 +11346,6 @@ import {
         new ListCriticalStockUseCase.UseCase(repo, cache),
       inject: ['StockRepository', CACHE_PROVIDER],
     },
-  ],
-})
-export class StockModule {}
 </code></pre>
 <p>Rode: <code>pnpm test -- stock/application</code></p>
 
@@ -11696,8 +11371,8 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
 </code></pre>
 <p>No loop, você já tem o <code>stock</code> atualizado. Acumule os ids e, <strong>depois</strong> de <code>await this.purchaseOrderRepo.update(order)</code>, apague o cache:</p>
 <div class="mapping-card">
-  <div class="label">Propósito — trecho: invalidar no create</div>
-  <p>Depois de gravar produto+estoque no Postgres, apaga lista de produtos e estoque crítico.</p>
+  <div class="label">Propósito — trecho: invalidar no receive-delivery</div>
+  <p>Depois de gravar as quantidades no Postgres, apaga cada <code>stock:{id}</code> tocado e o painel crítico.</p>
 </div>
 <pre><code>      const touchedStockIds: string[] = []
 
@@ -11722,12 +11397,14 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
       }
 </code></pre>
 <p>O <code>for</code> que já existe permanece — só acrescente <code>touchedStockIds.push(stock.id)</code> depois do <code>update</code> de cada estoque, e o bloco de invalidação depois do update do pedido.</p>
-<p>Spec:</p>
 <div class="mapping-card">
-  <div class="label">Propósito — ajuste do spec de receive-delivery</div>
+  <div class="label">Propósito — receive-delivery.usecase.spec.ts</div>
   <p>Terceiro argumento: cache. O spec continua InMemory; só o construtor mudou.</p>
 </div>
-<pre><code>sut = new ReceiveDeliveryUseCase.UseCase(
+<p class="file-path">src/purchase-orders/application/usecases/receive-delivery.usecase.spec.ts — trechos</p>
+<pre><code>import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
+
+sut = new ReceiveDeliveryUseCase.UseCase(
   purchaseOrderRepo,
   stockRepo,
   new InMemoryCacheProvider(),
@@ -11739,6 +11416,7 @@ import { CacheKeys } from '@/shared/application/cache/cache-keys'
   <p>Os outros use cases de pedido (create/get/list/cancel) <strong>não</strong> entram no cache deste POC. Só o receive mexe em estoque, então só ele ganha o terceiro parâmetro.</p>
 </div>
 <p>Troque <strong>somente</strong> o provider de <code>ReceiveDeliveryUseCase</code>:</p>
+<p class="file-path">src/purchase-orders/infrastructure/purchase-order.module.ts — trechos</p>
 <pre><code>import {
   CACHE_PROVIDER,
   CacheProvider,

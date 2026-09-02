@@ -3,14 +3,17 @@ import { StockInMemoryRepository } from '@/stock/infrastructure/database/in-memo
 import { StockDataBuilder } from '@/stock/domain/testing/helpers/stock-data-builder'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('GetStockUseCase', () => {
   let sut: GetStockUseCase.UseCase
   let repository: StockInMemoryRepository
+  let cache: InMemoryCacheProvider
 
   beforeEach(() => {
     repository = new StockInMemoryRepository()
-    sut = new GetStockUseCase.UseCase(repository)
+    cache = new InMemoryCacheProvider()
+    sut = new GetStockUseCase.UseCase(repository, cache)
   })
 
   it('should return a stock by id', async () => {
@@ -33,5 +36,16 @@ describe('GetStockUseCase', () => {
     await expect(sut.execute({ id: 'non-existent-id' })).rejects.toThrow(
       NotFoundError,
     )
+  })
+
+  it('should not call the repository on the second execute (cache hit)', async () => {
+    const entity = new StockEntity(StockDataBuilder({}))
+    await repository.insert(entity)
+    const findByIdSpy = jest.spyOn(repository, 'findById')
+
+    await sut.execute({ id: entity.id })
+    await sut.execute({ id: entity.id })
+
+    expect(findByIdSpy).toHaveBeenCalledTimes(1)
   })
 })

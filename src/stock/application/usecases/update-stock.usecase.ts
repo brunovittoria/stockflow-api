@@ -2,6 +2,8 @@ import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-c
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 import { NotFoundError } from '@/shared/domain/errors'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys } from '@/shared/application/cache/cache-keys'
 
 /**
  * UpdateStockUseCase
@@ -43,7 +45,10 @@ export namespace UpdateStockUseCase {
   }
 
   export class UseCase implements UseCaseInterface<Input, Output> {
-    constructor(private stockRepository: StockRepository) {}
+    constructor(
+      private stockRepository: StockRepository,
+      private cache: CacheProvider,
+    ) {}
 
     async execute(input: Input): Promise<Output> {
       const stock: StockEntity = await this.stockRepository.findById(input.id)
@@ -63,6 +68,9 @@ export namespace UpdateStockUseCase {
       }
 
       await this.stockRepository.update(stock)
+
+      await this.cache.del(CacheKeys.stock(stock.id))
+      await this.cache.del(CacheKeys.stocksCritical())
 
       return {
         id: stock.id,
