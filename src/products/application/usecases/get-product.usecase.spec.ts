@@ -3,14 +3,17 @@ import { ProductInMemoryRepository } from '@/products/infrastructure/database/in
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('GetProductUseCase', () => {
   let sut: GetProductUseCase.UseCase
   let repository: ProductInMemoryRepository
+  let cache: InMemoryCacheProvider
 
   beforeEach(() => {
     repository = new ProductInMemoryRepository()
-    sut = new GetProductUseCase.UseCase(repository)
+    cache = new InMemoryCacheProvider()
+    sut = new GetProductUseCase.UseCase(repository, cache)
   })
 
   it('should return a product by id', async () => {
@@ -36,5 +39,16 @@ describe('GetProductUseCase', () => {
     await expect(sut.execute({ id: 'non-existent-id' })).rejects.toThrow(
       NotFoundError,
     )
+  })
+
+  it('should not call the repository on the second execute (cache hit)', async () => {
+    const entity = new ProductEntity(ProductDataBuilder({}))
+    await repository.insert(entity)
+    const findByIdSpy = jest.spyOn(repository, 'findById')
+
+    await sut.execute({ id: entity.id })
+    await sut.execute({ id: entity.id })
+
+    expect(findByIdSpy).toHaveBeenCalledTimes(1)
   })
 })

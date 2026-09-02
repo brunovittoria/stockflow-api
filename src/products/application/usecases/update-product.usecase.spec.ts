@@ -3,6 +3,7 @@ import { ProductInMemoryRepository } from '@/products/infrastructure/database/in
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('UpdateProductUseCase', () => {
   let sut: UpdateProductUseCase.UseCase
@@ -10,7 +11,10 @@ describe('UpdateProductUseCase', () => {
 
   beforeEach(() => {
     repository = new ProductInMemoryRepository()
-    sut = new UpdateProductUseCase.UseCase(repository)
+    sut = new UpdateProductUseCase.UseCase(
+      repository,
+      new InMemoryCacheProvider(),
+    )
   })
 
   it('should update all editable fields of a product', async () => {

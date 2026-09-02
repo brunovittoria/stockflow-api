@@ -2,6 +2,8 @@ import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-c
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
 import { NotFoundError } from '@/shared/domain/errors'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
 
 /**
  * UpdateProductUseCase
@@ -47,7 +49,10 @@ export namespace UpdateProductUseCase {
   }
 
   export class UseCase implements UseCaseInterface<Input, Output> {
-    constructor(private productRepository: ProductRepository) {}
+    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
 
     async execute(input: Input): Promise<Output> {
       const product: ProductEntity = await this.productRepository.findById(
@@ -65,6 +70,9 @@ export namespace UpdateProductUseCase {
       product.updateCategory(input.category)
 
       await this.productRepository.update(product)
+
+      await this.cache.del(CacheKeys.product(product.id))
+      await this.cache.delByPrefix(CachePrefix.productsList)
 
       return {
         id: product.id,

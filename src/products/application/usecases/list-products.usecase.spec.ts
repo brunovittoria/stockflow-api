@@ -2,6 +2,7 @@ import { ListProductsUseCase } from '@/products/application/usecases/list-produc
 import { ProductInMemoryRepository } from '@/products/infrastructure/database/in-memory/product-in-memory.repository'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
 import { ProductEntity } from '@/products/domain/entities/product.entity'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('ListProductsUseCase', () => {
   let sut: ListProductsUseCase.UseCase
@@ -9,7 +10,10 @@ describe('ListProductsUseCase', () => {
 
   beforeEach(() => {
     repository = new ProductInMemoryRepository()
-    sut = new ListProductsUseCase.UseCase(repository)
+    sut = new ListProductsUseCase.UseCase(
+      repository,
+      new InMemoryCacheProvider(),
+    )
   })
 
   it('should return empty list when no products exist', async () => {

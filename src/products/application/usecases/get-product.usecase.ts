@@ -1,6 +1,8 @@
 import { UseCase as UseCaseInterface } from '@/shared/application/usecases/use-case'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { NotFoundError } from '@/shared/domain/errors/not-found-error'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CacheTtl } from '@/shared/application/cache/cache-keys'
 
 /**
  * GetProductUseCase
@@ -9,11 +11,14 @@ import { NotFoundError } from '@/shared/domain/errors/not-found-error'
  *
  * Regras de negócio aplicadas:
  *  - Lança NotFoundError se o produto não for encontrado
+ *  - 404 não é gravado no cache
  *
  * Fluxo:
- *  1. Busca o produto pelo ID no repositório
- *  2. Lança NotFoundError se não existir
- *  3. Retorna os dados completos do produto
+ *  1. Tenta ler product:{id} no cache
+ *  2. Hit → devolve o valor em cache (não consulta o repositório)
+ *  3. Miss → busca o produto pelo ID no repositório
+ *  4. Lança NotFoundError se não existir
+ *  5. Grava no cache com TTL e retorna os dados completos
  */
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -37,16 +42,25 @@ export namespace GetProductUseCase {
   }
 
   export class UseCase implements UseCaseInterface<Input, Output> {
-    constructor(private productRepository: ProductRepository) {}
+    constructor(
+      private productRepository: ProductRepository,
+      private cache: CacheProvider,
+    ) {}
 
     async execute(input: Input): Promise<Output> {
+      const cacheKey = CacheKeys.product(input.id)
+      const cached = await this.cache.get<Output>(cacheKey)
+      if (cached) {
+        return cached
+      }
+
       const product = await this.productRepository.findById(input.id)
 
       if (!product) {
         throw new NotFoundError(`Product not found for id ${input.id}`)
       }
 
-      return {
+      const output: Output = {
         id: product.id,
         name: product.name,
         description: product.description,
@@ -59,6 +73,9 @@ export namespace GetProductUseCase {
         createdAt: product.createdAt,
         updatedAt: product.updatedAt,
       }
+
+      await this.cache.set(cacheKey, output, CacheTtl.product)
+      return output
     }
   }
 }

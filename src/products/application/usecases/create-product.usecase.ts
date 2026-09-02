@@ -4,6 +4,8 @@ import { ProductRepository } from '@/products/domain/repositories/product.reposi
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
 import { ConflictError } from '@/shared/domain/errors/conflict-error'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys, CachePrefix } from '@/shared/application/cache/cache-keys'
 
 /**
  * CreateProductUseCase
@@ -25,6 +27,7 @@ import { ConflictError } from '@/shared/domain/errors/conflict-error'
  *  5. Cria o estoque inicial (quantity = 0) vinculado ao produto
  *  6. Persiste o estoque via repositório
  *  7. Retorna os dados do produto criado
+ *  8. Invalida o cache das listagens de produto e do estoque crítico
  */
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -59,6 +62,7 @@ export namespace CreateProductUseCase {
     constructor(
       private productRepository: ProductRepository,
       private stockRepository: StockRepository,
+      private cache: CacheProvider,
     ) {}
 
     async execute(input: Input): Promise<Output> {
@@ -90,6 +94,9 @@ export namespace CreateProductUseCase {
 
       // Persiste o estoque
       await this.stockRepository.insert(stock)
+
+      await this.cache.delByPrefix(CachePrefix.productsList)
+      await this.cache.del(CacheKeys.stocksCritical())
 
       return {
         id: product.id,

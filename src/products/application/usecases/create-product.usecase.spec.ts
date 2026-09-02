@@ -3,6 +3,7 @@ import { ProductInMemoryRepository } from '@/products/infrastructure/database/in
 import { StockInMemoryRepository } from '@/stock/infrastructure/database/in-memory/stock-in-memory.repository'
 import { ConflictError } from '@/shared/domain/errors/conflict-error'
 import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-data-builder'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 // ProductDataBuilder retorna apenas campos de produto (ProductProps).
 // location e minQuantity são campos de stock — sempre adicionados manualmente.
@@ -10,7 +11,11 @@ import { ProductDataBuilder } from '@/products/domain/testing/helpers/product-da
 const buildInput = (
   overrides: Partial<CreateProductUseCase.Input> = {},
 ): CreateProductUseCase.Input => {
-  const product = ProductDataBuilder({ price: 10000, costPrice: 5000, ...overrides })
+  const product = ProductDataBuilder({
+    price: 10000,
+    costPrice: 5000,
+    ...overrides,
+  })
   return {
     ...product,
     location: overrides.location ?? 'A1',
@@ -26,7 +31,11 @@ describe('CreateProductUseCase', () => {
   beforeEach(() => {
     productRepository = new ProductInMemoryRepository()
     stockRepository = new StockInMemoryRepository()
-    sut = new CreateProductUseCase.UseCase(productRepository, stockRepository)
+    sut = new CreateProductUseCase.UseCase(
+      productRepository,
+      stockRepository,
+      new InMemoryCacheProvider(),
+    )
   })
 
   it('should create a product', async () => {

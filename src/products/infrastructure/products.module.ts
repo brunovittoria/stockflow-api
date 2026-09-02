@@ -12,6 +12,10 @@ import {
 } from '@/products/application/usecases'
 import { ProductRepository } from '@/products/domain/repositories/product.repository'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
 
 @Module({
   controllers: [ProductsController],
@@ -29,37 +33,37 @@ import { StockRepository } from '@/stock/domain/repositories/stock.repository'
       inject: [PrismaService],
     },
     {
-      // CreateProduct agora depende de ambos os repositórios para criar o estoque inicial
       provide: CreateProductUseCase.UseCase,
       useFactory: (
         productRepo: ProductRepository,
         stockRepo: StockRepository,
-      ) => new CreateProductUseCase.UseCase(productRepo, stockRepo),
-      inject: ['ProductRepository', 'StockRepository'],
+        cache: CacheProvider,
+      ) => new CreateProductUseCase.UseCase(productRepo, stockRepo, cache),
+      inject: ['ProductRepository', 'StockRepository', CACHE_PROVIDER],
     },
     {
       provide: GetProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =>
-        new GetProductUseCase.UseCase(repo),
-      inject: ['ProductRepository'],
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =>
+        new GetProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
     },
     {
       provide: ListProductsUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =>
-        new ListProductsUseCase.UseCase(repo),
-      inject: ['ProductRepository'],
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =>
+        new ListProductsUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
     },
     {
       provide: UpdateProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =>
-        new UpdateProductUseCase.UseCase(repo),
-      inject: ['ProductRepository'],
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =>
+        new UpdateProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
     },
     {
       provide: DeleteProductUseCase.UseCase,
-      useFactory: (repo: ProductRepository) =>
-        new DeleteProductUseCase.UseCase(repo),
-      inject: ['ProductRepository'],
+      useFactory: (repo: ProductRepository, cache: CacheProvider) =>
+        new DeleteProductUseCase.UseCase(repo, cache),
+      inject: ['ProductRepository', CACHE_PROVIDER],
     },
   ],
 })

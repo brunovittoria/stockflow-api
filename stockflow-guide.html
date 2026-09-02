@@ -914,6 +914,154 @@
       transition: width 0.4s ease;
     }
 
+    .sidebar-bookmark {
+      margin: 0 16px 16px;
+      padding: 12px 14px;
+      background: rgba(253, 203, 110, 0.08);
+      border: 1px solid rgba(253, 203, 110, 0.28);
+      border-radius: 10px;
+    }
+
+    .sidebar-bookmark-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--orange);
+      margin-bottom: 6px;
+    }
+
+    .sidebar-bookmark-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      padding: 0 !important;
+      border-left: none !important;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-bookmark-title:hover {
+      color: var(--orange);
+      background: transparent !important;
+    }
+
+    .sidebar-bookmark-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .sidebar-bookmark-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sidebar-bookmark-actions button {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+      padding: 7px 10px;
+      border: 1px solid transparent;
+    }
+
+    #sidebar-bookmark-continue {
+      background: rgba(253, 203, 110, 0.18);
+      color: var(--orange);
+      border-color: rgba(253, 203, 110, 0.35);
+    }
+
+    #sidebar-bookmark-continue:hover {
+      background: rgba(253, 203, 110, 0.28);
+    }
+
+    #sidebar-bookmark-clear {
+      background: transparent;
+      color: var(--text-muted);
+      border-color: var(--border);
+    }
+
+    #sidebar-bookmark-clear:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .sidebar a.is-bookmarked {
+      color: var(--orange);
+    }
+
+    .sidebar a.is-bookmarked::after {
+      content: '📌';
+      float: right;
+      font-size: 11px;
+    }
+
+    h2[id].heading-with-pin,
+    h3.heading-with-pin,
+    h4.heading-with-pin {
+      position: relative;
+      padding-right: 158px;
+    }
+
+    h2.heading-pinned,
+    h3.heading-pinned,
+    h4.heading-pinned {
+      box-shadow: inset 4px 0 0 var(--orange);
+      padding-left: 16px;
+    }
+
+    .pin-btn {
+      position: absolute;
+      right: 0;
+      top: 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      z-index: 2;
+    }
+
+    .pin-btn:hover,
+    .pin-btn.is-active {
+      color: var(--orange);
+      border-color: rgba(253, 203, 110, 0.45);
+      background: rgba(253, 203, 110, 0.1);
+    }
+
+    .pin-btn svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    h3 .pin-btn,
+    h4 .pin-btn {
+      top: 2px;
+      padding: 5px 8px;
+    }
+
+    @media print {
+      .pin-btn,
+      .sidebar-bookmark { display: none !important; }
+      h2[id].heading-with-pin,
+      h3.heading-with-pin,
+      h4.heading-with-pin { padding-right: 0; }
+    }
+
     .mermaid-wrap {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -1061,6 +1209,16 @@
       <div class="sidebar-progress-mini-fill" id="sidebar-pill-bar" style="width:0%"></div>
     </div>
   </a>
+
+  <div class="sidebar-bookmark" id="sidebar-bookmark" hidden>
+    <div class="sidebar-bookmark-kicker">Ponto marcado</div>
+    <a href="#" class="sidebar-bookmark-title" id="sidebar-bookmark-title"></a>
+    <div class="sidebar-bookmark-meta" id="sidebar-bookmark-meta"></div>
+    <div class="sidebar-bookmark-actions">
+      <button type="button" id="sidebar-bookmark-continue">Continuar de onde parei</button>
+      <button type="button" id="sidebar-bookmark-clear">Limpar</button>
+    </div>
+  </div>
 
   <div class="section-label">Fundamentos</div>
   <a href="#intro">Introdução e Visão Geral</a>
@@ -12212,9 +12370,202 @@ style DOM fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
     })
   }
 
+  const BOOKMARK_KEY = 'stockflow-bookmark-v1'
+  const pinIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1V4H8v2h1z"/></svg>'
+
+  function loadBookmark() {
+    try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || 'null') }
+    catch { return null }
+  }
+
+  function saveBookmark(bookmark) {
+    if (!bookmark) localStorage.removeItem(BOOKMARK_KEY)
+    else localStorage.setItem(BOOKMARK_KEY, JSON.stringify(bookmark))
+  }
+
+  function headingTitle(el) {
+    const clone = el.cloneNode(true)
+    clone.querySelectorAll('.pin-btn').forEach(btn => btn.remove())
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim()
+  }
+
+  function slugifyHeading(text) {
+    return (text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 72)
+  }
+
+  function parentSectionId(el) {
+    let found = ''
+    document.querySelectorAll('.main h2[id]').forEach((h) => {
+      if (h === el) return
+      if (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        found = h.id
+      }
+    })
+    return found
+  }
+
+  function ensureHeadingId(el) {
+    if (el.id) return el.id
+    const section = parentSectionId(el)
+    const base = [section, slugifyHeading(headingTitle(el))].filter(Boolean).join('-') || 'secao'
+    let id = base
+    let n = 2
+    while (document.getElementById(id)) {
+      id = `${base}-${n++}`
+    }
+    el.id = id
+    return id
+  }
+
+  function bookmarkableHeadings() {
+    return Array.from(document.querySelectorAll('.main h2[id], .main h3, .main h4')).filter((el) => {
+      if (el.closest('.recap-card, .challenge-card, .mermaid-wrap')) return false
+      if (el.tagName === 'H2' || el.tagName === 'H3') return true
+      if (el.id) return true
+      return /^Passo\s/i.test((el.textContent || '').trim())
+    })
+  }
+
+  function bookmarkLabel(el) {
+    const title = headingTitle(el)
+    if (el.tagName === 'H2') return title
+    const section = document.getElementById(parentSectionId(el))
+    if (!section) return title
+    return `${headingTitle(section)} · ${title}`
+  }
+
+  function sidebarLinkForBookmark(id) {
+    const direct = document.querySelector(`.sidebar > a[href="#${id}"]`)
+    if (direct) return direct
+    const heading = document.getElementById(id)
+    if (!heading) return null
+    const sectionId = heading.tagName === 'H2' ? heading.id : parentSectionId(heading)
+    if (!sectionId) return null
+    return document.querySelector(`.sidebar > a[href="#${sectionId}"]`)
+  }
+
+  function scrollToBookmark(id) {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.classList.add('search-hit')
+    history.replaceState(null, '', '#' + id)
+    setTimeout(() => el.classList.remove('search-hit'), 1800)
+  }
+
+  function renderBookmark() {
+    const bookmark = loadBookmark()
+    const card = document.getElementById('sidebar-bookmark')
+    const titleLink = document.getElementById('sidebar-bookmark-title')
+    const meta = document.getElementById('sidebar-bookmark-meta')
+
+    document.querySelectorAll('.heading-pinned').forEach(h => h.classList.remove('heading-pinned'))
+    document.querySelectorAll('.pin-btn.is-active').forEach(btn => {
+      btn.classList.remove('is-active')
+      btn.setAttribute('aria-pressed', 'false')
+      const label = btn.querySelector('span')
+      if (label) label.textContent = 'Marcar ponto'
+    })
+    document.querySelectorAll('.sidebar a.is-bookmarked').forEach(a => a.classList.remove('is-bookmarked'))
+
+    if (!bookmark || !bookmark.id) {
+      if (card) card.hidden = true
+      return
+    }
+
+    const heading = document.getElementById(bookmark.id)
+    if (!heading) {
+      saveBookmark(null)
+      if (card) card.hidden = true
+      return
+    }
+
+    heading.classList.add('heading-pinned')
+    const pinBtn = heading.querySelector('.pin-btn')
+    if (pinBtn) {
+      pinBtn.classList.add('is-active')
+      pinBtn.setAttribute('aria-pressed', 'true')
+      const label = pinBtn.querySelector('span')
+      if (label) label.textContent = 'Ponto marcado'
+    }
+
+    const navLink = sidebarLinkForBookmark(bookmark.id)
+    if (navLink) navLink.classList.add('is-bookmarked')
+
+    if (card) card.hidden = false
+    if (titleLink) {
+      titleLink.href = '#' + bookmark.id
+      titleLink.textContent = bookmark.title || headingTitle(heading)
+    }
+    if (meta && bookmark.savedAt) {
+      meta.textContent = new Date(bookmark.savedAt).toLocaleString('pt-BR', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    }
+  }
+
+  function initSectionBookmark() {
+    bookmarkableHeadings().forEach(h => {
+      if (h.querySelector('.pin-btn')) return
+      ensureHeadingId(h)
+      h.classList.add('heading-with-pin')
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'pin-btn'
+      btn.setAttribute('aria-label', 'Marcar como último ponto')
+      btn.setAttribute('aria-pressed', 'false')
+      btn.innerHTML = pinIcon + '<span>Marcar ponto</span>'
+      btn.addEventListener('click', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const current = loadBookmark()
+        if (current && current.id === h.id) {
+          saveBookmark(null)
+        } else {
+          saveBookmark({
+            id: h.id,
+            title: bookmarkLabel(h),
+            savedAt: new Date().toISOString(),
+          })
+        }
+        renderBookmark()
+      })
+      h.appendChild(btn)
+    })
+
+    const continueBtn = document.getElementById('sidebar-bookmark-continue')
+    const clearBtn = document.getElementById('sidebar-bookmark-clear')
+    const titleLink = document.getElementById('sidebar-bookmark-title')
+
+    const goToBookmark = (event) => {
+      if (event) event.preventDefault()
+      const bookmark = loadBookmark()
+      if (bookmark && bookmark.id) scrollToBookmark(bookmark.id)
+    }
+
+    if (continueBtn) continueBtn.addEventListener('click', goToBookmark)
+    if (titleLink) titleLink.addEventListener('click', goToBookmark)
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        saveBookmark(null)
+        renderBookmark()
+      })
+    }
+
+    renderBookmark()
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     enableDiagramNav()
     render()
+    initSectionBookmark()
   })
 
   // ── Active sidebar link on scroll ──
@@ -12222,6 +12573,7 @@ style DOM fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
 
   function setActiveLink(id) {
     sidebarLinks.forEach(link => {
+      if (link.closest('.sidebar-bookmark')) return
       const isActive = link.getAttribute('href') === '#' + id
       link.classList.toggle('active', isActive)
     })
