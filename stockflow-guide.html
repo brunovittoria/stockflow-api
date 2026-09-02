@@ -1258,6 +1258,7 @@
   <a href="#sec-bonus-ia">Bônus — IA no SaaS</a>
 
   <div class="section-label">Referência</div>
+  <a href="#pecas">As 8 peças do código</a>
   <a href="#entities">Mapa de Entidades</a>
   <a href="#rules">Regras de Negócio</a>
   <a href="#usecase-flow">Flow de Usecases</a>
@@ -1760,7 +1761,7 @@
 
 <p>Este documento <strong>é o curso</strong> — um guia passo a passo para construir a <strong>StockFlow API</strong>, um sistema de gerenciamento de loja virtual (produtos, estoque, fornecedores e pedidos de compra). Você não precisa do vídeo da Udemy: cada bloco de código tem um cartão <strong>Propósito</strong> dizendo por que aquele arquivo ou comando existe. Os conceitos vêm de NestJS + Clean Architecture, aplicados a este domínio.</p>
 
-<p>Antes das camadas (DDD), leia a seção <a href="#oop">TypeScript OOP</a>: é o vocabulário que o resto do guia assume (<code>class</code>, <code>implements</code>, <code>extends</code>, generics, <code>abstract</code>, <code>private</code>, construtor, <code>props</code>, <code>super()</code>).</p>
+<p>Antes das camadas (DDD), leia a seção <a href="#oop">TypeScript OOP</a>: é o vocabulário que o resto do guia assume (<code>class</code>, <code>implements</code>, <code>extends</code>, generics, <code>abstract</code>, <code>private</code>, construtor, <code>props</code>, <code>super()</code>). Para reler uma peça do código sem voltar na Seção 2, use <a href="#pecas">As 8 peças do código</a>.</p>
 
 <div class="concept-card">
   <div class="label">📝 Como este documento foi criado</div>
@@ -2823,6 +2824,144 @@ style S fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
 style mod fill:#161822,stroke:#2a2d3e,color:#e1e4ed
     </div>
   </div>
+</div>
+
+<!-- ══════════════════════════════ 8 PEÇAS ══════════════════════════════ -->
+<h2 id="pecas">As 8 peças do código</h2>
+
+<p>As seções 2–16 ensinam a <strong>montar</strong>. Esta página ensina a <strong>ler</strong>: oito ideias que se repetem o tempo todo. Clique na peça → analogia, arquivos, quem chama quem, e o capítulo onde você implementou.</p>
+
+<ol>
+  <li><a href="#peca-entity">Entity</a></li>
+  <li><a href="#peca-validator">Validator</a></li>
+  <li><a href="#peca-repository">Repository</a></li>
+  <li><a href="#peca-usecase">UseCase</a></li>
+  <li><a href="#peca-presenter">Presenter</a></li>
+  <li><a href="#peca-controller">Controller e Module</a></li>
+  <li><a href="#peca-cache">CacheProvider</a></li>
+  <li><a href="#peca-auth">Guard (Auth)</a></li>
+</ol>
+
+<div class="diagram-legend" aria-label="Legenda das camadas">
+  <span class="dl-user">CLIENTE</span>
+  <span class="dl-infra">INFRA</span>
+  <span class="dl-app">APLICAÇÃO</span>
+  <span class="dl-domain">DOMÍNIO</span>
+</div>
+<div class="mermaid-wrap">
+  <div class="mermaid">
+flowchart TD
+  Ent["1 Entity"]
+  Val["2 Validator"]
+  Repo["3 Repository"]
+  UC["4 UseCase"]
+  Pres["5 Presenter"]
+  Ctrl["6 Controller e Module"]
+  Cache["7 CacheProvider"]
+  Auth["8 Guard Auth"]
+  Ent -- "valida com" --> Val
+  UC -- "muda estado de" --> Ent
+  UC -- "lê e grava via" --> Repo
+  UC -- "atalho de GET" --> Cache
+  Ctrl -- "chama" --> UC
+  Ctrl -- "formata com" --> Pres
+  Ctrl -- "protege com" --> Auth
+  style Ent fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style Val fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style Repo fill:#3d2a12,stroke:#fdcb6e,color:#e1e4ed
+  style UC fill:#14352c,stroke:#00b894,color:#e1e4ed
+  style Pres fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style Ctrl fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style Cache fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  style Auth fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
+  </div>
+</div>
+
+<h3 id="peca-entity">1. Entity</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>A ficha do produto na prateleira: nome, SKU, preço. Métodos são o que a loja <em>pode</em> fazer com essa ficha (<code>updatePrice</code>, <code>deactivate</code>) — não o HTTP.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/shared/domain/entities/entity.ts</code>, <code>src/products/domain/entities/product.entity.ts</code> (e supplier / stock / purchase-order).</p>
+<p><strong>Conversa com:</strong> Validator (na hora de criar/atualizar) ← UseCase (quem chama os métodos).</p>
+<p><strong>Onde montar:</strong> <a href="#sec3">Seção 3</a> · mapa: <a href="#entities">Entidades</a></p>
+
+<h3 id="peca-validator">2. Validator</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>O checklist antes de aceitar a ficha: SKU preenchido, preço &gt; custo. Zod descreve o formato; a entidade chama <code>validate()</code>.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/shared/domain/validators/</code>, <code>src/products/domain/validators/product.validator.ts</code>.</p>
+<p><strong>Conversa com:</strong> Entity (dispara) · DTO HTTP usa Zod de novo na borda, outro arquivo.</p>
+<p><strong>Onde montar:</strong> <a href="#sec4">Seção 4</a> · regras: <a href="#rules">Regras de negócio</a></p>
+
+<h3 id="peca-repository">3. Repository</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>O estoquista: “me traz o produto X”, “guarda isso”. O domínio só vê a <em>interface</em>. Quem busca de verdade é InMemory (teste) ou Prisma (Postgres).</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/products/domain/repositories/product.repository.ts</code>, <code>…/in-memory/product-in-memory.repository.ts</code>, <code>…/prisma/product-prisma.repository.ts</code>.</p>
+<p><strong>Conversa com:</strong> UseCase (único cliente) → Prisma/InMemory (implementações).</p>
+<p><strong>Onde montar:</strong> <a href="#sec5">Seção 5</a> (contrato + memória) · <a href="#sec9">Seção 9</a> (Prisma)</p>
+
+<h3 id="peca-usecase">4. UseCase</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>Uma tarefa da loja com começo e fim: “cadastrar produto”, “receber entrega”. Orquestra entidade + repositório. Não conhece Nest nem Redis pelo nome — recebe contratos.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/shared/application/usecases/use-case.ts</code>, <code>src/products/application/usecases/create-product.usecase.ts</code> (e os outros).</p>
+<p><strong>Conversa com:</strong> Controller (dispara) → Entity e Repository · CacheProvider nos GETs/writes.</p>
+<p><strong>Onde montar:</strong> <a href="#sec6">Seção 6</a> · índice HTTP: <a href="#usecase-flow">Flow de Usecases</a></p>
+
+<h3 id="peca-presenter">5. Presenter</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>O que o cliente da API vê. O use case devolve dados de aplicação; o presenter escolhe JSON, datas em ISO, sem métodos da entidade.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/products/infrastructure/presenters/product.presenter.ts</code> (e listagem).</p>
+<p><strong>Conversa com:</strong> Controller (depois do use case) · não volta para o domínio.</p>
+<p><strong>Onde montar:</strong> <a href="#sec13">Seção 13</a></p>
+
+<h3 id="peca-controller">6. Controller e Module</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>A porta da loja (rota HTTP) e o quadro de luz (Nest <code>@Module</code>): quem injeta repositório, use case, cache. Sem o module, o construtor do use case fica <code>undefined</code>.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/products/infrastructure/controllers/products.controller.ts</code>, <code>src/products/infrastructure/products.module.ts</code>.</p>
+<p><strong>Conversa com:</strong> Guard → Controller → UseCase → Presenter.</p>
+<p><strong>Onde montar:</strong> <a href="#sec7">Seção 7</a></p>
+
+<h3 id="peca-cache">7. CacheProvider</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>Um caderno na RAM para o que o lojista lê o tempo todo. Miss → Postgres. Write → apaga a chave. Se o Redis cair, a API segue.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/shared/application/cache/cache-provider.ts</code>, <code>cache-keys.ts</code>, <code>redis-cache.provider.ts</code>, <code>in-memory-cache.provider.ts</code>.</p>
+<p><strong>Conversa com:</strong> UseCase de GET/lista/crítico (lê) e writes (invalida). Domínio não importa cache.</p>
+<p><strong>Onde montar:</strong> <a href="#sec-redis">Seção Redis</a></p>
+
+<h3 id="peca-auth">8. Guard (Auth)</h3>
+<div class="mapping-card">
+  <div class="label">Analogia</div>
+  <p>O segurança na porta: JWT do Auth0. Sem token válido a rota nem chega no use case.</p>
+</div>
+<p><strong>Arquivos:</strong> <code>src/auth/infrastructure/</code> (<code>JwtStrategy</code>, <code>AuthModule</code>), guards nos controllers.</p>
+<p><strong>Conversa com:</strong> Controller (antes) · Auth0 (fora do processo). Domínio não sabe de JWT.</p>
+<p><strong>Onde montar:</strong> <a href="#sec14">Seção 14</a></p>
+
+<div class="recap-card">
+  <div class="label">📌 Resumo — As 8 peças</div>
+  <h4>O que você aprendeu</h4>
+  <ul>
+    <li>O código se resume a oito ideias que se repetem em todo módulo.</li>
+    <li>Para estudar uma peça: analogia → arquivos → quem chama → seção de implementação.</li>
+  </ul>
+  <h4>O que foi feito</h4>
+  <ul>
+    <li>Índice de leitura. Nenhum arquivo novo no repo.</li>
+  </ul>
+  <h4>Como isso se liga no sistema</h4>
+  <p>HTTP entra no Controller (com Guard), UseCase fala com Entity e Repository, Presenter devolve JSON, Cache só acelera GET. As seções 2–16 continuam o passo a passo.</p>
 </div>
 
 <!-- ══════════════════════════════ ENTITIES MAP ══════════════════════════════ -->
