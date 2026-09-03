@@ -6,6 +6,7 @@ import { StockDataBuilder } from '@/stock/domain/testing/helpers/stock-data-buil
 import { PurchaseOrderEntity } from '@/purchase-orders/domain/entities/purchase-order.entity'
 import { StockEntity } from '@/stock/domain/entities/stock.entity'
 import { NotFoundError, ConflictError } from '@/shared/domain/errors'
+import { InMemoryCacheProvider } from '@/shared/infrastructure/cache/in-memory-cache.provider'
 
 describe('ReceiveDeliveryUseCase', () => {
   let sut: ReceiveDeliveryUseCase.UseCase
@@ -17,7 +18,11 @@ describe('ReceiveDeliveryUseCase', () => {
   beforeEach(() => {
     purchaseOrderRepo = new PurchaseOrderInMemoryRepository()
     stockRepo = new StockInMemoryRepository()
-    sut = new ReceiveDeliveryUseCase.UseCase(purchaseOrderRepo, stockRepo)
+    sut = new ReceiveDeliveryUseCase.UseCase(
+      purchaseOrderRepo,
+      stockRepo,
+      new InMemoryCacheProvider(),
+    )
   })
 
   it('should mark order as DELIVERED and increase stock quantity', async () => {

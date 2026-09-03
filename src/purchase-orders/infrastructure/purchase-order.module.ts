@@ -12,6 +12,10 @@ import {
 } from '@/purchase-orders/application/usecases'
 import { PurchaseOrderRepository } from '@/purchase-orders/domain/repositories/purchase-order.repository'
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
+import {
+  CACHE_PROVIDER,
+  CacheProvider,
+} from '@/shared/application/cache/cache-provider'
 
 @Module({
   controllers: [PurchaseOrderController],
@@ -53,8 +57,10 @@ import { StockRepository } from '@/stock/domain/repositories/stock.repository'
       useFactory: (
         purchaseOrderRepo: PurchaseOrderRepository,
         stockRepo: StockRepository,
-      ) => new ReceiveDeliveryUseCase.UseCase(purchaseOrderRepo, stockRepo),
-      inject: ['PurchaseOrderRepository', 'StockRepository'],
+        cache: CacheProvider,
+      ) =>
+        new ReceiveDeliveryUseCase.UseCase(purchaseOrderRepo, stockRepo, cache),
+      inject: ['PurchaseOrderRepository', 'StockRepository', CACHE_PROVIDER],
     },
     {
       provide: CancelPurchaseOrderUseCase.UseCase,

@@ -3,6 +3,8 @@ import { PurchaseOrderRepository } from '@/purchase-orders/domain/repositories/p
 import { StockRepository } from '@/stock/domain/repositories/stock.repository'
 import { NotFoundError, ConflictError } from '@/shared/domain/errors'
 import { PurchaseOrderStatus } from '@/purchase-orders/domain/entities/purchase-order.entity'
+import { CacheProvider } from '@/shared/application/cache/cache-provider'
+import { CacheKeys } from '@/shared/application/cache/cache-keys'
 
 /**
  * ReceiveDeliveryUseCase
@@ -45,6 +47,7 @@ export namespace ReceiveDeliveryUseCase {
     constructor(
       private purchaseOrderRepo: PurchaseOrderRepository,
       private stockRepo: StockRepository,
+      private cache: CacheProvider,
     ) {}
 
     async execute(input: Input): Promise<Output> {
@@ -69,6 +72,8 @@ export namespace ReceiveDeliveryUseCase {
         newQuantity: number
       }> = []
 
+      const touchedStockIds: string[] = []
+
       for (const item of order.items) {
         const stocks = await this.stockRepo.findByProductId(item.productId)
         const stock = stocks[0]
@@ -80,7 +85,16 @@ export namespace ReceiveDeliveryUseCase {
         }
 
         stock.addQuantity(item.quantity)
+
+        touchedStockIds.push(stock.id)
+
         await this.stockRepo.update(stock)
+
+        await Promise.all(
+          touchedStockIds.map((id) => this.cache.del(CacheKeys.stock(id))),
+        )
+
+        await this.cache.del(CacheKeys.stocksCritical())
 
         updatedStockItems.push({
           productId: item.productId,
