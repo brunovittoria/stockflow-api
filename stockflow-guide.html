@@ -1252,6 +1252,8 @@
   <a href="#sec-redis">Seção Redis — Cache</a>
 
   <div class="section-label">Deploy</div>
+  <a href="#sec-terraform">Terraform — Infraestrutura como Código</a>
+  <a href="#sec-nginx-tf">NGINX com Terraform</a>
   <a href="#sec16">Seção 16 — CI/CD + AWS</a>
 
   <div class="section-label">Futuro</div>
@@ -11662,14 +11664,996 @@ style DEL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
 </div>
 
 <!-- ══════════════════════════════ SEÇÃO 16 ══════════════════════════════ -->
+<!-- ══════════════════════════════ TERRAFORM ══════════════════════════════ -->
+<h2 id="sec-terraform">Terraform — Infraestrutura como Código</h2>
+
+<div class="concept-card">
+  <div class="label">💡 Por que Terraform e não console AWS?</div>
+  <p>Configurar infraestrutura pelo console da AWS funciona para aprender, mas cria dois problemas sérios em projetos reais: não é reproduzível (você clicou em dezenas de telas — como recria isso em outro ambiente?) e não é versionável (mudanças de infra não aparecem no Git, não têm revisão, não têm histórico).</p>
+  <p>Terraform resolve isso: você descreve a infraestrutura em arquivos <code>.tf</code>, commita no repositório e o Terraform garante que o estado real da AWS bate com o que está descrito. Criar um ambiente de staging idêntico ao de produção vira questão de rodar um comando.</p>
+</div>
+
+<h3>O que é Terraform</h3>
+
+<p>Terraform é uma ferramenta de IaC (Infrastructure as Code) da HashiCorp. Você descreve recursos de infraestrutura em uma linguagem declarativa (HCL — HashiCorp Configuration Language) e o Terraform calcula o que precisa ser criado, alterado ou destruído para chegar ao estado descrito.</p>
+
+<p>O ciclo de trabalho é sempre o mesmo:</p>
+
+<pre><code>terraform init     # baixa os providers (plugins AWS, GCP, etc.)
+terraform plan     # mostra o que SERIA feito — sem alterar nada
+terraform apply    # executa as mudanças após confirmação
+terraform destroy  # destrói toda a infraestrutura descrita
+</code></pre>
+
+<h3>Conceitos fundamentais</h3>
+
+<table>
+  <tr><th>Conceito</th><th>O que é</th><th>Exemplo</th></tr>
+  <tr><td><strong>Provider</strong></td><td>Plugin que conecta ao serviço (AWS, GCP, Azure)</td><td><code>provider "aws" {}</code></td></tr>
+  <tr><td><strong>Resource</strong></td><td>Um recurso de infraestrutura que o Terraform gerencia</td><td>EC2, RDS, Security Group</td></tr>
+  <tr><td><strong>Variable</strong></td><td>Valor parametrizável — muda por ambiente</td><td>região, tipo de instância</td></tr>
+  <tr><td><strong>Output</strong></td><td>Valores que o Terraform exporta após o apply</td><td>IP da EC2, endpoint do RDS</td></tr>
+  <tr><td><strong>State</strong></td><td>Arquivo que mapeia recursos descritos → recursos reais na AWS</td><td><code>terraform.tfstate</code></td></tr>
+  <tr><td><strong>Module</strong></td><td>Grupo reutilizável de resources (como uma função)</td><td>módulo VPC, módulo RDS</td></tr>
+</table>
+
+<div class="warning-card">
+  <div class="label">⚠️ terraform.tfstate nunca vai para o Git</div>
+  <p>O state contém informações sensíveis (senhas, IPs, IDs internos da AWS). Em projetos reais ele fica em um S3 bucket com locking via DynamoDB — chamado de remote state. Mostraremos isso na configuração.</p>
+</div>
+
+<h3>Passo 1 — Instalar Terraform</h3>
+
+<p>O Terraform é um binário único. Instale via package manager:</p>
+
+<pre><code># macOS
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+
+# Linux (Ubuntu/Debian)
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+
+# Verificar instalação
+terraform --version
+</code></pre>
+
+<h3>Passo 2 — Estrutura de pastas do Terraform no projeto</h3>
+
+<p>O Terraform vive em uma pasta <code>infra/</code> na raiz do repositório. Separamos por ambiente (staging, production) para que uma mudança em staging não afete production automaticamente:</p>
+
+<pre><code class="tree"><span class="folder">stockflow-api/</span>
+├── <span class="folder">src/</span>                        ← código NestJS
+├── <span class="folder">prisma/</span>                     ← schema e migrations
+└── <span class="folder">infra/</span>                      ← infraestrutura como código
+    ├── <span class="folder">modules/</span>                ← módulos reutilizáveis
+    │   ├── <span class="folder">vpc/</span>            ← rede (VPC, subnets, gateways)
+    │   ├── <span class="folder">rds/</span>            ← banco de dados
+    │   ├── <span class="folder">ec2/</span>            ← servidor de aplicação
+    │   └── <span class="folder">nginx/</span>          ← configuração do NGINX
+    ├── <span class="folder">environments/</span>
+    │   ├── <span class="folder">staging/</span>
+    │   │   ├── <span class="file">main.tf</span>     ← usa os módulos acima
+    │   │   ├── <span class="file">variables.tf</span>
+    │   │   ├── <span class="file">outputs.tf</span>
+    │   │   └── <span class="file">backend.tf</span>  ← remote state no S3
+    │   └── <span class="folder">production/</span>
+    │       ├── <span class="file">main.tf</span>
+    │       ├── <span class="file">variables.tf</span>
+    │       ├── <span class="file">outputs.tf</span>
+    │       └── <span class="file">backend.tf</span>
+    └── <span class="file">.gitignore</span>              ← ignora .tfstate e .tfvars
+</code></pre>
+
+<p class="file-path">infra/.gitignore</p>
+<pre><code># State local — nunca commitar (contém senhas e IDs sensíveis)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Arquivo de variáveis com valores reais — nunca commitar
+*.tfvars
+!*.tfvars.example
+</code></pre>
+
+<h3>Passo 3 — Remote State no S3</h3>
+
+<p>O state do Terraform precisa ser compartilhado entre desenvolvedores e o CI/CD. A solução padrão é armazenar no S3 com locking via DynamoDB — isso evita que dois applies rodem ao mesmo tempo e corrompam o state.</p>
+
+<p>Crie o bucket S3 e a tabela DynamoDB uma vez manualmente (ou via CLI), antes de começar a usar o Terraform:</p>
+
+<pre><code># Criar bucket S3 para o state (nome deve ser único globalmente)
+aws s3api create-bucket \
+  --bucket stockflow-terraform-state \
+  --region us-east-1
+
+# Habilitar versionamento (permite recuperar states anteriores)
+aws s3api put-bucket-versioning \
+  --bucket stockflow-terraform-state \
+  --versioning-configuration Status=Enabled
+
+# Criar tabela DynamoDB para locking
+aws dynamodb create-table \
+  --table-name stockflow-terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region us-east-1
+</code></pre>
+
+<p class="file-path">infra/environments/production/backend.tf</p>
+<pre><code>terraform {
+  backend "s3" {
+    bucket         = "stockflow-terraform-state"
+    key            = "production/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "stockflow-terraform-locks"
+    encrypt        = true
+  }
+}
+</code></pre>
+
+<h3>Passo 4 — Provider e variáveis</h3>
+
+<p class="file-path">infra/environments/production/variables.tf</p>
+<pre><code>variable "aws_region" {
+  description = "Região AWS onde os recursos serão criados"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Nome do ambiente (staging, production)"
+  type        = string
+  default     = "production"
+}
+
+variable "db_password" {
+  description = "Senha do banco de dados PostgreSQL"
+  type        = string
+  sensitive   = true  # nunca aparece nos logs do Terraform
+}
+
+variable "jwt_secret" {
+  description = "Secret do JWT"
+  type        = string
+  sensitive   = true
+}
+
+variable "instance_type" {
+  description = "Tipo da instância EC2"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "db_instance_class" {
+  description = "Tipo da instância RDS"
+  type        = string
+  default     = "db.t3.micro"
+}
+</code></pre>
+
+<p>Os valores sensíveis ficam em um arquivo <code>terraform.tfvars</code> que nunca vai para o Git:</p>
+
+<p class="file-path">infra/environments/production/terraform.tfvars.example</p>
+<pre><code># Copie este arquivo para terraform.tfvars e preencha os valores reais
+# terraform.tfvars está no .gitignore — nunca commite os valores reais
+
+aws_region        = "us-east-1"
+environment       = "production"
+db_password       = "SUBSTITUA_POR_SENHA_SEGURA"
+jwt_secret        = "SUBSTITUA_POR_SECRET_MINIMO_32_CHARS"
+instance_type     = "t3.small"
+db_instance_class = "db.t3.micro"
+</code></pre>
+
+<p class="file-path">infra/environments/production/outputs.tf</p>
+<pre><code>output "ec2_public_ip" {
+  description = "IP público da instância EC2"
+  value       = module.ec2.public_ip
+}
+
+output "rds_endpoint" {
+  description = "Endpoint do banco de dados RDS"
+  value       = module.rds.endpoint
+  sensitive   = true
+}
+
+output "nginx_public_dns" {
+  description = "DNS público da EC2 (onde o NGINX responde)"
+  value       = module.ec2.public_dns
+}
+</code></pre>
+
+<h3>Passo 5 — Módulo VPC</h3>
+
+<p>A VPC (Virtual Private Cloud) é a rede isolada onde todos os recursos vivem. A EC2 fica em subnet pública (tem IP público, recebe tráfego da internet). O RDS fica em subnet privada (não tem IP público, só a EC2 consegue acessar).</p>
+
+<p class="file-path">infra/modules/vpc/main.tf</p>
+<pre><code>resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "stockflow-vpc-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Subnet pública — EC2 e NGINX ficam aqui
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "stockflow-public-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Subnet privada — RDS fica aqui (sem acesso direto da internet)
+resource "aws_subnet" "private" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "${var.aws_region}b"
+
+  tags = {
+    Name        = "stockflow-private-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Internet Gateway — permite que a subnet pública acesse a internet
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "stockflow-igw-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Route table — direciona tráfego da subnet pública para o IGW
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+</code></pre>
+
+<p class="file-path">infra/modules/vpc/variables.tf</p>
+<pre><code>variable "environment" { type = string }
+variable "aws_region"  { type = string }
+</code></pre>
+
+<p class="file-path">infra/modules/vpc/outputs.tf</p>
+<pre><code>output "vpc_id"            { value = aws_vpc.main.id }
+output "public_subnet_id"  { value = aws_subnet.public.id }
+output "private_subnet_id" { value = aws_subnet.private.id }
+</code></pre>
+
+<h3>Passo 6 — Módulo RDS</h3>
+
+<p class="file-path">infra/modules/rds/main.tf</p>
+<pre><code># Security group do RDS — só aceita conexões da EC2
+resource "aws_security_group" "rds" {
+  name        = "stockflow-rds-sg-${var.environment}"
+  description = "Allow PostgreSQL from EC2 only"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [var.ec2_security_group_id]  # só da EC2
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Environment = var.environment }
+}
+
+# Subnet group — define onde o RDS pode ser colocado
+resource "aws_db_subnet_group" "main" {
+  name       = "stockflow-db-subnet-${var.environment}"
+  subnet_ids = [var.private_subnet_id, var.public_subnet_id]
+
+  tags = { Environment = var.environment }
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier        = "stockflow-db-${var.environment}"
+  engine            = "postgres"
+  engine_version    = "15"
+  instance_class    = var.db_instance_class
+  allocated_storage = 20
+  storage_encrypted = true
+
+  db_name  = "stockflow_db"
+  username = "stockflow"
+  password = var.db_password
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  # Backups automáticos — 7 dias de retenção
+  backup_retention_period = 7
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "Mon:04:00-Mon:05:00"
+
+  # Não deletar o banco ao destruir o Terraform em produção
+  deletion_protection = var.environment == "production" ? true : false
+  skip_final_snapshot = var.environment == "production" ? false : true
+
+  tags = {
+    Name        = "stockflow-db-${var.environment}"
+    Environment = var.environment
+  }
+}
+</code></pre>
+
+<p class="file-path">infra/modules/rds/variables.tf</p>
+<pre><code>variable "environment"           { type = string }
+variable "vpc_id"                { type = string }
+variable "private_subnet_id"     { type = string }
+variable "public_subnet_id"      { type = string }
+variable "ec2_security_group_id" { type = string }
+variable "db_password"           { type = string; sensitive = true }
+variable "db_instance_class"     { type = string }
+</code></pre>
+
+<p class="file-path">infra/modules/rds/outputs.tf</p>
+<pre><code>output "endpoint" {
+  value     = aws_db_instance.postgres.endpoint
+  sensitive = true
+}
+
+output "db_name" {
+  value = aws_db_instance.postgres.db_name
+}
+</code></pre>
+
+<!-- ══════════════════════════════ NGINX VIA TERRAFORM ══════════════════════════════ -->
+<h2 id="sec-nginx-tf">NGINX com Terraform — Produção Real</h2>
+
+<div class="concept-card">
+  <div class="label">💡 O que esta seção cobre</div>
+  <p>Aqui configuramos a EC2 com NGINX completo via Terraform — sem nenhum passo manual. Tudo que seria feito via SSH é automatizado pelo <code>user_data</code> (script que roda quando a EC2 inicia pela primeira vez) e pelo <code>cloud-init</code>. O resultado é uma instância que nasce pronta: Node.js, PM2, NGINX com SSL, rate limiting, gzip e proxy reverso.</p>
+</div>
+
+<h3>Features do NGINX em produção</h3>
+
+<table>
+  <tr><th>Feature</th><th>Por que importa em produção</th></tr>
+  <tr><td>SSL/TLS (Let's Encrypt)</td><td>HTTPS obrigatório — sem ele browsers bloqueiam e Google penaliza no SEO</td></tr>
+  <tr><td>HTTP → HTTPS redirect</td><td>Garante que nenhuma requisição trafega sem criptografia</td></tr>
+  <tr><td>Rate limiting</td><td>Protege a API de brute force e ataques DDoS de camada 7</td></tr>
+  <tr><td>Gzip</td><td>Reduz até 70% do tamanho das respostas JSON — menos banda, mais velocidade</td></tr>
+  <tr><td>Security headers</td><td>HSTS, X-Frame-Options, CSP — defesa em camadas contra ataques comuns</td></tr>
+  <tr><td>Proxy buffer</td><td>NGINX absorve clientes lentos — o Node.js entrega a resposta e fica livre</td></tr>
+  <tr><td>Logs estruturados</td><td>Formato JSON nos logs facilita indexação no CloudWatch ou Datadog</td></tr>
+  <tr><td>Health check endpoint</td><td>Load balancers e ferramentas de monitoramento verificam se a app está viva</td></tr>
+</table>
+
+<h3>Passo 1 — Security Group da EC2</h3>
+
+<p>O security group é o firewall da EC2. Em produção, abrimos apenas as portas necessárias — SSH restrito ao seu IP, HTTP e HTTPS para a internet.</p>
+
+<p class="file-path">infra/modules/ec2/security_group.tf</p>
+<pre><code>resource "aws_security_group" "ec2" {
+  name        = "stockflow-ec2-sg-${var.environment}"
+  description = "StockFlow API server security group"
+  vpc_id      = var.vpc_id
+
+  # SSH — apenas do seu IP ou do IP do CI/CD
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr  # ex: ["203.0.113.0/32"]
+    description = "SSH access"
+  }
+
+  # HTTP — redireciona para HTTPS via NGINX
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP (redirected to HTTPS by NGINX)"
+  }
+
+  # HTTPS — tráfego real da API
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTPS"
+  }
+
+  # Todo tráfego de saída liberado
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "stockflow-ec2-sg-${var.environment}"
+    Environment = var.environment
+  }
+}
+</code></pre>
+
+<h3>Passo 2 — Template de configuração do NGINX</h3>
+
+<p>O Terraform usa arquivos <code>.tpl</code> como templates — variáveis como <code>${domain}</code> são substituídas pelos valores reais durante o apply. Isso nos permite ter uma configuração de NGINX dinâmica, que muda conforme o ambiente.</p>
+
+<p class="file-path">infra/modules/nginx/templates/nginx.conf.tpl</p>
+<pre><code># Rate limiting zones — definidas no contexto http
+limit_req_zone $binary_remote_addr zone=api:10m    rate=30r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m   rate=5r/s;
+limit_req_zone $binary_remote_addr zone=strict:10m rate=2r/s;
+
+# Formato de log estruturado (JSON) — facilita análise no CloudWatch
+log_format json_combined escape=json
+  '{'
+    '"time":"$time_iso8601",'
+    '"remote_addr":"$remote_addr",'
+    '"method":"$request_method",'
+    '"uri":"$request_uri",'
+    '"status":$status,'
+    '"bytes_sent":$bytes_sent,'
+    '"request_time":$request_time,'
+    '"upstream_response_time":"$upstream_response_time",'
+    '"user_agent":"$http_user_agent"'
+  '}';
+
+# Redireciona todo HTTP para HTTPS
+server {
+    listen 80;
+    server_name ${domain};
+
+    # Permite o certbot validar o domínio via HTTP
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${domain};
+
+    # Certificados SSL (Let's Encrypt via certbot)
+    ssl_certificate     /etc/letsencrypt/live/${domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
+
+    # Configuração TLS moderna — apenas TLS 1.2 e 1.3
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_stapling              on;
+    ssl_stapling_verify       on;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Frame-Options           "DENY"                                          always;
+    add_header X-Content-Type-Options    "nosniff"                                       always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin"               always;
+    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()"      always;
+    add_header X-XSS-Protection          "1; mode=block"                                 always;
+
+    # Esconde versão do NGINX nos headers e páginas de erro
+    server_tokens off;
+
+    # Gzip — comprime respostas JSON, JS, CSS, HTML
+    gzip            on;
+    gzip_vary       on;
+    gzip_proxied    any;
+    gzip_comp_level 6;
+    gzip_min_length 1024;
+    gzip_types
+        application/json
+        application/javascript
+        application/xml
+        text/plain
+        text/css
+        text/javascript
+        image/svg+xml;
+
+    # Logs estruturados em JSON
+    access_log /var/log/nginx/stockflow-access.log json_combined;
+    error_log  /var/log/nginx/stockflow-error.log warn;
+
+    # Buffers — NGINX absorve clientes lentos, libera o Node.js mais rápido
+    proxy_buffering         on;
+    proxy_buffer_size       8k;
+    proxy_buffers           16 8k;
+    proxy_busy_buffers_size 16k;
+
+    # Health check — sem rate limiting, sem auth
+    location /health {
+        proxy_pass http://127.0.0.1:${app_port}/health;
+        access_log off;  # não polui os logs com health checks
+    }
+
+    # Autenticação — rate limiting agressivo (5 req/s, burst 10)
+    location /api/auth/ {
+        limit_req zone=auth burst=10 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:${app_port};
+        include /etc/nginx/proxy_params;
+    }
+
+    # Rotas administrativas — rate limiting muito agressivo
+    location /api/admin/ {
+        limit_req zone=strict burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:${app_port};
+        include /etc/nginx/proxy_params;
+    }
+
+    # API geral — rate limiting padrão (30 req/s, burst 60)
+    location /api/ {
+        limit_req zone=api burst=60 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:${app_port};
+        include /etc/nginx/proxy_params;
+    }
+
+    # Swagger docs — apenas em não-produção (ou protegido por IP em prod)
+    location /docs {
+        %{ if environment == "production" ~}
+        # Em produção: protege o Swagger por IP
+        allow ${admin_ip};
+        deny all;
+        %{ endif ~}
+
+        proxy_pass http://127.0.0.1:${app_port}/docs;
+        include /etc/nginx/proxy_params;
+    }
+
+    # Bloqueia acesso direto a arquivos sensíveis
+    location ~ /\.(env|git|htaccess) {
+        deny all;
+        return 404;
+    }
+}
+</code></pre>
+
+<p class="file-path">infra/modules/nginx/templates/proxy_params.tpl</p>
+<pre><code># Parâmetros de proxy compartilhados entre todos os location blocks
+proxy_http_version      1.1;
+proxy_set_header        Upgrade           $http_upgrade;
+proxy_set_header        Connection        "upgrade";
+proxy_set_header        Host              $host;
+proxy_set_header        X-Real-IP         $remote_addr;
+proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header        X-Forwarded-Proto $scheme;
+proxy_set_header        X-Request-ID      $request_id;
+proxy_read_timeout      60s;
+proxy_connect_timeout   10s;
+proxy_send_timeout      60s;
+</code></pre>
+
+<h3>Passo 3 — Script de inicialização da EC2 (user_data)</h3>
+
+<p>O <code>user_data</code> é um script shell que a EC2 executa automaticamente na primeira inicialização. É aqui que instalamos tudo — Node.js, PM2, NGINX, certbot — sem precisar de SSH manual.</p>
+
+<p class="file-path">infra/modules/ec2/templates/user_data.sh.tpl</p>
+<pre><code>#!/bin/bash
+set -euo pipefail  # falha imediatamente em qualquer erro
+
+# Redireciona toda saída para log — facilita debugging
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "=== Iniciando setup da StockFlow API ==="
+echo "Environment: ${environment}"
+echo "Domain: ${domain}"
+
+# Atualiza o sistema
+dnf update -y
+
+# Instala Node.js 20
+dnf install -y nodejs20 npm
+node --version
+npm install -g pnpm pm2
+
+# Instala NGINX
+dnf install -y nginx
+systemctl enable nginx
+
+# Instala certbot para SSL
+dnf install -y python3-certbot-nginx
+
+# Instala git e outras ferramentas
+dnf install -y git htop curl wget unzip
+
+# Cria usuário para a aplicação (não roda como root)
+useradd --system --create-home --shell /bin/bash stockflow || true
+
+# Clona o repositório
+sudo -u stockflow git clone https://github.com/${github_repo}.git /home/stockflow/app
+cd /home/stockflow/app
+
+# Instala dependências e faz build
+sudo -u stockflow pnpm install --frozen-lockfile
+sudo -u stockflow pnpm build
+
+# Cria o arquivo .env com as variáveis de produção
+cat > /home/stockflow/app/.env << 'ENVEOF'
+PORT=${app_port}
+NODE_ENV=production
+DATABASE_URL=postgresql://stockflow:${db_password}@${db_endpoint}/stockflow_db
+JWT_SECRET=${jwt_secret}
+JWT_EXPIRES_IN=15m
+ENVEOF
+
+chown stockflow:stockflow /home/stockflow/app/.env
+chmod 600 /home/stockflow/app/.env  # apenas o dono consegue ler
+
+# Roda as migrations do Prisma
+sudo -u stockflow npx prisma migrate deploy
+
+# Configura PM2 para manter a aplicação rodando
+sudo -u stockflow pm2 start dist/main.js \
+  --name stockflow-api \
+  --instances 2 \          # 2 processos para aproveitar múltiplos cores
+  --max-memory-restart 500M  # reinicia se consumir mais de 500MB
+
+sudo -u stockflow pm2 save
+pm2 startup systemd -u stockflow --hp /home/stockflow
+systemctl enable pm2-stockflow
+
+# Cria diretório para validação do Let's Encrypt
+mkdir -p /var/www/certbot
+
+# Copia configuração do NGINX
+cat > /etc/nginx/conf.d/stockflow.conf << 'NGINXEOF'
+${nginx_config}
+NGINXEOF
+
+# Copia parâmetros de proxy
+cat > /etc/nginx/proxy_params << 'PROXYEOF'
+${proxy_params}
+PROXYEOF
+
+# Testa configuração do NGINX antes de iniciar
+nginx -t
+
+# Inicia NGINX
+systemctl start nginx
+
+# Obtém certificado SSL (aguarda DNS propagar)
+# Em produção: substitua por um domínio real
+certbot --nginx \
+  -d ${domain} \
+  --non-interactive \
+  --agree-tos \
+  --email ${admin_email} \
+  --redirect
+
+# Configura renovação automática do certificado SSL
+echo "0 12 * * * /usr/bin/certbot renew --quiet" | crontab -
+
+# Recarrega NGINX com o certificado SSL
+systemctl reload nginx
+
+echo "=== Setup concluído com sucesso ==="
+echo "API disponível em: https://${domain}/api"
+echo "Health check: https://${domain}/health"
+</code></pre>
+
+<h3>Passo 4 — Módulo EC2 completo</h3>
+
+<p class="file-path">infra/modules/ec2/main.tf</p>
+<pre><code># Renderiza o template do nginx.conf com as variáveis do ambiente
+data "template_file" "nginx_config" {
+  template = file("${path.module}/../nginx/templates/nginx.conf.tpl")
+
+  vars = {
+    domain      = var.domain
+    app_port    = var.app_port
+    environment = var.environment
+    admin_ip    = var.admin_ip
+  }
+}
+
+# Renderiza o template do proxy_params
+data "template_file" "proxy_params" {
+  template = file("${path.module}/../nginx/templates/proxy_params.tpl")
+}
+
+# Renderiza o script de inicialização com todas as variáveis
+data "template_file" "user_data" {
+  template = file("${path.module}/templates/user_data.sh.tpl")
+
+  vars = {
+    environment  = var.environment
+    domain       = var.domain
+    app_port     = var.app_port
+    github_repo  = var.github_repo
+    db_endpoint  = var.db_endpoint
+    db_password  = var.db_password
+    jwt_secret   = var.jwt_secret
+    admin_email  = var.admin_email
+    nginx_config = data.template_file.nginx_config.rendered
+    proxy_params = data.template_file.proxy_params.rendered
+  }
+}
+
+# Busca a AMI mais recente do Amazon Linux 2023
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+}
+
+# Key pair para acesso SSH
+resource "aws_key_pair" "stockflow" {
+  key_name   = "stockflow-key-${var.environment}"
+  public_key = file(var.ssh_public_key_path)
+}
+
+# Instância EC2
+resource "aws_instance" "api" {
+  ami           = data.aws_ami.amazon_linux.id
+  instance_type = var.instance_type
+
+  subnet_id                   = var.public_subnet_id
+  vpc_security_group_ids      = [aws_security_group.ec2.id]
+  key_name                    = aws_key_pair.stockflow.key_name
+  associate_public_ip_address = true
+
+  # Script que roda na inicialização — instala tudo automaticamente
+  user_data = data.template_file.user_data.rendered
+
+  # Volume raiz com 30GB, criptografado
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 30
+    encrypted   = true
+
+    tags = {
+      Name        = "stockflow-root-${var.environment}"
+      Environment = var.environment
+    }
+  }
+
+  tags = {
+    Name        = "stockflow-api-${var.environment}"
+    Environment = var.environment
+  }
+
+  # Garante que o RDS está pronto antes de criar a EC2
+  depends_on = [var.rds_instance]
+}
+
+# IP elástico — o IP não muda se a EC2 for reiniciada
+resource "aws_eip" "api" {
+  instance = aws_instance.api.id
+  domain   = "vpc"
+
+  tags = {
+    Name        = "stockflow-eip-${var.environment}"
+    Environment = var.environment
+  }
+}
+</code></pre>
+
+<p class="file-path">infra/modules/ec2/variables.tf</p>
+<pre><code>variable "environment"         { type = string }
+variable "vpc_id"              { type = string }
+variable "public_subnet_id"    { type = string }
+variable "instance_type"       { type = string }
+variable "domain"              { type = string }
+variable "app_port"            { type = number; default = 3000 }
+variable "github_repo"         { type = string }
+variable "db_endpoint"         { type = string; sensitive = true }
+variable "db_password"         { type = string; sensitive = true }
+variable "jwt_secret"          { type = string; sensitive = true }
+variable "admin_email"         { type = string }
+variable "admin_ip"            { type = string }
+variable "ssh_public_key_path" { type = string }
+variable "allowed_ssh_cidr"    { type = list(string) }
+variable "rds_instance"        { type = any; default = null }
+</code></pre>
+
+<p class="file-path">infra/modules/ec2/outputs.tf</p>
+<pre><code>output "public_ip"         { value = aws_eip.api.public_ip }
+output "public_dns"        { value = aws_instance.api.public_dns }
+output "security_group_id" { value = aws_security_group.ec2.id }
+output "instance_id"       { value = aws_instance.api.id }
+</code></pre>
+
+<h3>Passo 5 — Orquestrando tudo no main.tf</h3>
+
+<p class="file-path">infra/environments/production/main.tf</p>
+<pre><code>terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "stockflow"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# Módulo de rede
+module "vpc" {
+  source      = "../../modules/vpc"
+  environment = var.environment
+  aws_region  = var.aws_region
+}
+
+# Módulo de banco de dados
+module "rds" {
+  source     = "../../modules/rds"
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  private_subnet_id = module.vpc.private_subnet_id
+  public_subnet_id  = module.vpc.public_subnet_id
+  db_password       = var.db_password
+  db_instance_class = var.db_instance_class
+
+  # Security group da EC2 — RDS só aceita conexões dela
+  ec2_security_group_id = module.ec2.security_group_id
+}
+
+# Módulo de servidor (EC2 + NGINX)
+module "ec2" {
+  source     = "../../modules/ec2"
+  environment      = var.environment
+  vpc_id           = module.vpc.vpc_id
+  public_subnet_id = module.vpc.public_subnet_id
+  instance_type    = var.instance_type
+
+  domain         = "api.stockflow.com"
+  github_repo    = "seu-usuario/stockflow-api"
+  admin_email    = "admin@stockflow.com"
+  admin_ip       = "SEU_IP/32"
+  allowed_ssh_cidr = ["SEU_IP/32"]
+
+  ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+  db_endpoint  = module.rds.endpoint
+  db_password  = var.db_password
+  jwt_secret   = var.jwt_secret
+  rds_instance = module.rds
+}
+</code></pre>
+
+<h3>Passo 6 — Rodando o Terraform</h3>
+
+<pre><code># Navegar para o ambiente de produção
+cd infra/environments/production
+
+# Inicializa o Terraform (baixa providers, configura remote state)
+terraform init
+
+# Vê o que será criado — revise antes de aplicar
+terraform plan -var-file="terraform.tfvars"
+
+# Aplica a infraestrutura (pede confirmação)
+terraform apply -var-file="terraform.tfvars"
+
+# Após o apply, veja os outputs
+terraform output ec2_public_ip
+terraform output nginx_public_dns
+
+# Para destruir (use com cuidado em produção!)
+# terraform destroy -var-file="terraform.tfvars"
+</code></pre>
+
+<div class="mapping-card">
+  <div class="label">🔗 O que acontece quando você roda terraform apply</div>
+  <p>O Terraform cria os recursos nesta ordem: VPC e subnets → Internet Gateway e route tables → Security groups → RDS PostgreSQL (pode demorar 5-10 min) → EC2 (inicia com o user_data) → Elastic IP. A EC2 executa o script de inicialização automaticamente — instala Node.js, PM2, NGINX, clona o repo, faz build, roda migrations e obtém o certificado SSL. Em ~10-15 minutos a API está no ar em HTTPS.</p>
+</div>
+
+<h3>Integrando Terraform no CI/CD</h3>
+
+<p>O deploy do código continua via GitHub Actions (git pull + pnpm build + pm2 restart). O Terraform só precisa rodar quando a infraestrutura muda — novo servidor, mudança de configuração do NGINX, ajuste de tamanho de instância. Separamos os dois fluxos:</p>
+
+<p class="file-path">.github/workflows/infra.yml</p>
+<pre><code>name: Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'    # só roda quando arquivos de infra mudam
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/environments/production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -var="db_password=${{ secrets.DB_PASSWORD }}" -var="jwt_secret=${{ secrets.JWT_SECRET }}"
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}" -var="jwt_secret=${{ secrets.JWT_SECRET }}"
+</code></pre>
+
+<div class="warning-card">
+  <div class="label">⚠️ Secrets necessários no GitHub</div>
+  <p>Adicione em <strong>Settings → Secrets → Actions</strong>: <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>DB_PASSWORD</code>, <code>JWT_SECRET</code>, <code>EC2_HOST</code> (IP elástico após o primeiro apply), <code>EC2_SSH_KEY</code> (chave privada para deploy de código).</p>
+</div>
+
 <h2 id="sec16">Seção 16 — CI/CD e Deploy na AWS</h2>
 
 <div class="concept-card">
   <div class="label">📚 O que o curso ensina</div>
-  <p>O curso faz deploy no Render e cria workflows no GitHub Actions para CI. Na POC, faremos o mesmo CI, mas o deploy será na <strong>AWS</strong> usando EC2 + RDS PostgreSQL.</p>
+  <p>O curso faz deploy no Render e cria workflows no GitHub Actions para CI. Na POC, a infraestrutura é provisionada via <strong>Terraform</strong> (seções anteriores) e o CI/CD cuida exclusivamente do deploy do código — sem nenhum passo manual.</p>
 </div>
 
-<p>Mapa do que você vai criar ou editar nesta seção. RDS e EC2 são no console AWS (não são arquivos). Os YAML abaixo entram no repo.</p>
+<p>Com o Terraform já tendo criado EC2, RDS e NGINX, o GitHub Actions tem um papel único: rodar os testes e atualizar o código na EC2 quando passarem.</p>
+
 <table>
   <thead>
     <tr>
@@ -11680,19 +12664,19 @@ style DEL fill:#1a2744,stroke:#74b9ff,color:#e1e4ed
   </thead>
   <tbody>
     <tr>
+      <td><code>infra/</code></td>
+      <td>Novo</td>
+      <td>Terraform — cria EC2, RDS, VPC, NGINX automaticamente (seções anteriores).</td>
+    </tr>
+    <tr>
       <td><code>.github/workflows/ci.yml</code></td>
       <td>Novo</td>
       <td>A cada push/PR: install, testes unitários, Postgres de serviço, integração/E2E.</td>
     </tr>
     <tr>
-      <td>RDS PostgreSQL 15 (console AWS)</td>
-      <td>Novo (nuvem)</td>
-      <td>Banco de produção. <code>DATABASE_URL</code> da API aponta para o endpoint.</td>
-    </tr>
-    <tr>
-      <td>EC2 Amazon Linux (console AWS)</td>
-      <td>Novo (nuvem)</td>
-      <td>Onde o Node roda. Mesma VPC do RDS; security group com SSH + porta da API.</td>
+      <td><code>.github/workflows/infra.yml</code></td>
+      <td>Novo</td>
+      <td>Roda terraform apply quando arquivos em infra/ mudam.</td>
     </tr>
     <tr>
       <td><code>.env</code> na EC2</td>
@@ -11764,83 +12748,18 @@ jobs:
           JWT_SECRET: test-secret-key-minimum-32-chars
 </code></pre>
 
-<h3>Deploy na AWS — Passo a passo</h3>
+<h3>Deploy do código na AWS</h3>
 
-<h4>1. Criar o banco de dados (RDS)</h4>
 <div class="mapping-card">
-  <div class="label">Propósito — criar o RDS</div>
-  <p>Checklist no console AWS: Postgres gerenciado. A API na EC2 aponta o <code>DATABASE_URL</code> para este endpoint.</p>
+  <div class="label">🔗 Separação de responsabilidades</div>
+  <p>O Terraform (seções anteriores) criou toda a infraestrutura — EC2, RDS, VPC, NGINX com SSL. O GitHub Actions abaixo tem um único papel: quando há um push na <code>main</code> com o CI verde, atualiza o código no servidor. São dois fluxos independentes: infra muda raramente, código muda a cada feature.</p>
 </div>
-<pre><code># Via AWS Console ou CLI:
-# - Engine: PostgreSQL 15
-# - Instance: db.t3.micro (free tier)
-# - Storage: 20GB
-# - VPC: default
-# - Public access: No (acesso apenas da EC2 na mesma VPC)
-# - Database name: stockflow_db
-# - Master username: stockflow
-# - Master password: (gerar senha segura)
 
-# Anotar o endpoint:
-# stockflow-db.xxxx.us-east-1.rds.amazonaws.com
-</code></pre>
-
-<h4>2. Criar a instância EC2</h4>
-<div class="mapping-card">
-  <div class="label">Propósito — criar a EC2</div>
-  <p>Máquina onde o Node roda. Security group libera SSH (você) e a porta da API; mesma VPC do RDS.</p>
-</div>
-<pre><code># - AMI: Amazon Linux 2023
-# - Instance type: t3.micro (free tier)
-# - Key pair: criar nova (stockflow-key.pem)
-# - Security group:
-#   - Inbound: SSH (22) do seu IP + HTTP (3000) de qualquer lugar
-# - Same VPC que o RDS
-
-# Conectar via SSH:
-ssh -i stockflow-key.pem ec2-user@EC2_PUBLIC_IP
-</code></pre>
-
-<h4>3. Setup do servidor</h4>
-<pre><code># Na EC2:
-# Instalar Node.js
-curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-sudo yum install -y nodejs git
-
-# Clonar repositório
-git clone https://github.com/seu-user/stockflow-api.git
-cd stockflow-api
-
-# Instalar dependências e buildar
-pnpm install --frozen-lockfile
-pnpm build
-
-# Criar .env de produção
-cat > .env << 'EOF'
-PORT=3000
-NODE_ENV=production
-DATABASE_URL=postgresql://stockflow:SENHA@stockflow-db.xxxx.rds.amazonaws.com:5432/stockflow_db
-JWT_SECRET=gerar-chave-segura-com-minimo-32-caracteres
-JWT_EXPIRES_IN=15m
-EOF
-
-# Rodar migrations
-npx prisma migrate deploy
-
-# Instalar PM2 (process manager)
-pnpm add -g pm2
-
-# Iniciar aplicação
-pm2 start dist/main.js --name stockflow-api
-pm2 save
-pm2 startup  # configura auto-start no reboot
-</code></pre>
-
-<h4>4. Workflow de deploy automático</h4>
+<h4>Workflow de deploy automático</h4>
 
 <div class="mapping-card">
   <div class="label">Propósito — deploy.yml</div>
-  <p>Depois do CI verde, conecta na EC2 e atualiza o código (pull, build, PM2).</p>
+  <p>Depois do CI verde, conecta na EC2 via SSH, puxa o código novo, faz build e reinicia o PM2.</p>
 </div>
 <p class="file-path">.github/workflows/deploy.yml</p>
 <pre><code>name: Deploy to AWS
